@@ -194,5 +194,10 @@ namespace TeamCrescendo.ProceduralIvy
         {
             Debug.Log(EditorConstants.CANNOT_EDIT_GROWING_IVY);
         }
+        
+        public static void CannotConvertToRuntimeIvy()
+        {
+            Debug.Log(EditorConstants.CANNOT_CONVERT_TO_RUNTIME_IVY);
+        }
     }
 }

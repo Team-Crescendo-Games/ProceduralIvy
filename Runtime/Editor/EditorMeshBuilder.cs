@@ -138,10 +138,6 @@ namespace TeamCrescendo.ProceduralIvy
                             var leafMeshFilter = infoPool.ivyParameters
                                 .leavesPrefabs[currentBranch.leaves[j].chosenLeave].GetComponent<MeshFilter>();
                             vertCount += leafMeshFilter.sharedMesh.vertexCount;
-                            /*for (int p = 0; p < currentBranchPoint.leaves.Count; p++)
-                            {
-                                vertCount += infoPool.ivyParameters.leavesPrefabs[currentBranchPoint.leaves[p].chosenLeave].GetComponent<MeshFilter>().sharedMesh.vertexCount;
-                            }*/
                         }
             }
 

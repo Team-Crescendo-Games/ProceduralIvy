@@ -1,0 +1,10 @@
+{
+    "name": "com.teamcrescendo.proceduralivy",
+    "version": "1.0.0",
+    "displayName": "Procedural Ivy",
+    "description": "Procedural Ivy Generator for Unity.",
+    "unity": "6000.0",
+    "author": {
+        "name": "Ninghua Xu"
+      }
+  }

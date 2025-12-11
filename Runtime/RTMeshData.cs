@@ -2,135 +2,115 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Dynamite3D.RealIvy
+namespace TeamCrescendo.ProceduralIvy
 {
-	[System.Serializable]
-	public class RTMeshData
-	{
-		int vertCount;
-		int vertexIndex;
-		public Vector3[] vertices;
-		public Vector3[] normals;
-		public Vector2[] uv;
-		public Vector2[] uv2;
-		public Color[] colors;
+    [Serializable]
+    public class RTMeshData
+    {
+        public Vector3[] vertices;
+        public Vector3[] normals;
+        public Vector2[] uv;
+        public Vector2[] uv2;
+        public Color[] colors;
 
-		public int[] triangleIndices;
-		public int[][] triangles;
+        public int[] triangleIndices;
+        public int[][] triangles;
+        private int vertCount;
+        private int vertexIndex;
 
+        public RTMeshData(int numVertices, int numSubmeshes, List<int> numTrianglesPerSubmesh)
+        {
+            var vertices = new Vector3[numVertices];
+            var normals = new Vector3[numVertices];
+            var uv = new Vector2[numVertices];
+            var colors = new Color[numVertices];
 
-		public RTMeshData(int numVertices, int numSubmeshes, List<int> numTrianglesPerSubmesh)
-		{
-			Vector3[] vertices = new Vector3[numVertices];
-			Vector3[] normals = new Vector3[numVertices];
-			Vector2[] uv = new Vector2[numVertices];
-			Color[] colors = new Color[numVertices];
+            var triangles = new int[numSubmeshes][];
+            for (var i = 0; i < triangles.Length; i++) 
+                triangles[i] = new int[numTrianglesPerSubmesh[i]];
 
-			int[][] triangles = new int[numSubmeshes][];
-			for (int i = 0; i < triangles.Length; i++)
-			{
-				triangles[i] = new int[numTrianglesPerSubmesh[i]];
-			}
+            SetValues(vertices, normals, uv, colors, triangles);
+        }
 
-			SetValues(vertices, normals, uv, colors, triangles);
-		}
+        public RTMeshData(Mesh mesh)
+        {
+            var subMeshCount = mesh.subMeshCount;
 
-		public RTMeshData(Mesh mesh)
-		{
-			int subMeshCount = mesh.subMeshCount;
+            var triangles = new int[subMeshCount][];
+            for (var i = 0; i < triangles.Length; i++) 
+                triangles[i] = mesh.GetTriangles(i);
 
-			Vector3[] vertices = mesh.vertices;
-			Vector3[] normals = mesh.normals;
-			Vector2[] uv = mesh.uv;
-			Vector2[] uv2Aux = mesh.uv2;
-			Color[] colors = mesh.colors;
+            SetValues(mesh.vertices, mesh.normals, mesh.uv, mesh.colors, triangles);
+        }
 
+        private void SetValues(Vector3[] vertices, Vector3[] normals, Vector2[] uv, Color[] colors, int[][] triangles)
+        {
+            this.vertices = vertices;
+            this.normals = normals;
+            this.uv = uv;
+            this.colors = colors;
+            this.triangles = triangles;
 
-			int[][] triangles = new int[subMeshCount][];
-			for (int i = 0; i < triangles.Length; i++)
-			{
-				triangles[i] = mesh.GetTriangles(i);
-			}
+            triangleIndices = new int[triangles.Length];
+            vertexIndex = 0;
+        }
 
-			SetValues(vertices, normals, uv, colors, triangles);
-		}
+        public void CopyDataFromIndex(int index, int lastTriCount, int numTris, RTMeshData copyFrom)
+        {
+            vertices[index] = copyFrom.vertices[index];
+            normals[index] = copyFrom.normals[index];
+            uv[index] = copyFrom.uv[index];
+        }
 
-		private void SetValues(Vector3[] vertices, Vector3[] normals, Vector2[] uv, Color[] colors, int[][] triangles)
-		{
-			this.vertices = vertices;
-			this.normals = normals;
-			this.uv = uv;
-			this.colors = colors;
-			this.triangles = triangles;
+        public void AddTriangle(int sumbesh, int value)
+        {
+            if (triangleIndices[sumbesh] >= triangles[sumbesh].Length)
+            {
+                var newSize = triangles[sumbesh].Length * 2;
+                Array.Resize(ref triangles[sumbesh], newSize);
+            }
 
-			this.triangleIndices = new int[triangles.Length];
-			this.vertexIndex = 0;
-		}
+            if (triangles[sumbesh].Length > 0)
+            {
+                triangles[sumbesh][triangleIndices[sumbesh]] = value;
+                triangleIndices[sumbesh]++;
+            }
+        }
 
-		public void CopyDataFromIndex(int index, int lastTriCount, int numTris, RTMeshData copyFrom)
-		{
-			vertices[index] = copyFrom.vertices[index];
-			normals[index] = copyFrom.normals[index];
-			uv[index] = copyFrom.uv[index];
-		}
+        public void AddVertex(Vector3 vertexValue, Vector3 normalValue, Vector2 uvValue, Color color)
+        {
+            if (vertCount >= vertices.Length) Resize();
 
-		public void AddTriangle(int sumbesh, int value)
-		{
-			if (triangleIndices[sumbesh] >= triangles[sumbesh].Length)
-			{
-				int newSize = triangles[sumbesh].Length * 2;
-				Array.Resize<int>(ref triangles[sumbesh], newSize);
-			}
+            vertices[vertexIndex] = vertexValue;
+            normals[vertexIndex] = normalValue;
+            uv[vertexIndex] = uvValue;
+            colors[vertexIndex] = color;
 
-			if (triangles[sumbesh].Length > 0)
-			{
-				triangles[sumbesh][triangleIndices[sumbesh]] = value;
-				triangleIndices[sumbesh]++;
-			}
-		}
+            vertexIndex++;
 
-		public void AddVertex(Vector3 vertexValue, Vector3 normalValue, Vector2 uvValue, Color color)
-		{
-			if (vertCount >= vertices.Length)
-			{
-				Resize();
-			}
+            vertCount++;
+        }
 
+        private void Resize()
+        {
+            var newSize = vertices.Length * 2;
+            Array.Resize(ref vertices, newSize);
+            Array.Resize(ref normals, newSize);
+            Array.Resize(ref uv, newSize);
+            Array.Resize(ref colors, newSize);
+        }
 
-			vertices[vertexIndex] = vertexValue;
-			normals[vertexIndex] = normalValue;
-			uv[vertexIndex] = uvValue;
-			colors[vertexIndex] = color;
+        public int VertexCount()
+        {
+            return vertCount;
+        }
 
+        public void Clear()
+        {
+            vertCount = 0;
+            vertexIndex = 0;
 
-			vertexIndex++;
-
-			vertCount++;
-		}
-
-		private void Resize()
-		{
-			int newSize = vertices.Length * 2;
-			Array.Resize<Vector3>(ref vertices, newSize);
-			Array.Resize<Vector3>(ref normals, newSize);
-			Array.Resize<Vector2>(ref uv, newSize);
-			Array.Resize<Color>(ref colors, newSize);
-		}
-
-		public int VertexCount()
-		{
-			return vertCount;
-		}
-
-		public void Clear()
-		{
-			this.vertCount = 0;
-			this.vertexIndex = 0;
-
-			for (int i = 0; i < triangleIndices.Length; i++)
-			{
-				this.triangleIndices[i] = 0;
-			}
-		}
-	}
+            for (var i = 0; i < triangleIndices.Length; i++) triangleIndices[i] = 0;
+        }
+    }
 }

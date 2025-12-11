@@ -1,9 +1,9 @@
 ﻿using UnityEditor;
 using UnityEngine;
 
-namespace Dynamite3D.RealIvy
+namespace TeamCrescendo.ProceduralIvy
 {
-    public class ModeShave : AbstractMode
+    public class ModeShave : AMode
     {
         public void UpdateMode(Event currentEvent, Rect forbiddenRect, float brushSize)
         {
@@ -58,15 +58,14 @@ namespace Dynamite3D.RealIvy
 
                 SceneView.RepaintAll();
             }
+
             Handles.EndGUI();
         }
 
         private void DrawOverLeaves()
         {
-            for (int i = 0; i < overLeaves.Count; i++)
-            {
+            for (var i = 0; i < overLeaves.Count; i++)
                 EditorGUI.DrawRect(new Rect(overLeaves[i].pointSS - Vector2.one * 2f, Vector2.one * 4f), Color.red);
-            }
         }
     }
 }

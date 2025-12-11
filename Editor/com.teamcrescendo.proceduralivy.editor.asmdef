@@ -1,0 +1,18 @@
+{
+  "name": "com.teamcrescendo.proceduralivy.editor",
+  "rootNamespace": "TeamCrescendo.ProceduralIvy",
+  "references": [
+    "GUID:bb134338c747c8041ae3adae5fba028c"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

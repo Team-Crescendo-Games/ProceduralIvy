@@ -1,143 +1,97 @@
-﻿using Dynamite3D.RealIvy;
-using System;
+﻿using System;
 using UnityEngine;
 
-namespace Dynamite3D.RealIvy
+namespace TeamCrescendo.ProceduralIvy
 {
-	public class IvyController : MonoBehaviour
-	{
-		public enum State
-		{
-			GROWTH_NOT_STARTED,
-			WAITING_FOR_DELAY,
-			PAUSED,
-			GROWING,
-			GROWTH_FINISHED,
-		}
+    public class IvyController : MonoBehaviour
+    {
+        public enum State
+        {
+            GROWTH_NOT_STARTED,
+            WAITING_FOR_DELAY,
+            PAUSED,
+            GROWING,
+            GROWTH_FINISHED
+        }
 
-		public event Action OnGrowthStarted;
-		public event Action OnGrowthPaused;
-		public event Action OnGrowthFinished;
+        public RTIvy rtIvy;
+        public IvyContainer ivyContainer;
+        public IvyParameters ivyParameters;
 
-		private float currentTimer;
+        public RuntimeGrowthParameters growthParameters;
 
+        private float currentTimer;
 
-		public RTIvy rtIvy;
-		public IvyContainer ivyContainer;
-		public IvyParameters ivyParameters;
+        private State state;
 
-		public RuntimeGrowthParameters growthParameters;
+        private void Awake()
+        {
+            rtIvy.AwakeInit();
 
+            state = State.GROWTH_NOT_STARTED;
 
-		private State state;
+            if (growthParameters.startGrowthOnAwake) StartGrowth();
+        }
 
-		private void Awake()
-		{
-			rtIvy.AwakeInit();
+        private void Update()
+        {
+            var deltaTime = Time.deltaTime;
 
-			state = State.GROWTH_NOT_STARTED;
+            switch (state)
+            {
+                case State.WAITING_FOR_DELAY:
+                    UpdateWaitingForDelayState(deltaTime);
+                    break;
+                case State.GROWING:
+                    UpdateGrowingState(deltaTime);
+                    break;
+            }
+        }
 
-			if (growthParameters.startGrowthOnAwake)
-			{
-				StartGrowth();
-			}
-		}
+        [ContextMenu("Start Growth")]
+        public void StartGrowth()
+        {
+            if (state == State.GROWTH_NOT_STARTED)
+            {
+                rtIvy.InitIvy(growthParameters, ivyContainer, ivyParameters);
 
+                if (growthParameters.delay > 0)
+                    state = State.WAITING_FOR_DELAY;
+                else
+                    state = State.GROWING;
+            }
+        }
 
-		[ContextMenu("Start Growth")]
-		public void StartGrowth()
-		{
-			if(state == State.GROWTH_NOT_STARTED)
-			{
-				rtIvy.InitIvy(growthParameters,ivyContainer, ivyParameters);
+        [ContextMenu("Pause Growth")]
+        public void PauseGrowth()
+        {
+            if (state == State.GROWING || state == State.PAUSED) state = State.PAUSED;
+        }
 
-				if(growthParameters.delay > 0)
-				{
-					state = State.WAITING_FOR_DELAY;
-				}
-				else
-				{
-					state = State.GROWING;
-				}
+        [ContextMenu("Resume Growth")]
+        public void ResumeGrowth()
+        {
+            if (state == State.GROWING || state == State.PAUSED) state = State.GROWING;
+        }
 
-				if (OnGrowthStarted != null)
-				{
-					OnGrowthStarted();
-				}
-			}
-		}
+        private void UpdateWaitingForDelayState(float deltaTime)
+        {
+            currentTimer += deltaTime;
 
-		[ContextMenu("Pause Growth")]
-		public void PauseGrowth()
-		{
-			if(state == State.GROWING || state == State.PAUSED)
-			{
-				state = State.PAUSED;
-			}
+            if (currentTimer > growthParameters.delay)
+            {
+                state = State.GROWING;
 
-			if(OnGrowthPaused != null)
-			{
-				OnGrowthPaused();
-			}
-		}
+                currentTimer = 0f;
+            }
+        }
 
-		[ContextMenu("Resume Growth")]
-		public void ResumeGrowth()
-		{
-			if (state == State.GROWING || state == State.PAUSED)
-			{
-				state = State.GROWING;
-			}
-		}
-
-		public State GetState()
-		{
-			return state;
-		}
-
-		private void Update()
-		{
-			float deltaTime = Time.deltaTime;
-
-			switch (state)
-			{
-				case State.WAITING_FOR_DELAY:
-					UpdateWaitingForDelayState(deltaTime);
-					break;
-				case State.GROWING:
-					UpdateGrowingState(deltaTime);
-					break;
-			}
-		}
-
-		private void UpdateWaitingForDelayState(float deltaTime)
-		{
-			currentTimer += deltaTime;
-
-			if (currentTimer > growthParameters.delay)
-			{
-				state = State.GROWING;
-
-				currentTimer = 0f;
-			}
-		}
-
-
-		private void UpdateGrowingState(float deltaTime)
-		{
-			if (!rtIvy.IsGrowingFinished() && !rtIvy.IsVertexLimitReached())
-			{
-				rtIvy.UpdateIvy(deltaTime);
-			}
-			else
-			{
-				state = State.GROWTH_FINISHED;
-
-				if(OnGrowthFinished != null)
-				{
-					OnGrowthFinished();
-				}
-			}
-		}
-	}
+        private void UpdateGrowingState(float deltaTime)
+        {
+            if (!rtIvy.IsGrowingFinished() && !rtIvy.IsVertexLimitReached())
+                rtIvy.UpdateIvy(deltaTime);
+            else
+                state = State.GROWTH_FINISHED;
+        }
+    }
 }

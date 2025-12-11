@@ -2,89 +2,81 @@
 using UnityEditor;
 using UnityEngine;
 
-namespace Dynamite3D.RealIvy
+namespace TeamCrescendo.ProceduralIvy
 {
-	public class ModeCut : AbstractMode
-	{
-		private List<BranchContainer> branchesToRemove;
-		private List<BranchPoint> pointsToRemove;
+    public class ModeCut : AMode
+    {
+        private List<BranchContainer> branchesToRemove;
+        private List<BranchPoint> pointsToRemove;
 
-		public void UpdateMode(Event currentEvent, Rect forbiddenRect, float brushSize)
-		{
-			//Empezamos la gui para pintar los puntos en screen space
-			Handles.BeginGUI();
-			//Con este método guardamos en un array predeclarado todos los puntos de la enredadera en screen space
-			GetBranchesPointsSS();
-			//Y con este seleccionamos la rama y el punto mas cercanos al ratón en screen space
-			SelectBranchPointSS(currentEvent.mousePosition, brushSize);
+        public void UpdateMode(Event currentEvent, Rect forbiddenRect, float brushSize)
+        {
+            //Empezamos la gui para pintar los puntos en screen space
+            Handles.BeginGUI();
+            //Con este método guardamos en un array predeclarado todos los puntos de la enredadera en screen space
+            GetBranchesPointsSS();
+            //Y con este seleccionamos la rama y el punto mas cercanos al ratón en screen space
+            SelectBranchPointSS(currentEvent.mousePosition, brushSize);
 
 
-			if (overBranch != null && overPoint != null)
-			{
+            if (overBranch != null && overPoint != null)
+            {
+                if (toolPaintingAllowed)
+                {
+                    pointsToRemove = new List<BranchPoint>();
+                    branchesToRemove = new List<BranchContainer>();
 
-				if (this.toolPaintingAllowed)
-				{
+                    var initIndex = overPoint.index;
+                    initIndex = Mathf.Clamp(initIndex, 2, int.MaxValue);
 
-					pointsToRemove = new List<BranchPoint>();
-					branchesToRemove = new List<BranchContainer>();
+                    var endIndex = overBranch.branchPoints.Count - initIndex;
 
-					int initIndex = overPoint.index;
-					initIndex = Mathf.Clamp(initIndex, 2, int.MaxValue);
+                    pointsToRemove = overBranch.branchPoints.GetRange(initIndex, endIndex);
+                    DrawPoints(pointsToRemove, Color.red);
+                    CheckOrphanBranches(pointsToRemove);
+                }
 
-					int endIndex = (overBranch.branchPoints.Count - initIndex);
+                //después, si hacemos clic con el ratón removemos el punto seleccionado de la rama
+                if (currentEvent.type == EventType.MouseDown && !currentEvent.alt && currentEvent.button == 0)
+                {
+                    SaveIvy();
 
-					pointsToRemove = overBranch.branchPoints.GetRange(initIndex, endIndex);
-					DrawPoints(pointsToRemove, Color.red);
-					CheckOrphanBranches(pointsToRemove);
-				}
+                    ProceedToRemove();
+                    RefreshMesh(true, true);
+                }
+            }
 
-				//después, si hacemos clic con el ratón removemos el punto seleccionado de la rama
-				if (currentEvent.type == EventType.MouseDown && !currentEvent.alt && currentEvent.button == 0)
-				{
-					SaveIvy();
+            SceneView.RepaintAll();
+            Handles.EndGUI();
+        }
 
-					ProceedToRemove();
-					RefreshMesh(true, true);
-				}
-			}
+        private void ProceedToRemove()
+        {
+            overBranch.RemoveRange(pointsToRemove[0].index, pointsToRemove.Count);
 
-			SceneView.RepaintAll();
-			Handles.EndGUI();
-		}
+            for (var i = 0; i < branchesToRemove.Count; i++) infoPool.ivyContainer.RemoveBranch(branchesToRemove[i]);
+        }
 
-		private void ProceedToRemove()
-		{
-			overBranch.RemoveRange(pointsToRemove[0].index, pointsToRemove.Count);
+        private void CheckOrphanBranches(List<BranchPoint> pointsToCheck)
+        {
+            for (var i = 0; i < pointsToCheck.Count; i++)
+                if (pointsToCheck[i].newBranch && pointsToCheck[i].newBranchNumber != overBranch.branchNumber)
+                {
+                    var orphanBranch =
+                        infoPool.ivyContainer.GetBranchContainerByBranchNumber(pointsToCheck[i].newBranchNumber);
+                    if (orphanBranch != null)
+                    {
+                        branchesToRemove.Add(orphanBranch);
+                        DrawPoints(orphanBranch.branchPoints, Color.blue);
+                        CheckOrphanBranches(orphanBranch.branchPoints);
+                    }
+                }
+        }
 
-			for (int i = 0; i < branchesToRemove.Count; i++)
-			{
-				infoPool.ivyContainer.RemoveBranch(branchesToRemove[i]);
-			}
-		}
-
-		private void CheckOrphanBranches(List<BranchPoint> pointsToCheck)
-		{
-			for (int i = 0; i < pointsToCheck.Count; i++)
-			{
-				if (pointsToCheck[i].newBranch && pointsToCheck[i].newBranchNumber != overBranch.branchNumber)
-				{
-					BranchContainer orphanBranch = infoPool.ivyContainer.GetBranchContainerByBranchNumber(pointsToCheck[i].newBranchNumber);
-					if (orphanBranch != null)
-					{
-						branchesToRemove.Add(orphanBranch);
-						DrawPoints(orphanBranch.branchPoints, Color.blue);
-						CheckOrphanBranches(orphanBranch.branchPoints);
-					}
-				}
-			}
-		}
-
-		private void DrawPoints(List<BranchPoint> pointsToDraw, Color color)
-		{
-			for (int i = 0; i < pointsToDraw.Count; i++)
-			{
-				EditorGUI.DrawRect(new Rect(pointsToDraw[i].pointSS - Vector2.one * 2f, Vector2.one * 4f), color);
-			}
-		}
-	}
+        private void DrawPoints(List<BranchPoint> pointsToDraw, Color color)
+        {
+            for (var i = 0; i < pointsToDraw.Count; i++)
+                EditorGUI.DrawRect(new Rect(pointsToDraw[i].pointSS - Vector2.one * 2f, Vector2.one * 4f), color);
+        }
+    }
 }

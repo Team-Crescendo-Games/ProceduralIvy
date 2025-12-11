@@ -1,9 +1,9 @@
 ﻿using UnityEditor;
 using UnityEngine;
 
-namespace Dynamite3D.RealIvy
+namespace TeamCrescendo.ProceduralIvy
 {
-    public class ModeRefine : AbstractMode
+    public class ModeRefine : AMode
     {
         private Vector3 mousePointWS = Vector3.zero;
 
@@ -33,22 +33,28 @@ namespace Dynamite3D.RealIvy
 
                         if (overPoint.index != 0 && overPoint.index < overBranch.branchPoints.Count - 3)
                         {
-                            float currentSegmentMagnitude = Vector3.Magnitude(overPoint.GetNextPoint().point - overPoint.point);
-                            Vector3 previousSegment = Vector3.Normalize(overPoint.point - overPoint.GetPreviousPoint().point) * currentSegmentMagnitude;
-                            Vector3 nextSegment = Vector3.Normalize(overBranch.branchPoints[overPoint.index + 1].point - overBranch.branchPoints[overPoint.index + 2].point) * currentSegmentMagnitude;
-                            Vector3 delta = Vector3.Lerp(previousSegment, nextSegment, 0.5f);
+                            var currentSegmentMagnitude =
+                                Vector3.Magnitude(overPoint.GetNextPoint().point - overPoint.point);
+                            var previousSegment =
+                                Vector3.Normalize(overPoint.point - overPoint.GetPreviousPoint().point) *
+                                currentSegmentMagnitude;
+                            var nextSegment =
+                                Vector3.Normalize(overBranch.branchPoints[overPoint.index + 1].point -
+                                                  overBranch.branchPoints[overPoint.index + 2].point) *
+                                currentSegmentMagnitude;
+                            var delta = Vector3.Lerp(previousSegment, nextSegment, 0.5f);
                             newPoint = newPoint + delta * 0.2f;
 
                             if (toolPaintingAllowed)
-                            {
-                                EditorGUI.DrawRect(new Rect(HandleUtility.WorldToGUIPoint(newPoint) - Vector2.one * 2f, Vector2.one * 4f), Color.green);
-                            }
+                                EditorGUI.DrawRect(
+                                    new Rect(HandleUtility.WorldToGUIPoint(newPoint) - Vector2.one * 2f,
+                                        Vector2.one * 4f), Color.green);
                         }
 
                         if (currentEvent.type == EventType.MouseDown && !currentEvent.alt && currentEvent.button == 0)
                         {
                             SaveIvy();
-                            Vector3 newGrabVector = Vector3.Lerp(overPoint.grabVector,
+                            var newGrabVector = Vector3.Lerp(overPoint.grabVector,
                                 overPoint.GetNextPoint().grabVector, 0.5f);
 
                             //BranchPoint nextPoint = overBranch.branchPoints[overPoint.index + 1];
@@ -67,6 +73,7 @@ namespace Dynamite3D.RealIvy
 
                 SceneView.RepaintAll();
             }
+
             Handles.BeginGUI();
         }
     }

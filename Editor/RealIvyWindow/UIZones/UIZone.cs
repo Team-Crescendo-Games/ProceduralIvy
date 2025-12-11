@@ -1,8 +1,9 @@
 ﻿using UnityEngine;
-namespace Dynamite3D.RealIvy
+
+namespace TeamCrescendo.ProceduralIvy
 {
-	public class UIZone
-	{
-		protected Rect currentArea;
-	}
+    public class UIZone
+    {
+        protected Rect currentArea;
+    }
 }

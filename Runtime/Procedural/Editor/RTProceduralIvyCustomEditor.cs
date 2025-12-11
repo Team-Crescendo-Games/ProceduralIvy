@@ -1,11 +1,12 @@
 ﻿using UnityEditor;
 
-namespace Dynamite3D.RealIvy
+namespace TeamCrescendo.ProceduralIvy
 {
-	[CustomEditor(typeof(RuntimeProceduralIvy))]
-	public class RTProceduralIvyCustomEditor : Editor
-	{
-		public override void OnInspectorGUI()
-		{}
-	}
+    [CustomEditor(typeof(RuntimeProceduralIvy))]
+    public class RTProceduralIvyCustomEditor : Editor
+    {
+        public override void OnInspectorGUI()
+        {
+        }
+    }
 }

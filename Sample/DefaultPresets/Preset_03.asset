@@ -20,7 +20,7 @@ MonoBehaviour:
     maxBranchs: 20
     layerMask:
       serializedVersion: 2
-      m_Bits: 55
+      m_Bits: 4294967295
     minDistanceToSurface: 0.01
     maxDistanceToSurface: 0.03
     DTSFrequency: 1

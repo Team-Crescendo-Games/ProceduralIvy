@@ -1,17 +1,15 @@
 ﻿using UnityEditor;
 using UnityEngine;
-using Dynamite3D.RealIvy;
 
-namespace Dynamite3D.RealIvy
+namespace TeamCrescendo.ProceduralIvy
 {
-    public class ModePaint : AbstractMode
+    public class ModePaint : AMode
     {
-        private bool painting;
+        private Vector3 dirDrag = Vector3.zero;
 
         private Vector3 lastMousePointWS = Vector3.zero;
         private Vector3 mousePointWS = Vector3.zero;
-        private Vector3 dirDrag = Vector3.zero;
-
+        private bool painting;
 
 
         public RealIvyWindow realIvyProWindow;
@@ -22,12 +20,12 @@ namespace Dynamite3D.RealIvy
             if (!painting)
             {
                 SelectBranchPointSS(currentEvent.mousePosition, brushSize);
-                if (overBranch != null && this.toolPaintingAllowed)
+                if (overBranch != null && toolPaintingAllowed)
                 {
                     DrawBrush(currentEvent, brushSize);
                     Handles.BeginGUI();
 
-                    Color pointColor = Color.black;
+                    var pointColor = Color.black;
                     if (overPoint == null)
                     {
                         mousePointWS = GetMousePointOverBranch(currentEvent, brushSize);
@@ -38,13 +36,12 @@ namespace Dynamite3D.RealIvy
                         mousePointWS = overPoint.point;
                         pointColor = Color.yellow;
 
-                        if (overPoint.index == overBranch.branchPoints.Count - 1)
-                        {
-                            pointColor = Color.cyan;
-                        }
+                        if (overPoint.index == overBranch.branchPoints.Count - 1) pointColor = Color.cyan;
                     }
 
-                    EditorGUI.DrawRect(new Rect(HandleUtility.WorldToGUIPoint(mousePointWS) - Vector2.one * 2f, Vector2.one * 4f), pointColor);
+                    EditorGUI.DrawRect(
+                        new Rect(HandleUtility.WorldToGUIPoint(mousePointWS) - Vector2.one * 2f, Vector2.one * 4f),
+                        pointColor);
                     //if (overPoint.index == overBranch.branchPoints.Count - 1)
                     //{
                     //	EditorGUI.DrawRect(new Rect(HandleUtility.WorldToGUIPoint(overPoint.point) - Vector2.one * 2f, Vector2.one * 4f), Color.yellow);
@@ -72,12 +69,13 @@ namespace Dynamite3D.RealIvy
                     {
                         if (overPoint == null)
                         {
-                            BranchPoint nearestPoint = overBranch.GetNearestPointWSFrom(mousePointWS);
+                            var nearestPoint = overBranch.GetNearestPointWSFrom(mousePointWS);
 
-                            int newIndex = overSegment[1].index;
+                            var newIndex = overSegment[1].index;
 
-                            BranchPoint nextPoint = overBranch.branchPoints[overSegment[1].index + 1];
-                            float newLength = Mathf.Lerp(overSegment[0].length, nextPoint.length, normalizedSegmentOffset);
+                            var nextPoint = overBranch.branchPoints[overSegment[1].index + 1];
+                            var newLength = Mathf.Lerp(overSegment[0].length, nextPoint.length,
+                                normalizedSegmentOffset);
                             overPoint = overBranch.InsertBranchPoint(mousePointWS, nearestPoint.grabVector, newIndex);
 
                             RefreshMesh(true, true);
@@ -98,13 +96,11 @@ namespace Dynamite3D.RealIvy
                         mouseNormal = -SceneView.currentDrawingSceneView.camera.transform.forward;
                     }
 
-                    if (overBranch == null)
-                    {
-                        this.infoPool = realIvyProWindow.CreateNewIvy();
-                    }
+                    if (overBranch == null) infoPool = realIvyProWindow.CreateNewIvy();
 
                     //iniciamos la ivy (solo lo hace si la ivy aún no está creada
-                    bool newIvy = StartIvy(mousePoint + mouseNormal * infoPool.ivyParameters.minDistanceToSurface, -mouseNormal);
+                    var newIvy = StartIvy(mousePoint + mouseNormal * infoPool.ivyParameters.minDistanceToSurface,
+                        -mouseNormal);
 
                     //y si la ivy ya estaba creada...
                     if (!newIvy)
@@ -112,7 +108,8 @@ namespace Dynamite3D.RealIvy
                         //en caso de que no estuviera sobre ningún punto, crea una nueva rama 
                         if (overBranch == null)
                         {
-                            infoPool.growth.AddBranch(infoPool.ivyContainer.branches[0], overPoint, mousePoint, mouseNormal);
+                            infoPool.growth.AddBranch(infoPool.ivyContainer.branches[0], overPoint, mousePoint,
+                                mouseNormal);
                             overBranch = infoPool.ivyContainer.branches[infoPool.ivyContainer.branches.Count - 1];
                             overPoint = overBranch.branchPoints[0];
                             painting = true;
@@ -173,15 +170,10 @@ namespace Dynamite3D.RealIvy
 
             //Si tenemos un mouseup y estábamos pintando y no tenemos el alt pulsado, creamos un undo state y decimos que dejamos de pintar. 
             //Esto está fuera del if gordo de arriba porque queremos que lo haga aunque lo haga dentro del forbidden rect
-            if (!currentEvent.alt && currentEvent.type == EventType.MouseUp && painting)
-            {
-                StopPainting();
-            }
+            if (!currentEvent.alt && currentEvent.type == EventType.MouseUp && painting) StopPainting();
 
             if (currentEvent.type == EventType.MouseLeaveWindow || currentEvent.type == EventType.MouseEnterWindow)
-            {
                 StopPainting();
-            }
         }
 
         private void StopPainting()
@@ -189,42 +181,37 @@ namespace Dynamite3D.RealIvy
             painting = false;
         }
 
-        void CheckPainting()
+        private void CheckPainting()
         {
             if (overPoint != null)
-            {
                 if (Vector3.Distance(mousePoint, overPoint.point) > infoPool.ivyParameters.stepSize)
                 {
                     Random.state = infoPool.growth.randomstate;
                     ProcessPoints();
                     infoPool.growth.randomstate = Random.state;
                 }
-            }
         }
 
         private void ProcessPoints()
         {
             overBranch.currentHeight = 0.001f;
 
-            float distance = Vector3.Distance(mousePoint, overPoint.point);
+            var distance = Vector3.Distance(mousePoint, overPoint.point);
 
-            int numPoints = Mathf.CeilToInt(distance / infoPool.ivyParameters.stepSize);
-            Vector3 newGrowDirection = (mousePoint - overPoint.point).normalized;
+            var numPoints = Mathf.CeilToInt(distance / infoPool.ivyParameters.stepSize);
+            var newGrowDirection = (mousePoint - overPoint.point).normalized;
 
-            Vector3 srcPoint = overPoint.point;
+            var srcPoint = overPoint.point;
 
 
-            if (dirDrag == Vector3.zero)
-            {
-                dirDrag = Vector3.forward;
-            }
+            if (dirDrag == Vector3.zero) dirDrag = Vector3.forward;
 
 
             //infoPool.growth.Step();
             //infoPool.growth.AddPoint(overBranch, mousePoint, mouseNormal);
-            for (int i = 1; i < numPoints; i++)
+            for (var i = 1; i < numPoints; i++)
             {
-                Vector3 intermediatePoint = srcPoint + (i * infoPool.ivyParameters.stepSize * newGrowDirection);
+                var intermediatePoint = srcPoint + i * infoPool.ivyParameters.stepSize * newGrowDirection;
 
                 //infoPool.growth.AddDrawingPoint(overBranch, intermediatePoint, mouseNormal, dirDrag);
                 infoPool.growth.AddPoint(overBranch, intermediatePoint, mouseNormal);
@@ -242,7 +229,8 @@ namespace Dynamite3D.RealIvy
 
         private bool StartIvy(Vector3 firstPoint, Vector3 firstGrabVector)
         {
-            bool needToCreateNewIvy = (infoPool == null) || (infoPool.ivyContainer.branches.Count == 0) || (infoPool.ivyContainer.ivyGO == null);
+            var needToCreateNewIvy = infoPool == null || infoPool.ivyContainer.branches.Count == 0 ||
+                                     infoPool.ivyContainer.ivyGO == null;
 
 
             if (needToCreateNewIvy)

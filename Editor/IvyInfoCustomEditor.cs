@@ -1,23 +1,23 @@
-﻿using Dynamite3D.RealIvy;
-using System.Collections.Generic;
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
 
-namespace Dynamite3D.RealIvy
+namespace TeamCrescendo.ProceduralIvy
 {
-	[CustomEditor(typeof(IvyInfo))]
-	public class IvyInfoCustomEditor : Editor
-	{
-		private IvyInfo ivyInfo;
+    [CustomEditor(typeof(IvyInfo))]
+    public class IvyInfoCustomEditor : Editor
+    {
+        private IvyInfo ivyInfo;
 
-		public override void OnInspectorGUI()
-		{
-			if (GUILayout.Button("Edit in Real Ivy Editor"))
-			{
-				IvyInfo ivyInfo = (IvyInfo)target;
-				RealIvyWindow.Init();
-				RealIvyWindow.controller.ModifyIvy(ivyInfo);
-			}
-		}
-	}
+        public override void OnInspectorGUI()
+        {
+            base.OnInspectorGUI();
+            
+            if (GUILayout.Button("Edit in Real Ivy Editor"))
+            {
+                var ivyInfo = (IvyInfo)target;
+                RealIvyWindow.Init();
+                RealIvyWindow.controller.ModifyIvy(ivyInfo);
+            }
+        }
+    }
 }

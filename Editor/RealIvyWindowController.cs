@@ -4,344 +4,294 @@ using System.IO;
 using UnityEditor;
 using UnityEngine;
 
-namespace Dynamite3D.RealIvy
+namespace TeamCrescendo.ProceduralIvy
 {
-	public class RealIvyProWindowController : Editor
-	{
-		public static event Action OnIvyGoCreated;
+    public class RealIvyProWindowController : Editor
+    {
+        public IvyInfo currentIvyInfo;
+        public InfoPool infoPool;
+        public GameObject ivyGO;
+        public MeshFilter mf;
+        public MeshRenderer mr;
 
-		public IvyInfo currentIvyInfo;
-		public InfoPool infoPool;
-		public GameObject ivyGO;
-		public MeshFilter mf;
-		public MeshRenderer mr;
+        public IvyPreset selectedPreset;
+        public RealIvyWindow realIvyProWindow;
 
-		public IvyPreset selectedPreset;
-		public RealIvyWindow realIvyProWindow;
-		//public IvyParameters currentParameters;
-		//public Material currentVinesMaterial;
+        private IvyParametersGUI ivyParametersGUI;
+        public static event Action OnIvyGoCreated;
 
-		private IvyParametersGUI ivyParametersGUI;
+        public void Init(RealIvyWindow realIvyProWindow, IvyParametersGUI ivyParametersGUI)
+        {
+            Selection.selectionChanged += OnSelectionChanged;
 
-		public void Init(RealIvyWindow realIvyProWindow, IvyParametersGUI ivyParametersGUI)
-		{
-			Selection.selectionChanged += OnSelectionChanged;
+            this.ivyParametersGUI = ivyParametersGUI;
+            this.realIvyProWindow = realIvyProWindow;
+        }
 
-			this.ivyParametersGUI = ivyParametersGUI;
-			this.realIvyProWindow = realIvyProWindow;
-		}
+        public void Destroy()
+        {
+            Selection.selectionChanged -= OnSelectionChanged;
+        }
 
-		public void Destroy()
-		{
-			Selection.selectionChanged -= OnSelectionChanged;
-		}
+        public InfoPool CreateNewIvy()
+        {
+            var parameters = new IvyParameters();
+            parameters.CopyFrom(ivyParametersGUI);
+            return CreateNewIvy(parameters);
+        }
 
-		/*public InfoPool CreateNewIvy()
-		{
-			return CreateNewIvy(this.selectedPreset);
-		}*/
+        public InfoPool CreateNewIvy(IvyParameters ivyParameters)
+        {
+            infoPool = CreateInstance<InfoPool>();
+            infoPool.ivyContainer = CreateInstance<IvyContainer>();
+            infoPool.ivyContainer.branches = new List<BranchContainer>();
 
-		public InfoPool CreateNewIvy()
-		{
-			IvyParameters parameters = new IvyParameters();
-			parameters.CopyFrom(ivyParametersGUI);
-			return CreateNewIvy(parameters);
-		}
+            infoPool.ivyParameters = ivyParameters;
 
-		public InfoPool CreateNewIvy(IvyParameters ivyParameters)
-		{
-			infoPool = ScriptableObject.CreateInstance<InfoPool>();
-			infoPool.ivyContainer = ScriptableObject.CreateInstance<IvyContainer>();
-			infoPool.ivyContainer.branches = new List<BranchContainer>();
+            infoPool.growth = CreateInstance<EditorIvyGrowth>();
+            infoPool.growth.infoPool = infoPool;
 
-			infoPool.ivyParameters = ivyParameters;
-			infoPool.ivyParameters.UV2IslesSizes = new Dictionary<int, Vector2>();
+            infoPool.meshBuilder = CreateInstance<EditorMeshBuilder>();
+            infoPool.meshBuilder.infoPool = infoPool;
+            infoPool.meshBuilder.ivyMesh = new Mesh();
 
-			infoPool.growth = ScriptableObject.CreateInstance<EditorIvyGrowth>();
-			infoPool.growth.infoPool = infoPool;
+            RealIvyWindow.realIvyProToolsWindow.infoPool = infoPool;
 
-			infoPool.meshBuilder = ScriptableObject.CreateInstance<EditorMeshBuilder>();
-			infoPool.meshBuilder.infoPool = infoPool;
-			infoPool.meshBuilder.ivyMesh = new Mesh();
+            return infoPool;
+        }
 
-			RealIvyWindow.realIvyProToolsWindow.infoPool = infoPool;
-			
-			return infoPool;
-		}
+        public InfoPool CreateNewIvy(IvyPreset selectedPreset)
+        {
+            this.selectedPreset = selectedPreset;
 
-		public InfoPool CreateNewIvy(IvyPreset selectedPreset)
-		{
+            var parameters = new IvyParameters();
+            parameters.CopyFrom(selectedPreset);
 
+            return CreateNewIvy(parameters);
+        }
 
-			this.selectedPreset = selectedPreset;
+        public void ModifyIvy(IvyInfo ivyInfo)
+        {
+            currentIvyInfo = ivyInfo;
+            selectedPreset = ivyInfo.originalPreset;
 
-			IvyParameters parameters = new IvyParameters();
-			parameters.CopyFrom(selectedPreset);
+            infoPool = ivyInfo.infoPool;
+            infoPool.ivyContainer.ivyGO = ivyInfo.gameObject;
 
-			return CreateNewIvy(parameters);
-		}
+            mf = ivyInfo.meshFilter;
+            mr = ivyInfo.meshRenderer;
+            ivyGO = ivyInfo.gameObject;
 
-		public void ModifyIvy(IvyInfo ivyInfo)
-		{
-			this.currentIvyInfo = ivyInfo;
-			this.selectedPreset = ivyInfo.originalPreset;
+            infoPool.growth.growing = false;
 
-			this.infoPool = ivyInfo.infoPool;
-			this.infoPool.ivyContainer.ivyGO = ivyInfo.gameObject;
-			
-			this.mf = ivyInfo.meshFilter;
-			this.mr = ivyInfo.meshRenderer;
-			this.ivyGO = ivyInfo.gameObject;
+            infoPool.ivyParameters.branchesMaterial = mr.sharedMaterials[0];
 
-			this.infoPool.growth.growing = false;
+            ivyParametersGUI.CopyFrom(infoPool.ivyParameters);
 
-			this.infoPool.ivyParameters.branchesMaterial = this.mr.sharedMaterials[0];
+            infoPool.meshBuilder.InitLeavesData();
+        }
 
-			ivyParametersGUI.CopyFrom(infoPool.ivyParameters); 
-
-			infoPool.meshBuilder.InitLeavesData();
-		}
-
-		public bool StartIvy(Vector3 firstPoint, Vector3 firstGrabVector)
-		{
-			if (infoPool.ivyContainer.branches.Count == 0)
-			{
-				infoPool.growth.Initialize(firstPoint, firstGrabVector);
-				infoPool.meshBuilder.InitLeavesData();
-				infoPool.meshBuilder.Initialize();
-				return true;
-			}
-			else
-			{
-				return false;
-			}
-		}
-
-		public void ResetIvy()
-		{
-			infoPool.ivyContainer.Clear();
-		}
-
-		public void GenerateLMUVs()
-		{
-			infoPool.meshBuilder.GenerateLMUVs();
-		}
-
-		public void RefreshMesh()
-		{
-			if (ivyGO)
-			{
+        public bool StartIvy(Vector3 firstPoint, Vector3 firstGrabVector)
+        {
+            if (infoPool.ivyContainer.branches.Count == 0)
+            {
+                infoPool.growth.Initialize(firstPoint, firstGrabVector);
                 infoPool.meshBuilder.InitLeavesData();
-				infoPool.meshBuilder.BuildGeometry();
+                infoPool.meshBuilder.Initialize();
+                return true;
+            }
 
-				Material[] newMaterials = mr.sharedMaterials;
-				newMaterials[0] = infoPool.ivyParameters.branchesMaterial;
-				mr.sharedMaterials = newMaterials;
+            return false;
+        }
 
-				mf.mesh = infoPool.meshBuilder.ivyMesh;
-			}
-		}
+        public void ResetIvy()
+        {
+            infoPool.ivyContainer.Clear();
+        }
 
-		public void Update()
-		{
-			if (infoPool.growth.growing)
-			{
-				if (!IsVertexLimitReached())
-				{
-					infoPool.growth.Step();
-					RefreshMesh();
-				}
-				else
-				{
+        public void GenerateLMUVs()
+        {
+            infoPool.meshBuilder.GenerateLMUVs();
+        }
+
+        public void RefreshMesh()
+        {
+            if (ivyGO)
+            {
+                infoPool.meshBuilder.InitLeavesData();
+                infoPool.meshBuilder.BuildGeometry();
+
+                var newMaterials = mr.sharedMaterials;
+                newMaterials[0] = infoPool.ivyParameters.branchesMaterial;
+                mr.sharedMaterials = newMaterials;
+
+                mf.mesh = infoPool.meshBuilder.ivyMesh;
+            }
+        }
+
+        public void Update()
+        {
+            if (infoPool.growth.growing)
+            {
+                if (!IsVertexLimitReached())
+                {
+                    infoPool.growth.Step();
+                    RefreshMesh();
+                }
+                else
+                {
                     if (infoPool.ivyParameters.buffer32Bits)
-                    {
-                        Debug.LogWarning("Vertices limit reached at " + Constants.VERTEX_LIMIT_32 + ".", infoPool.ivyContainer.ivyGO);
-                    }
+                        Debug.LogWarning("Vertices limit reached at " + Constants.VERTEX_LIMIT_32 + ".",
+                            infoPool.ivyContainer.ivyGO);
                     else
-                    {
-                        Debug.LogWarning("Vertices limit reached at " + Constants.VERTEX_LIMIT_16 + ".", infoPool.ivyContainer.ivyGO);
-                    }
-					infoPool.growth.growing = false;
-				}
-			}
-		}
+                        Debug.LogWarning("Vertices limit reached at " + Constants.VERTEX_LIMIT_16 + ".",
+                            infoPool.ivyContainer.ivyGO);
+                    infoPool.growth.growing = false;
+                }
+            }
+        }
 
-		private bool IsVertexLimitReached()
-		{
-			int numVertices = infoPool.meshBuilder.verts.Length + infoPool.ivyParameters.sides + 1;
+        private bool IsVertexLimitReached()
+        {
+            var numVertices = infoPool.meshBuilder.verts.Length + infoPool.ivyParameters.sides + 1;
             int limit;
             if (infoPool.ivyParameters.buffer32Bits)
-            {
                 limit = Constants.VERTEX_LIMIT_32;
-            }
             else
-            {
                 limit = Constants.VERTEX_LIMIT_16;
-            }
-			bool res = numVertices >= limit;
-			return res;
-		}
+            var res = numVertices >= limit;
+            return res;
+        }
 
-		public void SaveIvy()
-		{
-			Undo.IncrementCurrentGroup();
-			infoPool.ivyContainer.RecordUndo();
-		}
+        public void SaveIvy()
+        {
+            Undo.IncrementCurrentGroup();
+            infoPool.ivyContainer.RecordUndo();
+        }
 
-		public void RegisterUndo()
-		{
-            if (infoPool)
-            {
-                Undo.RegisterCompleteObjectUndo(infoPool, "Ivy Parameter Change");
-            }
-		}
+        public void RegisterUndo()
+        {
+            if (infoPool) Undo.RegisterCompleteObjectUndo(infoPool, "Ivy Parameter Change");
+        }
 
-		public void CreateIvyGO(Vector3 position, Vector3 normal)
-		{
+        public void CreateIvyGO(Vector3 position, Vector3 normal)
+        {
             ivyGO = new GameObject();
-			ivyGO.transform.position = position + normal * infoPool.ivyParameters.minDistanceToSurface;
-			ivyGO.transform.rotation = Quaternion.LookRotation(normal);
-			ivyGO.transform.RotateAround(ivyGO.transform.position, ivyGO.transform.right, 90f);
-			ivyGO.name = "New Ivy";
-			//Selection.activeGameObject = ivyGO;
+            ivyGO.transform.position = position + normal * infoPool.ivyParameters.minDistanceToSurface;
+            ivyGO.transform.rotation = Quaternion.LookRotation(normal);
+            ivyGO.transform.RotateAround(ivyGO.transform.position, ivyGO.transform.right, 90f);
+            ivyGO.name = "New Ivy";
 
-			infoPool.ivyContainer.ivyGO = ivyGO;
-			infoPool.growth.origin = ivyGO.transform.position;
+            infoPool.ivyContainer.ivyGO = ivyGO;
+            infoPool.growth.origin = ivyGO.transform.position;
 
-			mr = ivyGO.AddComponent<MeshRenderer>();
-			Material[] materials = new Material[1];
-			materials[0] = infoPool.ivyParameters.branchesMaterial;
-			mr.sharedMaterials = materials;
+            mr = ivyGO.AddComponent<MeshRenderer>();
+            var materials = new Material[1];
+            materials[0] = infoPool.ivyParameters.branchesMaterial;
+            mr.sharedMaterials = materials;
 
-			mf = ivyGO.AddComponent<MeshFilter>();
+            mf = ivyGO.AddComponent<MeshFilter>();
 
-			
+            var ivyInfo = ivyGO.AddComponent<IvyInfo>();
+            ivyInfo.Setup(infoPool, mf, mr, selectedPreset);
 
+            ModifyIvy(ivyInfo);
 
-			IvyInfo ivyInfo = ivyGO.AddComponent<IvyInfo>();
-			ivyInfo.Setup(infoPool, mf, mr, selectedPreset);
+            infoPool.ivyContainer.RecordCreated();
+            
+            OnIvyGoCreated?.Invoke();
+        }
 
-			
+        public void SaveCurrentIvyIntoScene()
+        {
+            RemoveAllScripts();
+            OnSelectionChanged();
+        }
 
-			ModifyIvy(ivyInfo);
+        private GameObject RemoveAllScripts()
+        {
+            if (infoPool.ivyParameters.generateLightmapUVs) infoPool.meshBuilder.GenerateLMUVs();
+            var componentsToDelete = new List<MonoBehaviour>();
+            componentsToDelete.AddRange(ivyGO.GetComponentsInChildren<MonoBehaviour>());
 
-			infoPool.ivyContainer.RecordCreated();
-
-			if(OnIvyGoCreated != null)
-			{
-				OnIvyGoCreated();
-			}
-		}
-
-		/*public void ApplyPresset(IvyParameters preset)
-		{
-			infoPool.ivyParameters = preset;
-		}*/
-
-		public void SaveCurrentIvyIntoScene()
-		{
-			RemoveAllScripts();
-			OnSelectionChanged();
-		}
-
-		private GameObject RemoveAllScripts()
-		{
-			if (infoPool.ivyParameters.generateLightmapUVs)
-			{
-				infoPool.meshBuilder.GenerateLMUVs();
-			}
-			List<MonoBehaviour> componentsToDelete = new List<MonoBehaviour>();
-			componentsToDelete.AddRange(ivyGO.GetComponentsInChildren<MonoBehaviour>());
-
-			for (int i = 0; i < componentsToDelete.Count; i++)
-			{
-                DestroyImmediate(componentsToDelete[i]);
-            }
-            var go = GameObject.Instantiate(infoPool.ivyContainer.ivyGO);
+            for (var i = 0; i < componentsToDelete.Count; i++) DestroyImmediate(componentsToDelete[i]);
+            var go = Instantiate(infoPool.ivyContainer.ivyGO);
             go.name = go.name.Remove(go.name.Length - 7, 7);
             DestroyImmediate(infoPool.ivyContainer.ivyGO);
 
             return go;
-		}
+        }
 
         public void SaveCurrentIvyAsPrefab(string fileName)
         {
-            string filePath = EditorUtility.SaveFilePanelInProject("Save Ivy as prefab", fileName, Constants.EXTENSION_PREFAB, "");
+            var filePath =
+                EditorUtility.SaveFilePanelInProject("Save Ivy as prefab", fileName, Constants.EXTENSION_PREFAB, "");
             fileName = Path.GetFileName(filePath);
-            string[] separator = new string[] { "." };
+            var separator = new[] { "." };
             fileName = fileName.Split(separator, StringSplitOptions.None)[0];
             if (filePath.Length > 0)
             {
-                int initIndexExtension = filePath.LastIndexOf(".");
-                int initIndexFileName = filePath.LastIndexOf("/");
-                string localFolderPath = filePath.Substring(0, initIndexFileName);
+                var initIndexExtension = filePath.LastIndexOf(".");
+                var initIndexFileName = filePath.LastIndexOf("/");
+                var localFolderPath = filePath.Substring(0, initIndexFileName);
 
-                string infoPoolFilePath = Path.Combine(localFolderPath, fileName + ".asset");
+                var infoPoolFilePath = Path.Combine(localFolderPath, fileName + ".asset");
                 AssetDatabase.CreateAsset(infoPool, infoPoolFilePath);
                 AssetDatabase.AddObjectToAsset(infoPool.ivyContainer, infoPool);
                 AssetDatabase.AddObjectToAsset(infoPool.meshBuilder, infoPool);
-                //AssetDatabase.AddObjectToAsset(infoPool.ivyParameters, infoPool);
                 AssetDatabase.AddObjectToAsset(infoPool.growth, infoPool);
                 AssetDatabase.AddObjectToAsset(infoPool.meshBuilder.ivyMesh, infoPool);
 
-                for (int i = 0; i < infoPool.ivyContainer.branches.Count; i++)
-                {
+                for (var i = 0; i < infoPool.ivyContainer.branches.Count; i++)
                     AssetDatabase.AddObjectToAsset(infoPool.ivyContainer.branches[i], infoPool);
-                }
 
-				var go = RemoveAllScripts();
+                var go = RemoveAllScripts();
 
-				GameObject prefabSaved = PrefabUtility.SaveAsPrefabAssetAndConnect(go, filePath, InteractionMode.AutomatedAction);
+                var prefabSaved =
+                    PrefabUtility.SaveAsPrefabAssetAndConnect(go, filePath, InteractionMode.AutomatedAction);
 
                 EditorGUIUtility.PingObject(prefabSaved);
             }
-		}
+        }
 
-		private void OnSelectionChanged()
-		{
-			GameObject activeGameObject = Selection.activeGameObject;
+        private void OnSelectionChanged()
+        {
+            var activeGameObject = Selection.activeGameObject;
 
-			if (activeGameObject != null)
-			{
-				IvyInfo ivyInfo = activeGameObject.GetComponent<IvyInfo>();
-
-				if (ivyInfo != null)
-				{
-					ModifyIvy(ivyInfo);
-				}
-				else
-				{
-					currentIvyInfo = null;
-				}
-			}
-			else
-			{
-				if(ivyGO == null)
-				{
-					infoPool.ivyContainer.Clear();
-					CreateNewIvy();
-				}
-
-				currentIvyInfo = null;
-			}
-		}
-
-		public void OnVinesMaterialChanged(Material newMaterial)
-		{
-			realIvyProWindow.valueUpdated = true;
-		}
-
-		public void OnPresetChanged(IvyPreset newPreset)
-		{
-            if (newPreset)
+            if (activeGameObject != null)
             {
-                this.selectedPreset = newPreset;
-                if (currentIvyInfo != null)
+                var ivyInfo = activeGameObject.GetComponent<IvyInfo>();
+
+                if (ivyInfo != null)
+                    ModifyIvy(ivyInfo);
+                else
+                    currentIvyInfo = null;
+            }
+            else
+            {
+                if (ivyGO == null)
                 {
-                    currentIvyInfo.originalPreset = selectedPreset;
+                    infoPool.ivyContainer.Clear();
+                    CreateNewIvy();
                 }
 
-                string presetGUID = UIUtils.GetGUIDByAsset(selectedPreset);
+                currentIvyInfo = null;
+            }
+        }
+
+        public void OnVinesMaterialChanged(Material newMaterial)
+        {
+            realIvyProWindow.valueUpdated = true;
+        }
+
+        public void OnPresetChanged(IvyPreset newPreset)
+        {
+            if (newPreset)
+            {
+                selectedPreset = newPreset;
+                if (currentIvyInfo != null) currentIvyInfo.originalPreset = selectedPreset;
+
+                var presetGUID = UIUtils.GetGUIDByAsset(selectedPreset);
                 EditorPrefs.SetString("RealIvyDefaultGUID", presetGUID);
 
                 ivyParametersGUI.CopyFrom(selectedPreset);
@@ -349,161 +299,140 @@ namespace Dynamite3D.RealIvy
                 infoPool.meshBuilder.InitLeavesData();
                 realIvyProWindow.valueUpdated = true;
             }
-		}
+        }
 
-		public void SaveCurrentParametersAsNewPreset(string filePath)
-		{
-			IvyPreset newPreset = ScriptableObject.CreateInstance<IvyPreset>();
-			newPreset.ivyParameters = new IvyParameters(infoPool.ivyParameters);
-
-
-			AssetDatabase.CreateAsset(newPreset, filePath);
-			//IvyPreset newPreset = AssetDatabase.LoadAssetAtPath(filePath, typeof(IvyPreset)) as IvyPreset;
-			AssetDatabase.SaveAssets();
-
-			OnPresetChanged(newPreset);
-		}
-
-		public void OverridePreset()
-		{
-			selectedPreset.CopyFrom(ivyParametersGUI);
-			
-			EditorUtility.SetDirty(selectedPreset);
-			AssetDatabase.SaveAssets();
-
-			OnPresetChanged(selectedPreset);
-		}
-
-		public void OnScriptReloaded(IvyPreset selectedPreset)
-		{
-			if(Selection.activeGameObject == null)
-			{
-				CreateNewIvy(selectedPreset);
-			}
-			else
-			{
-				IvyInfo selectedIvyInfo = Selection.activeGameObject.GetComponent<IvyInfo>();
-				if(selectedIvyInfo != null)
-				{
-					ModifyIvy(selectedIvyInfo);
-				}
-			}
-		}
-
-		public bool AreThereUnsavedChanges()
-		{
-			bool res = !infoPool.ivyParameters.IsEqualTo(selectedPreset.ivyParameters);
-			return res;
-		}
-
-        public bool GenerateLightmapUVsActivated()
+        public void SaveCurrentParametersAsNewPreset(string filePath)
         {
-            bool res = infoPool.ivyParameters.generateLightmapUVs != ivyParametersGUI.generateLightmapUVs && ivyParametersGUI.generateLightmapUVs;
+            var newPreset = CreateInstance<IvyPreset>();
+            newPreset.ivyParameters = new IvyParameters(infoPool.ivyParameters);
+
+            AssetDatabase.CreateAsset(newPreset, filePath);
+            AssetDatabase.SaveAssets();
+
+            OnPresetChanged(newPreset);
+        }
+
+        public void OverridePreset()
+        {
+            selectedPreset.CopyFrom(ivyParametersGUI);
+
+            EditorUtility.SetDirty(selectedPreset);
+            AssetDatabase.SaveAssets();
+
+            OnPresetChanged(selectedPreset);
+        }
+
+        public void OnScriptReloaded(IvyPreset selectedPreset)
+        {
+            if (Selection.activeGameObject == null)
+            {
+                CreateNewIvy(selectedPreset);
+            }
+            else
+            {
+                var selectedIvyInfo = Selection.activeGameObject.GetComponent<IvyInfo>();
+                if (selectedIvyInfo != null) ModifyIvy(selectedIvyInfo);
+            }
+        }
+
+        public bool AreThereUnsavedChanges()
+        {
+            var res = !infoPool.ivyParameters.IsEqualTo(selectedPreset.ivyParameters);
             return res;
         }
 
-		public void PrepareRuntimeBaked()
-		{
-			RTIvy rtIvy = ivyGO.GetComponent<RTIvy>();
-			RuntimeBakedIvy rtBakedIvy = (RuntimeBakedIvy)rtIvy;
-			RuntimeGrowthParameters defaultGrowthParameters = new RuntimeGrowthParameters();
-			IvyController ivyController = ivyGO.GetComponent<IvyController>();
-
-			if (rtIvy == null)
-			{
-				rtBakedIvy = ivyGO.GetComponent<RuntimeBakedIvy>();
-				if (rtBakedIvy == null)
-				{
-					rtBakedIvy = ivyGO.AddComponent<RuntimeBakedIvy>();
-				}
-
-				if(ivyController == null)
-				{
-					ivyController = ivyGO.AddComponent<IvyController>();
-				}
-
-				ivyController.rtIvy = rtBakedIvy;
-				ivyController.ivyContainer = currentIvyInfo.infoPool.ivyContainer;
-				ivyController.ivyParameters = currentIvyInfo.infoPool.ivyParameters;
-				ivyController.growthParameters = defaultGrowthParameters;
-
-
-				rtBakedIvy.meshFilter = rtBakedIvy.GetComponent<MeshFilter>();
-				rtBakedIvy.meshRenderer = rtBakedIvy.GetComponent<MeshRenderer>();
-
-
-				if (rtBakedIvy.mrProcessedMesh == null)
-				{
-					GameObject processedMesh = new GameObject();
-					processedMesh.name = "processedMesh";
-					processedMesh.transform.parent = rtBakedIvy.transform;
-					processedMesh.transform.localPosition = Vector3.zero;
-					processedMesh.transform.localRotation = Quaternion.identity;
-					MeshRenderer mrProcessedMesh = processedMesh.AddComponent<MeshRenderer>();
-					MeshFilter mfProcessedMesh = processedMesh.AddComponent<MeshFilter>();
-
-					rtBakedIvy.mrProcessedMesh = mrProcessedMesh;
-					rtBakedIvy.mfProcessedMesh = mfProcessedMesh;
-				}
-			}
-
-			ivyController.ivyParameters = currentIvyInfo.infoPool.ivyParameters;
-		}
-
-		public void PrepareRuntimeProcedural()
-		{
-			RTIvy rtIvy = ivyGO.GetComponent<RTIvy>();
-
-			if (rtIvy == null)
-			{
-				RuntimeProceduralIvy rtProceduralIvy = ivyGO.GetComponent<RuntimeProceduralIvy>();
-				if (rtProceduralIvy == null)
-				{
-					rtProceduralIvy = ivyGO.AddComponent<RuntimeProceduralIvy>();
-				}
-
-				IvyController ivyController = ivyGO.GetComponent<IvyController>();
-				if (ivyController == null)
-				{
-					ivyController = ivyGO.AddComponent<IvyController>();
-				}
-
-				ivyController.rtIvy = rtProceduralIvy;
-				ivyController.ivyContainer = currentIvyInfo.infoPool.ivyContainer;
-				ivyController.ivyParameters = currentIvyInfo.infoPool.ivyParameters;
-				ivyController.growthParameters = new RuntimeGrowthParameters();
-
-
-				//rtProceduralIvy.ivyInfo = currentIvyInfo;
-				rtProceduralIvy.meshFilter = rtProceduralIvy.GetComponent<MeshFilter>();
-				rtProceduralIvy.meshRenderer = rtProceduralIvy.GetComponent<MeshRenderer>();
-
-
-				if (rtProceduralIvy.mfProcessedMesh == null)
-				{
-					GameObject processedMesh = new GameObject();
-					processedMesh.name = "processedMesh";
-					processedMesh.transform.parent = rtProceduralIvy.transform;
-					processedMesh.transform.localPosition = Vector3.zero;
-					processedMesh.transform.localRotation = Quaternion.identity;
-					MeshRenderer mrProcessedMesh = processedMesh.AddComponent<MeshRenderer>();
-					MeshFilter mfProcessedMesh = processedMesh.AddComponent<MeshFilter>();
-
-					rtProceduralIvy.mfProcessedMesh = mfProcessedMesh;
-					rtProceduralIvy.mrProcessedMesh = mrProcessedMesh;
-				}
-			}
-		}
-
-		public void Optimize()
+        public bool GenerateLightmapUVsActivated()
         {
-            for (int b = 0; b < infoPool.ivyContainer.branches.Count; b++)
+            var res = infoPool.ivyParameters.generateLightmapUVs != ivyParametersGUI.generateLightmapUVs &&
+                      ivyParametersGUI.generateLightmapUVs;
+            return res;
+        }
+
+        public void PrepareRuntimeBaked()
+        {
+            var rtIvy = ivyGO.GetComponent<RTIvy>();
+            var rtBakedIvy = (RuntimeBakedIvy)rtIvy;
+            var defaultGrowthParameters = new RuntimeGrowthParameters();
+            var ivyController = ivyGO.GetComponent<IvyController>();
+
+            if (rtIvy == null)
             {
-                BranchContainer branch = infoPool.ivyContainer.branches[b];
-                for (int p = 1; p < branch.branchPoints.Count - 1; p++)
+                rtBakedIvy = ivyGO.GetComponent<RuntimeBakedIvy>();
+                if (rtBakedIvy == null) rtBakedIvy = ivyGO.AddComponent<RuntimeBakedIvy>();
+
+                if (ivyController == null) ivyController = ivyGO.AddComponent<IvyController>();
+
+                ivyController.rtIvy = rtBakedIvy;
+                ivyController.ivyContainer = currentIvyInfo.infoPool.ivyContainer;
+                ivyController.ivyParameters = currentIvyInfo.infoPool.ivyParameters;
+                ivyController.growthParameters = defaultGrowthParameters;
+
+                rtBakedIvy.meshFilter = rtBakedIvy.GetComponent<MeshFilter>();
+                rtBakedIvy.meshRenderer = rtBakedIvy.GetComponent<MeshRenderer>();
+
+                if (rtBakedIvy.mrProcessedMesh == null)
                 {
-                    Vector3 segment1 = branch.branchPoints[p].point - branch.branchPoints[p - 1].point;
-                    Vector3 segment2 = branch.branchPoints[p + 1].point - branch.branchPoints[p].point;
+                    var processedMesh = new GameObject();
+                    processedMesh.name = "processedMesh";
+                    processedMesh.transform.parent = rtBakedIvy.transform;
+                    processedMesh.transform.localPosition = Vector3.zero;
+                    processedMesh.transform.localRotation = Quaternion.identity;
+                    var mrProcessedMesh = processedMesh.AddComponent<MeshRenderer>();
+                    var mfProcessedMesh = processedMesh.AddComponent<MeshFilter>();
+
+                    rtBakedIvy.mrProcessedMesh = mrProcessedMesh;
+                    rtBakedIvy.mfProcessedMesh = mfProcessedMesh;
+                }
+            }
+
+            ivyController.ivyParameters = currentIvyInfo.infoPool.ivyParameters;
+        }
+
+        public void PrepareRuntimeProcedural()
+        {
+            var rtIvy = ivyGO.GetComponent<RTIvy>();
+
+            if (rtIvy == null)
+            {
+                var rtProceduralIvy = ivyGO.GetComponent<RuntimeProceduralIvy>();
+                if (rtProceduralIvy == null) rtProceduralIvy = ivyGO.AddComponent<RuntimeProceduralIvy>();
+
+                var ivyController = ivyGO.GetComponent<IvyController>();
+                if (ivyController == null) ivyController = ivyGO.AddComponent<IvyController>();
+
+                ivyController.rtIvy = rtProceduralIvy;
+                ivyController.ivyContainer = currentIvyInfo.infoPool.ivyContainer;
+                ivyController.ivyParameters = currentIvyInfo.infoPool.ivyParameters;
+                ivyController.growthParameters = new RuntimeGrowthParameters();
+
+                rtProceduralIvy.meshFilter = rtProceduralIvy.GetComponent<MeshFilter>();
+                rtProceduralIvy.meshRenderer = rtProceduralIvy.GetComponent<MeshRenderer>();
+
+                if (rtProceduralIvy.mfProcessedMesh == null)
+                {
+                    var processedMesh = new GameObject();
+                    processedMesh.name = "processedMesh";
+                    processedMesh.transform.parent = rtProceduralIvy.transform;
+                    processedMesh.transform.localPosition = Vector3.zero;
+                    processedMesh.transform.localRotation = Quaternion.identity;
+                    var mrProcessedMesh = processedMesh.AddComponent<MeshRenderer>();
+                    var mfProcessedMesh = processedMesh.AddComponent<MeshFilter>();
+
+                    rtProceduralIvy.mfProcessedMesh = mfProcessedMesh;
+                    rtProceduralIvy.mrProcessedMesh = mrProcessedMesh;
+                }
+            }
+        }
+
+        public void Optimize()
+        {
+            for (var b = 0; b < infoPool.ivyContainer.branches.Count; b++)
+            {
+                var branch = infoPool.ivyContainer.branches[b];
+                for (var p = 1; p < branch.branchPoints.Count - 1; p++)
+                {
+                    var segment1 = branch.branchPoints[p].point - branch.branchPoints[p - 1].point;
+                    var segment2 = branch.branchPoints[p + 1].point - branch.branchPoints[p].point;
                     if (Vector3.Angle(segment1, segment2) < infoPool.ivyParameters.optAngleBias)
                     {
                         SaveIvy();
@@ -513,5 +442,5 @@ namespace Dynamite3D.RealIvy
                 }
             }
         }
-	}
+    }
 }

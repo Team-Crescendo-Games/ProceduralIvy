@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace TeamCrescendo.ProceduralIvy
 {
-    public class ProceduralIvyWindowController : Editor
+    public class ProceduralIvyWindowController 
     {
         public IvyInfo currentIvyInfo;
         public InfoPool infoPool;
@@ -37,20 +38,23 @@ namespace TeamCrescendo.ProceduralIvy
 
         public InfoPool CreateNewIvy(IvyParameters ivyParameters)
         {
-            infoPool = CreateInstance<InfoPool>();
-            infoPool.ivyContainer = CreateInstance<IvyContainer>();
+            // Note: InfoPool still needs ScriptableObject.CreateInstance because InfoPool likely inherits from ScriptableObject.
+            // If InfoPool is also a raw object, change this to "new InfoPool()".
+            infoPool = ScriptableObject.CreateInstance<InfoPool>();
+            
+            infoPool.ivyContainer = ScriptableObject.CreateInstance<IvyContainer>();
             infoPool.ivyContainer.branches = new List<BranchContainer>();
 
             infoPool.ivyParameters = ivyParameters;
 
-            infoPool.growth = CreateInstance<EditorIvyGrowth>();
+            infoPool.growth = ScriptableObject.CreateInstance<EditorIvyGrowth>();
             infoPool.growth.infoPool = infoPool;
 
-            infoPool.meshBuilder = CreateInstance<EditorMeshBuilder>();
+            infoPool.meshBuilder = ScriptableObject.CreateInstance<EditorMeshBuilder>();
             infoPool.meshBuilder.infoPool = infoPool;
             infoPool.meshBuilder.ivyMesh = new Mesh();
 
-            ProceduralIvyWindow.ProceduralIvyProSceneGuiWindow.infoPool = infoPool;
+            ProceduralIvyWindow.SceneGuiController.infoPool = infoPool;
 
             return infoPool;
         }
@@ -126,7 +130,7 @@ namespace TeamCrescendo.ProceduralIvy
 
         public void Update()
         {
-            if (infoPool.growth.growing)
+            if (infoPool != null && infoPool.growth != null && infoPool.growth.growing)
             {
                 if (!IsVertexLimitReached())
                 {
@@ -136,11 +140,9 @@ namespace TeamCrescendo.ProceduralIvy
                 else
                 {
                     if (infoPool.ivyParameters.buffer32Bits)
-                        Debug.LogWarning("Vertices limit reached at " + Constants.VERTEX_LIMIT_32 + ".",
-                            infoPool.ivyContainer.ivyGO);
+                        Debug.LogWarning("Vertices limit reached at " + Constants.VERTEX_LIMIT_32 + ".", infoPool.ivyContainer.ivyGO);
                     else
-                        Debug.LogWarning("Vertices limit reached at " + Constants.VERTEX_LIMIT_16 + ".",
-                            infoPool.ivyContainer.ivyGO);
+                        Debug.LogWarning("Vertices limit reached at " + Constants.VERTEX_LIMIT_16 + ".", infoPool.ivyContainer.ivyGO);
                     infoPool.growth.growing = false;
                 }
             }
@@ -207,24 +209,24 @@ namespace TeamCrescendo.ProceduralIvy
             var componentsToDelete = new List<MonoBehaviour>();
             componentsToDelete.AddRange(ivyGO.GetComponentsInChildren<MonoBehaviour>());
 
-            for (var i = 0; i < componentsToDelete.Count; i++) DestroyImmediate(componentsToDelete[i]);
-            var go = Instantiate(infoPool.ivyContainer.ivyGO);
+            for (var i = 0; i < componentsToDelete.Count; i++) 
+                Object.DestroyImmediate(componentsToDelete[i]);
+            
+            var go = Object.Instantiate(infoPool.ivyContainer.ivyGO);
             go.name = go.name.Remove(go.name.Length - 7, 7);
-            DestroyImmediate(infoPool.ivyContainer.ivyGO);
-
+            
+            Object.DestroyImmediate(infoPool.ivyContainer.ivyGO);
             return go;
         }
 
         public void SaveCurrentIvyAsPrefab(string fileName)
         {
-            var filePath =
-                EditorUtility.SaveFilePanelInProject("Save Ivy as prefab", fileName, "prefab", "");
+            var filePath = EditorUtility.SaveFilePanelInProject("Save Ivy as prefab", fileName, "prefab", "");
             fileName = Path.GetFileName(filePath);
             var separator = new[] { "." };
             fileName = fileName.Split(separator, StringSplitOptions.None)[0];
             if (filePath.Length > 0)
             {
-                var initIndexExtension = filePath.LastIndexOf(".");
                 var initIndexFileName = filePath.LastIndexOf("/");
                 var localFolderPath = filePath.Substring(0, initIndexFileName);
 
@@ -240,8 +242,7 @@ namespace TeamCrescendo.ProceduralIvy
 
                 var go = RemoveAllScripts();
 
-                var prefabSaved =
-                    PrefabUtility.SaveAsPrefabAssetAndConnect(go, filePath, InteractionMode.AutomatedAction);
+                var prefabSaved = PrefabUtility.SaveAsPrefabAssetAndConnect(go, filePath, InteractionMode.AutomatedAction);
 
                 EditorGUIUtility.PingObject(prefabSaved);
             }
@@ -264,7 +265,9 @@ namespace TeamCrescendo.ProceduralIvy
             {
                 if (ivyGO == null)
                 {
-                    infoPool.ivyContainer.Clear();
+                    if (infoPool != null && infoPool.ivyContainer != null) 
+                        infoPool.ivyContainer.Clear();
+                    
                     CreateNewIvy();
                 }
 
@@ -296,7 +299,7 @@ namespace TeamCrescendo.ProceduralIvy
 
         public void SaveCurrentParametersAsNewPreset(string filePath)
         {
-            var newPreset = CreateInstance<IvyPreset>();
+            var newPreset = ScriptableObject.CreateInstance<IvyPreset>();
             newPreset.ivyParameters = new IvyParameters(infoPool.ivyParameters);
 
             AssetDatabase.CreateAsset(newPreset, filePath);

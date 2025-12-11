@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace TeamCrescendo.ProceduralIvy
 {
-    public class ProceduralIvySceneGui : EditorWindow
+    public class ProceduralIvySceneGui
     {
         private enum ToolMode
         {
@@ -21,7 +21,7 @@ namespace TeamCrescendo.ProceduralIvy
             AddLeave
         }
         
-        private static Texture2D modePaintTex,
+        private Texture2D modePaintTex,
             modeMoveTex,
             modeSmoothTex,
             modeRefineTex,
@@ -33,7 +33,7 @@ namespace TeamCrescendo.ProceduralIvy
             downArrowTex,
             upArrowTex;
 
-        private static GUISkin windowSkin;
+        private GUISkin windowSkin;
         public InfoPool infoPool;
 
         private Dictionary<int, List<BranchContainer>> branchesUndos;
@@ -60,17 +60,16 @@ namespace TeamCrescendo.ProceduralIvy
         private ModeSmooth modeSmooth;
         private Vector3 mousePoint, mouseNormal;
         private bool rayCast;
-        private readonly float smoothInsensity = 1f;
-        private Rect togglevisibilityButton;
+        private readonly float smoothIntensity = 1f;
+        private Rect toggleVisibilityButton;
         private ToolMode toolMode = ToolMode.None;
         private bool toolsShown = true;
 
-        public void Init(ProceduralIvyWindow proceduralIvyProWindow, InfoPool infoPool)
+        public void Init(InfoPool infoPool)
         {
             this.infoPool = infoPool;
 
             modePaint = new ModePaint();
-            modePaint.ProceduralIvyProWindow = proceduralIvyProWindow;
             modeMove = new ModeMove();
             modeSmooth = new ModeSmooth();
             modeRefine = new ModeRefine();
@@ -79,41 +78,25 @@ namespace TeamCrescendo.ProceduralIvy
             modeDelete = new ModeDelete();
             modeShave = new ModeShave();
             modeAddLeaves = new ModeAddLeaves();
+            
+            var res = ProceduralIvyResources.Instance;
+            if (res == null) return;
 
-            windowSkin = ProceduralIvyWindow.windowSkin;
-            modePaintTex =
-                (Texture2D)AssetDatabase.LoadAssetAtPath(
-                    AssetDatabase.GUIDToAssetPath("7433ea681d2ea9a43a91283aec7779dc"), typeof(Texture2D));
-            modeMoveTex =
-                (Texture2D)AssetDatabase.LoadAssetAtPath(
-                    AssetDatabase.GUIDToAssetPath("baa7fb0fea158214195003054cbdc848"), typeof(Texture2D));
-            modeSmoothTex =
-                (Texture2D)AssetDatabase.LoadAssetAtPath(
-                    AssetDatabase.GUIDToAssetPath("da81d4c81a2ef904cb9ec2f020f9f0e4"), typeof(Texture2D));
-            modeRefineTex =
-                (Texture2D)AssetDatabase.LoadAssetAtPath(
-                    AssetDatabase.GUIDToAssetPath("58c807f93561e014ba108036e7ac3788"), typeof(Texture2D));
-            modeOptimizeTex =
-                (Texture2D)AssetDatabase.LoadAssetAtPath(
-                    AssetDatabase.GUIDToAssetPath("d901243b259e1fb40883227b5a342b16"), typeof(Texture2D));
-            modeCutTex =
-                (Texture2D)AssetDatabase.LoadAssetAtPath(
-                    AssetDatabase.GUIDToAssetPath("be698aee7a1cd6e4bbac6ef223909851"), typeof(Texture2D));
-            modeDeleteTex =
-                (Texture2D)AssetDatabase.LoadAssetAtPath(
-                    AssetDatabase.GUIDToAssetPath("4cd137b68f1323f4484094d30b90f926"), typeof(Texture2D));
-            modeShaveTex =
-                (Texture2D)AssetDatabase.LoadAssetAtPath(
-                    AssetDatabase.GUIDToAssetPath("46994a3c472a4d142964853d08614149"), typeof(Texture2D));
-            modeAddLeavesTex =
-                (Texture2D)AssetDatabase.LoadAssetAtPath(
-                    AssetDatabase.GUIDToAssetPath("4845df643447cae4499501434c4147b4"), typeof(Texture2D));
-            downArrowTex =
-                (Texture2D)AssetDatabase.LoadAssetAtPath(
-                    AssetDatabase.GUIDToAssetPath("8ee6aee77df7d3e4485148aa889f9b6b"), typeof(Texture2D));
-            upArrowTex =
-                (Texture2D)AssetDatabase.LoadAssetAtPath(
-                    AssetDatabase.GUIDToAssetPath("47e4d534b75170047b81b09581c4f3d9"), typeof(Texture2D));
+            windowSkin = res.windowSkin;
+
+            // Map the textures from the resource file
+            modePaintTex = res.paintTool;
+            modeMoveTex = res.moveTool;
+            modeSmoothTex = res.smoothTool;
+            modeRefineTex = res.refineTool;
+            modeOptimizeTex = res.optimizeTool;
+            modeCutTex = res.cutTool;
+            modeDeleteTex = res.deleteTool;
+            modeShaveTex = res.shaveTool;
+            modeAddLeavesTex = res.addLeavesTool;
+    
+            downArrowTex = res.arrowDown;
+            upArrowTex = res.arrowUp;
 
             FillGUIContent();
 
@@ -160,7 +143,7 @@ namespace TeamCrescendo.ProceduralIvy
                 }
                 case ToolMode.Smooth:
                 {
-                    modeSmooth.UpdateMode(current, forbiddenRect, brushSize, brushCurve, smoothInsensity);
+                    modeSmooth.UpdateMode(current, forbiddenRect, brushSize, brushCurve, smoothIntensity);
                     break;
                 }
                 case ToolMode.Refine:
@@ -195,7 +178,7 @@ namespace TeamCrescendo.ProceduralIvy
                 }
             }
 
-            if (ProceduralIvyWindow.instance.placingSeed)
+            if (ProceduralIvyWindow.Instance.placingSeed)
             {
                 Handles.color = new Color(0.2f, 1f, 0.3f);
                 Handles.DrawSolidDisc(mousePoint, mouseNormal, 0.1f);
@@ -205,9 +188,9 @@ namespace TeamCrescendo.ProceduralIvy
                         if (!current.control && !current.shift && !current.alt)
                             if (rayCast)
                             {
-                                ProceduralIvyWindow.instance.CreateNewIvy();
-                                ProceduralIvyWindow.instance.CreateIvyGO(mousePoint, mouseNormal);
-                                ProceduralIvyWindow.instance.placingSeed = false;
+                                ProceduralIvyWindow.Controller.CreateNewIvy();
+                                ProceduralIvyWindow.Instance.CreateIvyGO(mousePoint, mouseNormal);
+                                ProceduralIvyWindow.Instance.placingSeed = false;
                             }
 
                 if (current.type == EventType.MouseMove) RayCastSceneView();
@@ -220,9 +203,8 @@ namespace TeamCrescendo.ProceduralIvy
             DrawGUI(sceneView);
         }
 
-        public void QuitWindow()
+        public void Cleanup()
         {
-            SceneView.duringSceneGui -= OnSceneGUI;
             ProceduralIvyWindowController.OnIvyGoCreated -= OnIvyGoCreated;
         }
 
@@ -239,12 +221,12 @@ namespace TeamCrescendo.ProceduralIvy
         {
             //Tengo métodos que triggerean los modos, son los que llaman los botones. En estos métodos hay que meter cualquier configuración o seteo necesarios para entrar en dicho modo
             forbiddenRect = new Rect(sceneView.position.width / 2f - 200f, sceneView.position.height - 116f, 418f, 98f);
-            togglevisibilityButton = new Rect(sceneView.position.width / 2f + 218f, sceneView.position.height - 42f,
+            toggleVisibilityButton = new Rect(sceneView.position.width / 2f + 218f, sceneView.position.height - 42f,
                 24f, 24f);
 
             Handles.BeginGUI();
 
-            if (GUI.Button(togglevisibilityButton, EditorConstants.TOOL_TOGGLEPANEL_GUICONTENT,
+            if (GUI.Button(toggleVisibilityButton, EditorConstants.TOOL_TOGGLEPANEL_GUICONTENT,
                     windowSkin.GetStyle("sceneviewbutton"))) OnTogglePanel();
 
             if (toolsShown)
@@ -361,7 +343,7 @@ namespace TeamCrescendo.ProceduralIvy
                 }
 
                 if (toolMode != ToolMode.None)
-                    currentMode.Init(ProceduralIvyWindow.Controller.infoPool, ProceduralIvyWindow.Controller.mf, this);
+                    currentMode.Init(ProceduralIvyWindow.Controller.infoPool, ProceduralIvyWindow.Controller.mf);
 
                 GUILayout.EndArea();
             }
@@ -372,10 +354,9 @@ namespace TeamCrescendo.ProceduralIvy
         private void OnIvyGoCreated()
         {
             if (toolMode != ToolMode.None)
-                currentMode.Init(ProceduralIvyWindow.Controller.infoPool, ProceduralIvyWindow.Controller.mf, this);
+                currentMode.Init(ProceduralIvyWindow.Controller.infoPool, ProceduralIvyWindow.Controller.mf);
         }
 
-        //Método para el modo none
         private void ModeNone()
         {
         }
@@ -479,7 +460,7 @@ namespace TeamCrescendo.ProceduralIvy
         //Si estamos en algún modo de herramienta, el control es de realivypro
         private void TakeControl()
         {
-            if (toolMode != ToolMode.None || ProceduralIvyWindow.instance.placingSeed ||
+            if (toolMode != ToolMode.None || ProceduralIvyWindow.Instance.placingSeed ||
                 forbiddenRect.Contains(Event.current.mousePosition))
                 switch (current.type)
                 {

@@ -24,16 +24,13 @@ namespace TeamCrescendo.ProceduralIvy
         protected bool pressingMouseButton;
         protected bool pressingRightButton;
 
-        protected ProceduralIvySceneGui ProSceneGuiWindow;
         protected bool rayCast;
         protected bool toolPaintingAllowed;
 
-
-        public void Init(InfoPool infoPool, MeshFilter mf, ProceduralIvySceneGui proSceneGuiWindow)
+        public void Init(InfoPool infoPool, MeshFilter mf)
         {
             this.infoPool = infoPool;
             this.mf = mf;
-            this.ProSceneGuiWindow = proSceneGuiWindow;
         }
 
         public virtual void Update(Event currentEvent, Rect forbiddenRect)

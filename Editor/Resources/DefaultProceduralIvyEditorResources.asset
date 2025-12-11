@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7596a920ef9d4df2a5bb90d3947ad7d3, type: 3}
+  m_Name: DefaultProceduralIvyEditorResources
+  m_EditorClassIdentifier: 
+  windowSkin: {fileID: 11400000, guid: b0545e8c97ca8684182a76c2fb22c7ff, type: 2}
+  paintTool: {fileID: 2800000, guid: 7433ea681d2ea9a43a91283aec7779dc, type: 3}
+  moveTool: {fileID: 2800000, guid: baa7fb0fea158214195003054cbdc848, type: 3}
+  smoothTool: {fileID: 2800000, guid: da81d4c81a2ef904cb9ec2f020f9f0e4, type: 3}
+  refineTool: {fileID: 2800000, guid: 58c807f93561e014ba108036e7ac3788, type: 3}
+  optimizeTool: {fileID: 2800000, guid: d901243b259e1fb40883227b5a342b16, type: 3}
+  cutTool: {fileID: 2800000, guid: be698aee7a1cd6e4bbac6ef223909851, type: 3}
+  deleteTool: {fileID: 2800000, guid: 4cd137b68f1323f4484094d30b90f926, type: 3}
+  shaveTool: {fileID: 2800000, guid: 46994a3c472a4d142964853d08614149, type: 3}
+  addLeavesTool: {fileID: 2800000, guid: 4845df643447cae4499501434c4147b4, type: 3}
+  arrowDown: {fileID: 2800000, guid: 8ee6aee77df7d3e4485148aa889f9b6b, type: 3}
+  arrowUp: {fileID: 2800000, guid: 47e4d534b75170047b81b09581c4f3d9, type: 3}
+  materialIcon: {fileID: 2800000, guid: eb3b714e29c31744888e1bc4bcfe23d6, type: 3}
+  leafIcon: {fileID: 2800000, guid: a1ca40cfe045c6c4a80354e9c26cd083, type: 3}
+  dropdownShadow: {fileID: 2800000, guid: fa7a73dd896c79b47acd2b12a4197ecc, type: 3}
+  presetIcon: {fileID: 2800000, guid: 9dd821bf05e345d4a8a501a8768c7144, type: 3}
+  infoIcon: {fileID: 2800000, guid: d73d5146604f9594996de4e08eec4bdf, type: 3}
+  labelIcon: {fileID: 2800000, guid: 14bbaf6e0a8b00f4ea30434e5eeeaf8c, type: 3}
+  defaultPreset: {fileID: 11400000, guid: a94e331515ce1fc4bb1e410bbc0df605, type: 2}

@@ -10,10 +10,9 @@ namespace TeamCrescendo.ProceduralIvy
     public class ProceduralIvyWindow : EditorWindow
     {
         private const string KEY_WINDOW_OPENED = "ProceduralIvyWindow_Opened";
-        private const string GUID_DEFAULT_PRESET = "d022a91abdaf78e429b3aa20f69127dd";
 
-        public static ProceduralIvyWindow instance;
-        public static ProceduralIvySceneGui ProceduralIvyProSceneGuiWindow;
+        public static ProceduralIvyWindow Instance;
+        public static ProceduralIvySceneGui SceneGuiController;
         public static ProceduralIvyWindowController Controller;
 
         public static IvyParametersGUI ivyParametersGUI;
@@ -47,6 +46,54 @@ namespace TeamCrescendo.ProceduralIvy
 
         private readonly UIZone_MainButtons mainButtonsZone = new();
         public IvyParameter updatingParameter;
+        
+        [MenuItem("Tools/Team Crescendo/Procedural Ivy")]
+        public static void Init()
+        {
+            Instance = (ProceduralIvyWindow)GetWindow(typeof(ProceduralIvyWindow));
+
+            Instance.minSize = new Vector2(450f, 455f);
+            Instance.titleContent = new GUIContent("Procedural Ivy");
+
+            ivyParametersGUI = CreateInstance<IvyParametersGUI>();
+            Controller = new ProceduralIvyWindowController();
+            Controller.Init(Instance, ivyParametersGUI);
+
+            var res = ProceduralIvyResources.Instance;
+            if (res != null)
+            {
+                windowSkin = res.windowSkin;
+                downArrowTex = res.arrowDown;
+                materialTex = res.materialIcon;
+                leaveTex = res.leafIcon;
+                dropdownShadowTex = res.dropdownShadow;
+                presetTex = res.presetIcon;
+                infoTex = res.infoIcon;
+            }
+
+            if (SceneGuiController != null)
+                SceneGuiController.Cleanup();
+
+            SceneGuiController = new ProceduralIvySceneGui();
+            SceneGuiController.Init(Controller.infoPool);
+            
+            SceneView.duringSceneGui -= SceneGuiController.OnSceneGUI;
+            SceneView.duringSceneGui += SceneGuiController.OnSceneGUI;
+
+            Controller.CreateNewIvy(ProceduralIvyResources.Instance.defaultPreset);
+            ivyParametersGUI.CopyFrom(Controller.infoPool.ivyParameters);
+
+            Undo.undoRedoPerformed += MyUndoCallback;
+            EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+            EditorSceneManager.sceneOpened += OnSceneOpened;
+            EditorPrefs.SetBool(KEY_WINDOW_OPENED, true);
+        }
+
+        private static void MyUndoCallback()
+        {
+            Controller.RefreshMesh();
+            RefreshEditorValues();
+        }
 
         private void Update()
         {
@@ -56,8 +103,8 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void OnDestroy()
         {
-            ProceduralIvyProSceneGuiWindow.QuitWindow();
-            DestroyImmediate(ProceduralIvyProSceneGuiWindow);
+            SceneGuiController.Cleanup();
+            SceneGuiController = null;
             Controller.Destroy();
 
             SceneView.RepaintAll();
@@ -67,7 +114,6 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void OnGUI()
         {
-            if (!ProceduralIvyProSceneGuiWindow) CreateTools();
             oldSkin = GUI.skin;
             GUI.skin = windowSkin;
 
@@ -88,83 +134,11 @@ namespace TeamCrescendo.ProceduralIvy
             GUI.skin = oldSkin;
         }
 
-        [MenuItem("Tools/Team Crescendo/Procedural Ivy")]
-        public static void Init()
+        private static void AssignLabel(GameObject g)
         {
-            Init(true);
-        }
-
-        public static void Init(bool createNewIvy)
-        {
-            instance = (ProceduralIvyWindow)GetWindow(typeof(ProceduralIvyWindow));
-
-            instance.minSize = new Vector2(450f, 455f);
-            instance.titleContent = new GUIContent("Procedural Ivy");
-
-            Initialize(createNewIvy);
-
-            EditorSceneManager.sceneOpened += OnSceneOpened;
-
-            EditorPrefs.SetBool(KEY_WINDOW_OPENED, true);
-        }
-
-        private static void MyUndoCallback()
-        {
-            Controller.RefreshMesh();
-            RefreshEditorValues();
-        }
-
-        public static void Initialize(bool createNewIvy)
-        {
-            EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
-
-            ivyParametersGUI = CreateInstance<IvyParametersGUI>();
-            Controller = CreateInstance<ProceduralIvyWindowController>();
-            Controller.Init(instance, ivyParametersGUI);
-
-            windowSkin =
-                (GUISkin)AssetDatabase.LoadAssetAtPath(
-                    AssetDatabase.GUIDToAssetPath("b0545e8c97ca8684182a76c2fb22c7ff"), typeof(GUISkin));
-            downArrowTex =
-                (Texture2D)AssetDatabase.LoadAssetAtPath(
-                    AssetDatabase.GUIDToAssetPath("8ee6aee77df7d3e4485148aa889f9b6b"), typeof(Texture2D));
-            materialTex =
-                (Texture2D)AssetDatabase.LoadAssetAtPath(
-                    AssetDatabase.GUIDToAssetPath("eb3b714e29c31744888e1bc4bcfe23d6"), typeof(Texture2D));
-            leaveTex = (Texture2D)AssetDatabase.LoadAssetAtPath(
-                AssetDatabase.GUIDToAssetPath("14bbaf6e0a8b00f4ea30434e5eeeaf8c"), typeof(Texture2D));
-            dropdownShadowTex =
-                (Texture2D)AssetDatabase.LoadAssetAtPath(
-                    AssetDatabase.GUIDToAssetPath("9cd9a16c9e229684983f50ff07427219"), typeof(Texture2D));
-            presetTex = (Texture2D)AssetDatabase.LoadAssetAtPath(
-                AssetDatabase.GUIDToAssetPath("9dd821bf05e345d4a8a501a8768c7144"), typeof(Texture2D));
-            infoTex = (Texture2D)AssetDatabase.LoadAssetAtPath(
-                AssetDatabase.GUIDToAssetPath("d73d5146604f9594996de4e08eec4bdf"), typeof(Texture2D));
-
-            Undo.undoRedoPerformed += MyUndoCallback;
-
-            var defaultPresset = GetDefaultPreset();
-
-            if (ProceduralIvyProSceneGuiWindow != null) ProceduralIvyProSceneGuiWindow.QuitWindow();
-            CreateTools();
-
-            if (createNewIvy)
-            {
-                Controller.CreateNewIvy(defaultPresset);
-                ivyParametersGUI.CopyFrom(Controller.infoPool.ivyParameters);
-            }
-        }
-
-        public static void AssignLabel(GameObject g)
-        {
-            var tex = (Texture2D)AssetDatabase.LoadAssetAtPath(
-                AssetDatabase.GUIDToAssetPath("a1ca40cfe045c6c4a80354e9c26cd083"), typeof(Texture2D));
-            EditorGUIUtility.SetIconForObject(g, tex);
-        }
-
-        public InfoPool CreateNewIvy()
-        {
-            return Controller.CreateNewIvy();
+            var res = ProceduralIvyResources.Instance;
+            if (res != null && res.labelIcon != null)
+                EditorGUIUtility.SetIconForObject(g, res.labelIcon);
         }
 
         public void CreateIvyGO(Vector3 position, Vector3 normal)
@@ -172,15 +146,6 @@ namespace TeamCrescendo.ProceduralIvy
             Controller.CreateIvyGO(position, normal);
             Selection.activeGameObject = Controller.ivyGO;
             AssignLabel(Controller.ivyGO);
-        }
-
-        private static void CreateTools()
-        {
-            ProceduralIvyProSceneGuiWindow = CreateInstance<ProceduralIvySceneGui>();
-            ProceduralIvyProSceneGuiWindow.Init(instance, Controller.infoPool);
-
-            SceneView.duringSceneGui -= ProceduralIvyProSceneGuiWindow.OnSceneGUI;
-            SceneView.duringSceneGui += ProceduralIvyProSceneGuiWindow.OnSceneGUI;
         }
 
         private static void RefreshEditorValues()
@@ -291,12 +256,14 @@ namespace TeamCrescendo.ProceduralIvy
         {
             var evt = Event.current;
             if (updatingValue && evt != null)
+            {
                 switch (evt.rawType)
                 {
                     case EventType.MouseUp:
                         updatingValue = false;
                         break;
                 }
+            }
 
             var delta = GUIUtility.GUIToScreenPoint(Event.current.mousePosition).x - mouseStartPoint;
             var value = originalUpdatingValue + delta * updatingValueMultiplier;
@@ -306,32 +273,13 @@ namespace TeamCrescendo.ProceduralIvy
             Repaint();
         }
 
-        private static IvyPreset GetDefaultPreset()
-        {
-            IvyPreset res = null;
-            var defaultPresetGUID = EditorPrefs.GetString("RealIvyDefaultGUID", GUID_DEFAULT_PRESET);
-
-            res = AssetDatabase.LoadAssetAtPath(AssetDatabase.GUIDToAssetPath(defaultPresetGUID), typeof(IvyPreset)) as
-                IvyPreset;
-
-            if (res == null)
-            {
-                defaultPresetGUID = GUID_DEFAULT_PRESET;
-                res = AssetDatabase.LoadAssetAtPath(AssetDatabase.GUIDToAssetPath(defaultPresetGUID), typeof(IvyPreset))
-                    as IvyPreset;
-            }
-
-            return res;
-        }
-
         [DidReloadScripts]
         private static void OnScriptsReloaded()
         {
             if (EditorPrefs.GetBool(KEY_WINDOW_OPENED, false))
             {
                 Init();
-                var preset = GetDefaultPreset();
-                Controller.OnScriptReloaded(preset);
+                Controller.OnScriptReloaded(ProceduralIvyResources.Instance.defaultPreset);
             }
         }
 

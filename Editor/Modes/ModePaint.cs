@@ -11,8 +11,6 @@ namespace TeamCrescendo.ProceduralIvy
         private Vector3 mousePointWS = Vector3.zero;
         private bool painting;
 
-        public ProceduralIvyWindow ProceduralIvyProWindow;
-
         public void UpdateMode(Event currentEvent, Rect forbiddenRect, float brushSize)
         {
             GetBranchesPointsSS();
@@ -88,7 +86,8 @@ namespace TeamCrescendo.ProceduralIvy
                         mouseNormal = -SceneView.currentDrawingSceneView.camera.transform.forward;
                     }
 
-                    if (overBranch == null) infoPool = ProceduralIvyProWindow.CreateNewIvy();
+                    if (overBranch == null) 
+                        infoPool = ProceduralIvyWindow.Controller.CreateNewIvy();
 
                     //iniciamos la ivy (solo lo hace si la ivy aún no está creada
                     var newIvy = StartIvy(mousePoint + mouseNormal * infoPool.ivyParameters.minDistanceToSurface,
@@ -208,7 +207,7 @@ namespace TeamCrescendo.ProceduralIvy
 
             if (needToCreateNewIvy)
             {
-                ProceduralIvyProWindow.CreateIvyGO(firstPoint, firstGrabVector);
+                ProceduralIvyWindow.Instance.CreateIvyGO(firstPoint, firstGrabVector);
                 mf = ProceduralIvyWindow.Controller.mf;
                 infoPool.growth.Initialize(firstPoint, firstGrabVector);
                 infoPool.meshBuilder.InitLeavesData();

@@ -50,7 +50,7 @@ Procedural Ivy is a Unity package that allows you to generate realistic ivy and 
 1. Open Unity Package Manager (Window > Package Manager)
 2. Click the `+` button
 3. Select "Add package from git URL"
-4. Enter the repository URL or local path
+4. Enter the repository URL or local path (https://github.com/Team-Crescendo-Games/ProceduralIvy.git)
 
 ### Manual Installation
 

@@ -17,6 +17,9 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void OnValidate()
         {
+            if (infoPool == null || infoPool.ivyContainer == null || infoPool.ivyContainer.ivyGO == null)
+                return;
+            
             Assert.IsTrue(infoPool.ivyContainer.ivyGO == gameObject);
         }
     }

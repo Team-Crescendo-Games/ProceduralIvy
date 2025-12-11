@@ -87,7 +87,7 @@ namespace TeamCrescendo.ProceduralIvy
                     }
 
                     if (overBranch == null) 
-                        infoPool = ProceduralIvyWindow.Controller.CreateIvyDataObject();
+                        infoPool = ProceduralIvyWindow.Instance.CreateIvyDataObject();
 
                     //iniciamos la ivy (solo lo hace si la ivy aún no está creada
                     var newIvy = StartIvy(mousePoint + mouseNormal * infoPool.ivyParameters.minDistanceToSurface,
@@ -208,7 +208,7 @@ namespace TeamCrescendo.ProceduralIvy
             if (needToCreateNewIvy)
             {
                 ProceduralIvyWindow.Instance.CreateIvyGO(firstPoint, firstGrabVector);
-                mf = ProceduralIvyWindow.Controller.mf;
+                mf = ProceduralIvyWindow.Instance.infoPool.GetMeshFilter();
                 infoPool.growth.Initialize(firstPoint, firstGrabVector);
                 infoPool.meshBuilder.InitLeavesData();
                 infoPool.meshBuilder.InitializeMeshBuilder();

@@ -7,16 +7,11 @@ namespace TeamCrescendo.ProceduralIvy
         protected float areaHeight;
         protected Rect areaRect;
         protected DropDownButton dropDownButton = new();
-        public ProceduralIvyWindow ProceduralIvyProWindow;
 
-        public virtual void DrawZone(string sectionName, float areaMaxHeight, ProceduralIvyWindow proceduralIvyProWindow,
-            IvyParametersGUI ivyParametersGUI,
-            GUISkin windowSkin, ProceduralIvyWindowController controller,
+        public virtual void DrawZone(string sectionName, float areaMaxHeight, IvyParametersGUI ivyParametersGUI, GUISkin windowSkin, 
             ref float YSpace, ref float presetDropDownYSpace, ref float areaYSpace, Rect generalArea,
             Color bgColor, AnimationCurve animationCurve)
         {
-            this.ProceduralIvyProWindow = proceduralIvyProWindow;
-
             dropDownButton.Draw(sectionName, windowSkin, ProceduralIvyWindow.downArrowTex,
                 generalArea, ref areaHeight, ref YSpace, areaMaxHeight, animationCurve, this);
 

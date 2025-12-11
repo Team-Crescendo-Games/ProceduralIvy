@@ -25,7 +25,6 @@ namespace TeamCrescendo.ProceduralIvy
         public Texture2D arrowUp;
         public Texture2D materialIcon;
         public Texture2D leafIcon;
-        public Texture2D dropdownShadow;
         public Texture2D presetIcon;
         public Texture2D infoIcon;
         public Texture2D labelIcon;

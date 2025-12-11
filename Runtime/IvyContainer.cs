@@ -60,18 +60,20 @@ namespace TeamCrescendo.ProceduralIvy
             var minDistance = distanceThreshold;
 
             for (var i = 0; i < branches.Count; i++)
-            for (var j = 1; j < branches[i].branchPoints.Count; j++)
             {
-                var a = branches[i].branchPoints[j - 1];
-                var b = branches[i].branchPoints[j];
-
-                var d = RealIvyMathUtils.DistanceBetweenPointAndSegmentSS(pointSS, a.pointSS, b.pointSS);
-
-                if (d <= minDistance)
+                for (var j = 1; j < branches[i].branchPoints.Count; j++)
                 {
-                    minDistance = d;
-                    initSegment = a;
-                    endSegment = b;
+                    var a = branches[i].branchPoints[j - 1];
+                    var b = branches[i].branchPoints[j];
+
+                    var d = DistanceBetweenPointAndSegmentSS(pointSS, a.pointSS, b.pointSS);
+
+                    if (d <= minDistance)
+                    {
+                        minDistance = d;
+                        initSegment = a;
+                        endSegment = b;
+                    }
                 }
             }
 
@@ -80,6 +82,30 @@ namespace TeamCrescendo.ProceduralIvy
                 res = new BranchPoint[2];
                 res[0] = initSegment;
                 res[1] = endSegment;
+            }
+
+            return res;
+        }
+        
+        public static float DistanceBetweenPointAndSegmentSS(Vector2 point, Vector2 a, Vector2 b)
+        {
+            var res = 0f;
+
+            var u = (point.x - a.x) * (b.x - a.x) + (point.y - a.y) * (b.y - a.y);
+            u = u / ((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y));
+
+            if (u < 0)
+            {
+                res = (point - a).sqrMagnitude;
+            }
+            else if (u >= 0 && u <= 1)
+            {
+                var pointInSegment = new Vector2(a.x + u * (b.x - a.x), a.y + u * (b.y - a.y));
+                res = (point - pointInSegment).sqrMagnitude;
+            }
+            else
+            {
+                res = (point - b).sqrMagnitude;
             }
 
             return res;

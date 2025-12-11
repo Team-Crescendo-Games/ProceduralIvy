@@ -7,20 +7,19 @@ namespace TeamCrescendo.ProceduralIvy
 {
     public class UIZone_MainButtons
     {
-        private ProceduralIvyWindowController controller;
         private Rect currentArea;
         private GUISkin windowSkin;
 
         public void DrawZone(ProceduralIvyWindow proceduralIvyProWindow, IvyParametersGUI ivyParametersGUI,
-            GUISkin windowSkin, ProceduralIvyWindowController controller,
+            GUISkin windowSkin,
             ref float YSpace, Rect generalArea, Color bgColor)
         {
-            this.controller = controller;
             this.windowSkin = windowSkin;
 
             currentArea = new Rect(10f, 10f, generalArea.width, 520f);
             var gameObjectName = "None";
-            if (controller.currentIvyInfo != null) gameObjectName = controller.ivyGO.name;
+            if (ProceduralIvyWindow.Instance.currentIvyInfo != null) 
+                gameObjectName = ProceduralIvyWindow.Instance.ivyGO.name;
 
             var boxText = "Editing object: " + gameObjectName;
             GUI.Box(new Rect(0f, YSpace, generalArea.width + 20f, 40f), boxText, windowSkin.GetStyle("title"));
@@ -40,7 +39,7 @@ namespace TeamCrescendo.ProceduralIvy
 
             var startStopButtonStyle = windowSkin.button;
             var startStopButtonText = "Start Growth";
-            if (controller.infoPool.growth.growing)
+            if (ProceduralIvyWindow.Instance.infoPool.growth.growing)
             {
                 startStopButtonStyle = windowSkin.GetStyle("buttonorange");
                 startStopButtonText = "Stop Growth";
@@ -105,9 +104,9 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void CheckRestrictions(Action action)
         {
-            if (controller.currentIvyInfo == null)
+            if (ProceduralIvyWindow.Instance.currentIvyInfo == null)
                 UIUtils.NoIvySelectedLogMessage();
-            else if (controller.infoPool.growth.growing)
+            else if (ProceduralIvyWindow.Instance.infoPool.growth.growing)
                 UIUtils.CannotEditGrowingIvy();
             else
                 action();
@@ -115,7 +114,7 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void CheckIvySelectedBeforeAction(Action action)
         {
-            if (controller.currentIvyInfo == null)
+            if (ProceduralIvyWindow.Instance.currentIvyInfo == null)
                 UIUtils.NoIvySelectedLogMessage();
             else
                 action();
@@ -123,26 +122,26 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void Randomize()
         {
-            controller.infoPool.ivyParameters.randomSeed = Environment.TickCount;
-            Random.InitState(controller.infoPool.ivyParameters.randomSeed);
+            ProceduralIvyWindow.Instance.infoPool.ivyParameters.randomSeed = Environment.TickCount;
+            Random.InitState(ProceduralIvyWindow.Instance.infoPool.ivyParameters.randomSeed);
         }
 
         private void Reset()
         {
-            controller.infoPool.growth.growing = false;
-            controller.ResetIvy();
+            ProceduralIvyWindow.Instance.infoPool.growth.growing = false;
+            ProceduralIvyWindow.Instance.ResetIvy();
         }
 
         private void Optimize()
         {
-            controller.Optimize();
+            ProceduralIvyWindow.Instance.OptimizeCurrentIvy();
         }
 
         private void SaveCurrentIvyIntoScene()
         {
-            if (!controller.ivyGO.GetComponent<RuntimeIvy>())
+            if (!ProceduralIvyWindow.Instance.ivyGO.GetComponent<RuntimeIvy>())
             {
-                Action confirmCallback = () => { controller.SaveCurrentIvyIntoScene(); };
+                Action confirmCallback = () => { ProceduralIvyWindow.Instance.SaveCurrentIvyIntoScene(); };
 
                 CustomDisplayDialog.Init(windowSkin, EditorConstants.CONFIRM_SAVE_IVY, "Save ivy into scene",
                     ProceduralIvyWindow.infoTex, 370f, 155f, confirmCallback, true);
@@ -151,12 +150,12 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void SaveAsPrefab()
         {
-            if (!controller.ivyGO.GetComponent<RuntimeIvy>())
+            if (!ProceduralIvyWindow.Instance.ivyGO.GetComponent<RuntimeIvy>())
             {
                 Action confirmCallback = () =>
                 {
-                    var fileName = controller.ivyGO.name;
-                    controller.SaveCurrentIvyAsPrefab(fileName);
+                    var fileName = ProceduralIvyWindow.Instance.ivyGO.name;
+                    ProceduralIvyWindow.Instance.SaveCurrentIvyAsPrefab(fileName);
                 };
 
                 CustomDisplayDialog.Init(windowSkin, EditorConstants.CONFIRM_SAVE_IVY, "Save ivy into scene",
@@ -167,21 +166,21 @@ namespace TeamCrescendo.ProceduralIvy
         private void PrepareRuntimeProcedural()
         {
             Reset();
-            controller.PrepareRuntimeProcedural();
+            ProceduralIvyWindow.Instance.PrepareRuntimeProcedural();
         }
 
         private void PrepareRuntimeBaked()
         {
-            controller.PrepareRuntimeBaked();
+            ProceduralIvyWindow.Instance.PrepareRuntimeBaked();
         }
 
         private void StartStopGrowth()
         {
-            if (controller.ivyGO)
-                controller.StartIvy(controller.infoPool.ivyContainer.ivyGO.transform.position,
-                    -controller.infoPool.ivyContainer.ivyGO.transform.up);
-            if (!controller.infoPool.growth.growing) controller.SaveIvy();
-            controller.infoPool.growth.growing = !controller.infoPool.growth.growing;
+            if (ProceduralIvyWindow.Instance.ivyGO)
+                ProceduralIvyWindow.Instance.StartIvy(ProceduralIvyWindow.Instance.infoPool.ivyContainer.ivyGO.transform.position,
+                    -ProceduralIvyWindow.Instance.infoPool.ivyContainer.ivyGO.transform.up);
+            if (!ProceduralIvyWindow.Instance.infoPool.growth.growing) ProceduralIvyWindow.Instance.RecordIvyToUndo();
+            ProceduralIvyWindow.Instance.infoPool.growth.growing = !ProceduralIvyWindow.Instance.infoPool.growth.growing;
         }
     }
 }

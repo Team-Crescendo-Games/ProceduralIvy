@@ -16,7 +16,7 @@ namespace TeamCrescendo.ProceduralIvy
             {
                 var ivyInfo = (IvyInfo)target;
                 ProceduralIvyWindow.Init();
-                ProceduralIvyWindow.Controller.ModifyIvy(ivyInfo);
+                ProceduralIvyWindow.Instance.ModifyIvy(ivyInfo);
             }
         }
     }

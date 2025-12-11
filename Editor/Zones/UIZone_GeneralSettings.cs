@@ -13,14 +13,13 @@ namespace TeamCrescendo.ProceduralIvy
             dropDownButton.unfolded = true;
         }
 
-        public override void DrawZone(string sectionName, float areaMaxHeight, ProceduralIvyWindow proceduralIvyProWindow,
-            IvyParametersGUI ivyParametersGUI,
-            GUISkin windowSkin, ProceduralIvyWindowController controller,
+        public override void DrawZone(string sectionName, float areaMaxHeight,
+            IvyParametersGUI ivyParametersGUI, GUISkin windowSkin,
             ref float YSpace, ref float presetDropDownYSpace, ref float areaYSpace, Rect generalArea,
             Color bgColor, AnimationCurve animationCurve)
         {
-            base.DrawZone(sectionName, areaMaxHeight, proceduralIvyProWindow, ivyParametersGUI,
-                windowSkin, controller, ref YSpace, ref presetDropDownYSpace,
+            base.DrawZone(sectionName, areaMaxHeight, ivyParametersGUI,
+                windowSkin, ref YSpace, ref presetDropDownYSpace,
                 ref areaYSpace, generalArea, bgColor, animationCurve);
 
             GUILayout.BeginArea(areaRect);
@@ -30,22 +29,20 @@ namespace TeamCrescendo.ProceduralIvy
 
 
             UIUtils.CustomObjectField(new Rect(0f, areaYSpace, areaRect.width / 2f, 25f),
-                controller.selectedPreset, windowSkin, proceduralIvyProWindow.oldSkin, ProceduralIvyWindow.presetTex, 489136168,
+                ProceduralIvyWindow.Instance.selectedPreset, 
+                windowSkin, 
+                ProceduralIvyWindow.Instance.oldSkin, 
+                ProceduralIvyWindow.presetTex, 
+                489136168,
                 string.Empty,
-                OnPresetChanged, controller.AreThereUnsavedChanges());
+                OnPresetChanged, ProceduralIvyWindow.Instance.AreThereUnsavedChanges());
 
-
-            //bool unsavedChanges = !controller.infoPool.ivyParameters.IsEqualTo(controller.selectedPreset);
             UIUtils.ButtonChangesAlert(new Rect(areaRect.width / 2f + 10f, areaYSpace, 60f, 25f), "Save", "Save *",
                 windowSkin.button, windowSkin.GetStyle("bold"), false, SavePreset);
 
-            /*if (GUI.Button(new Rect(currentArea.width / 2f + 10f, YSpace, 60f, 25f), "Save*", windowSkin.GetStyle("bold")))
-            {
-                SavePreset();
-            }*/
             if (GUI.Button(new Rect(areaRect.width / 2f + 70f + 10f, areaYSpace, 130f, 25f), "Save preset as...",
-                    windowSkin.button)) SavePresetAs();
-
+                    windowSkin.button)) 
+                SavePresetAs();
 
             areaYSpace += 40f;
             GUI.Label(new Rect(5f, areaYSpace, 100f, 20f), "Generate...", windowSkin.label);
@@ -68,7 +65,7 @@ namespace TeamCrescendo.ProceduralIvy
 
             ivyParametersGUI.branchesMaterial = UIUtils.CustomObjectField(
                 new Rect(0f, areaYSpace, generalArea.width / 3f - 5f, 25f),
-                ivyParametersGUI.branchesMaterial, windowSkin, proceduralIvyProWindow.oldSkin, ProceduralIvyWindow.materialTex,
+                ivyParametersGUI.branchesMaterial, windowSkin, ProceduralIvyWindow.Instance.oldSkin, ProceduralIvyWindow.materialTex,
                 489136169, string.Empty, OnVinesMaterialChanged, false);
 
             GUI.Label(new Rect(5f, areaYSpace + 35f, generalArea.width / 3f - 5f, 20f), "Layer Mask:",
@@ -95,9 +92,9 @@ namespace TeamCrescendo.ProceduralIvy
             else
                 leaveButtonsMargin = 35f;
 
-            proceduralIvyProWindow.leavesPrefabsScrollView = GUI.BeginScrollView(
+            ProceduralIvyWindow.Instance.leavesPrefabsScrollView = GUI.BeginScrollView(
                 new Rect(generalArea.width / 3f + 5f, areaYSpace, (generalArea.width / 3f - 5f) * 2f, 100f),
-                proceduralIvyProWindow.leavesPrefabsScrollView,
+                ProceduralIvyWindow.Instance.leavesPrefabsScrollView,
                 new Rect(0f, 0f, (generalArea.width / 3f - 21f) * 2f,
                     (ivyParametersGUI.leavesPrefabs.Count + 1) * 25f));
 
@@ -132,29 +129,31 @@ namespace TeamCrescendo.ProceduralIvy
                     GUI.Label(new Rect(0f, i * 25f, (generalArea.width / 3f - 5f) * 2, 25f), "Drag & Drop here to add",
                         windowSkin.GetStyle("tooltip"));
                     UIUtils.DragAndDropArea(new Rect(0f, i * 25f, (generalArea.width / 3f - 5f) * 2f, 25f),
-                        OnObjectDragged, proceduralIvyProWindow.SaveParameters);
+                        OnObjectDragged, ProceduralIvyWindow.Instance.SaveParameters);
                 }
 
             GUI.EndScrollView();
-
-
+            
             GUILayout.EndArea();
             YSpace += areaRect.height;
-            proceduralIvyProWindow.Repaint();
+            ProceduralIvyWindow.Instance.Repaint();
         }
 
         private void RemoveLeavePrefab(IvyParametersGUI ivyParametersGUI, int index)
         {
             ivyParametersGUI.leavesPrefabs.RemoveAt(index);
             ivyParametersGUI.leavesProb.RemoveAt(index);
-            ProceduralIvyProWindow.SaveParameters();
+            ProceduralIvyWindow.Instance.SaveParameters();
 
-            ProceduralIvyProWindow.presetsChanged.Add(ProceduralIvyProWindow.presetSelected);
+            ProceduralIvyWindow.Instance.presetsChanged.Add(ProceduralIvyWindow.Instance.presetSelected);
 
-            for (var b = 0; b < ProceduralIvyWindow.Controller.infoPool.ivyContainer.branches.Count; b++)
-            for (var l = 0; l < ProceduralIvyWindow.Controller.infoPool.ivyContainer.branches[b].GetNumLeaves(); l++)
-                if (ProceduralIvyWindow.Controller.infoPool.ivyContainer.branches[b].leaves[l].chosenLeave == index)
-                    ProceduralIvyWindow.Controller.infoPool.ivyContainer.branches[b].leaves[l].chosenLeave = 0;
+            var branches = ProceduralIvyWindow.Instance.infoPool.ivyContainer.branches;
+            foreach (var branch in branches)
+            {
+                for (var l = 0; l < branch.GetNumLeaves(); l++)
+                    if (branch.leaves[l].chosenLeave == index)
+                        branch.leaves[l].chosenLeave = 0;
+            }
         }
 
         private void OnObjectDragged(Object objectDragged)
@@ -167,9 +166,9 @@ namespace TeamCrescendo.ProceduralIvy
                     ProceduralIvyWindow.ivyParametersGUI.leavesPrefabs.Add((GameObject)objectDragged);
                     ProceduralIvyWindow.ivyParametersGUI.leavesProb.Add(1f);
 
-                    ProceduralIvyProWindow.presetsChanged.Add(ProceduralIvyProWindow.presetSelected);
+                    ProceduralIvyWindow.Instance.presetsChanged.Add(ProceduralIvyWindow.Instance.presetSelected);
 
-                    ProceduralIvyProWindow.leavesPrefabsScrollView += new Vector2(0f, 25f);
+                    ProceduralIvyWindow.Instance.leavesPrefabsScrollView += new Vector2(0f, 25f);
                 }
                 else
                 {
@@ -184,24 +183,24 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void OnPresetChanged(IvyPreset newPreset)
         {
-            ProceduralIvyWindow.Controller.OnPresetChanged(newPreset);
+            ProceduralIvyWindow.Instance.OnPresetChanged(newPreset);
         }
 
         private void OnVinesMaterialChanged(Material newMaterial)
         {
-            ProceduralIvyWindow.Controller.OnVinesMaterialChanged(newMaterial);
+            ProceduralIvyWindow.Instance.OnVinesMaterialChanged(newMaterial);
         }
 
         private void SavePreset()
         {
-            if (ProceduralIvyWindow.Controller.infoPool.ivyParameters != null) ProceduralIvyWindow.Controller.OverridePreset();
+            if (ProceduralIvyWindow.Instance.infoPool.ivyParameters != null) ProceduralIvyWindow.Instance.OverridePreset();
         }
 
         private void SavePresetAs()
         {
             var path = EditorUtility.SaveFilePanelInProject("Save preset as...", "RealIvy Preset", "asset", "");
 
-            if (path != "") ProceduralIvyWindow.Controller.SaveCurrentParametersAsNewPreset(path);
+            if (path != "") ProceduralIvyWindow.Instance.SaveCurrentParametersAsNewPreset(path);
         }
     }
 }

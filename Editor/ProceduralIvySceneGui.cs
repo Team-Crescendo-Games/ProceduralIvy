@@ -34,7 +34,6 @@ namespace TeamCrescendo.ProceduralIvy
             upArrowTex;
 
         private GUISkin windowSkin;
-        public InfoPool infoPool;
 
         private Dictionary<int, List<BranchContainer>> branchesUndos;
         private AnimationCurve brushCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
@@ -65,10 +64,8 @@ namespace TeamCrescendo.ProceduralIvy
         private ToolMode toolMode = ToolMode.None;
         private bool toolsShown = true;
 
-        public void Init(InfoPool infoPool)
+        public ProceduralIvySceneGui()
         {
-            this.infoPool = infoPool;
-
             modePaint = new ModePaint();
             modeMove = new ModeMove();
             modeSmooth = new ModeSmooth();
@@ -100,7 +97,7 @@ namespace TeamCrescendo.ProceduralIvy
 
             FillGUIContent();
 
-            ProceduralIvyWindowController.OnIvyGoCreated += OnIvyGoCreated;
+            ProceduralIvyWindow.OnIvyGoCreated += OnIvyGoCreated;
         }
 
         private void FillGUIContent()
@@ -123,7 +120,7 @@ namespace TeamCrescendo.ProceduralIvy
             controlID = GUIUtility.GetControlID(FocusType.Passive);
 
             if (currentMode != null) currentMode.Update(current, forbiddenRect);
-            //Después con este switch, llamamos a cada uno de los bucles de las tools una vez por update del scenegui
+            
             switch (toolMode)
             {
                 case ToolMode.None:
@@ -188,7 +185,7 @@ namespace TeamCrescendo.ProceduralIvy
                         if (!current.control && !current.shift && !current.alt)
                             if (rayCast)
                             {
-                                ProceduralIvyWindow.Controller.CreateIvyDataObject();
+                                ProceduralIvyWindow.Instance.CreateIvyDataObject();
                                 ProceduralIvyWindow.Instance.CreateIvyGO(mousePoint, mouseNormal);
                                 ProceduralIvyWindow.Instance.placingSeed = false;
                             }
@@ -205,7 +202,7 @@ namespace TeamCrescendo.ProceduralIvy
 
         public void Cleanup()
         {
-            ProceduralIvyWindowController.OnIvyGoCreated -= OnIvyGoCreated;
+            ProceduralIvyWindow.OnIvyGoCreated -= OnIvyGoCreated;
         }
 
         private void OnTogglePanel()
@@ -219,7 +216,6 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void DrawGUI(SceneView sceneView)
         {
-            //Tengo métodos que triggerean los modos, son los que llaman los botones. En estos métodos hay que meter cualquier configuración o seteo necesarios para entrar en dicho modo
             forbiddenRect = new Rect(sceneView.position.width / 2f - 200f, sceneView.position.height - 116f, 418f, 98f);
             toggleVisibilityButton = new Rect(sceneView.position.width / 2f + 218f, sceneView.position.height - 42f,
                 24f, 24f);
@@ -342,8 +338,8 @@ namespace TeamCrescendo.ProceduralIvy
                         ToModeDelete();
                 }
 
-                if (toolMode != ToolMode.None)
-                    currentMode.Init(ProceduralIvyWindow.Controller.infoPool, ProceduralIvyWindow.Controller.mf);
+                if (toolMode != ToolMode.None && ProceduralIvyWindow.Instance != null)
+                    currentMode.Init(ProceduralIvyWindow.Instance.infoPool, ProceduralIvyWindow.Instance.infoPool.GetMeshFilter());
 
                 GUILayout.EndArea();
             }
@@ -353,8 +349,8 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void OnIvyGoCreated()
         {
-            if (toolMode != ToolMode.None)
-                currentMode.Init(ProceduralIvyWindow.Controller.infoPool, ProceduralIvyWindow.Controller.mf);
+            if (toolMode != ToolMode.None && ProceduralIvyWindow.Instance != null)
+                currentMode.Init(ProceduralIvyWindow.Instance.infoPool, ProceduralIvyWindow.Instance.infoPool.GetMeshFilter());
         }
 
         private void ModeNone()
@@ -457,7 +453,7 @@ namespace TeamCrescendo.ProceduralIvy
             currentMode = modeDelete;
         }
 
-        //Si estamos en algún modo de herramienta, el control es de realivypro
+        //If in tool mode, control belongs to realivypro
         private void TakeControl()
         {
             if (toolMode != ToolMode.None || ProceduralIvyWindow.Instance.placingSeed ||
@@ -475,9 +471,8 @@ namespace TeamCrescendo.ProceduralIvy
             var mouseScreenPos = Event.current.mousePosition;
             var ray = HandleUtility.GUIPointToWorldRay(mouseScreenPos);
             RaycastHit RC;
-            if (Physics.Raycast(ray, out RC, 2000f, infoPool.ivyParameters.layerMask.value))
+            if (Physics.Raycast(ray, out RC, 2000f, ProceduralIvyWindow.Instance.infoPool.ivyParameters.layerMask.value))
             {
-                //SceneView.lastActiveSceneView.Repaint();
                 mousePoint = RC.point;
                 mouseNormal = RC.normal;
 

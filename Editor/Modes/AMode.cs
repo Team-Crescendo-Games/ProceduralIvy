@@ -79,7 +79,6 @@ namespace TeamCrescendo.ProceduralIvy
             overBranch = null;
             overPoint = null;
 
-
             var nearestSegment = infoPool.ivyContainer.GetNearestSegmentSSBelowDistance(mousePosition, minDistance);
 
             if (nearestSegment != null)

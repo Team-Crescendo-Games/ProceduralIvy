@@ -105,7 +105,7 @@ namespace TeamCrescendo.ProceduralIvy
             
             EditorPrefs.SetBool(KEY_WINDOW_OPENED, true);
             
-            Debug.Log("Procedural Ivy Window initialized");
+            // Debug.Log("Procedural Ivy Window initialized");
         }
 
         private void Update()
@@ -147,7 +147,7 @@ namespace TeamCrescendo.ProceduralIvy
 
             EditorPrefs.SetBool(KEY_WINDOW_OPENED, false);
             
-            Debug.Log("Procedural Ivy Window destroyed");
+            // Debug.Log("Procedural Ivy Window destroyed");
             
             Instance = null;
         }

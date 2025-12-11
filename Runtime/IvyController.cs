@@ -1,5 +1,6 @@
 ﻿using System;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace TeamCrescendo.ProceduralIvy
 {
@@ -14,7 +15,7 @@ namespace TeamCrescendo.ProceduralIvy
             GROWTH_FINISHED
         }
 
-        public RTIvy rtIvy;
+        [FormerlySerializedAs("rtIvy")] public RuntimeIvy runtimeIvy;
         public IvyContainer ivyContainer;
         public IvyParameters ivyParameters;
 
@@ -26,7 +27,7 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void Awake()
         {
-            rtIvy.AwakeInit();
+            runtimeIvy.AwakeInit();
 
             state = State.GROWTH_NOT_STARTED;
 
@@ -53,7 +54,7 @@ namespace TeamCrescendo.ProceduralIvy
         {
             if (state == State.GROWTH_NOT_STARTED)
             {
-                rtIvy.InitIvy(growthParameters, ivyContainer, ivyParameters);
+                runtimeIvy.InitIvy(growthParameters, ivyContainer, ivyParameters);
 
                 if (growthParameters.delay > 0)
                     state = State.WAITING_FOR_DELAY;
@@ -88,8 +89,8 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void UpdateGrowingState(float deltaTime)
         {
-            if (!rtIvy.IsGrowingFinished() && !rtIvy.IsVertexLimitReached())
-                rtIvy.UpdateIvy(deltaTime);
+            if (!runtimeIvy.IsGrowingFinished() && !runtimeIvy.IsVertexLimitReached())
+                runtimeIvy.UpdateIvy(deltaTime);
             else
                 state = State.GROWTH_FINISHED;
         }

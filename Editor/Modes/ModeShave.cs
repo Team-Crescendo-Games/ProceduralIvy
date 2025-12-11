@@ -7,15 +7,7 @@ namespace TeamCrescendo.ProceduralIvy
     {
         public void UpdateMode(Event currentEvent, Rect forbiddenRect, float brushSize)
         {
-            //Empezamos la gui para pintar los puntos en screen space
-
-            //Con este método guardamos en un array predeclarado todos los puntos de la enredadera en screen space
             GetBranchesPointsSS();
-            //Si no estamos moviendo ningún punto, buscamos el overbranch, overpoint y pintamos la textura del brush en la pantalla
-            //if (!shaving)
-            //{
-            //	SelectBranchPointSS(currentEvent.mousePosition, brushSize);
-            //}
 
             SelectBranchPointSS(currentEvent.mousePosition, brushSize);
 
@@ -27,12 +19,6 @@ namespace TeamCrescendo.ProceduralIvy
                 if (overBranch != null)
                 {
                     SelectLeavesSS(currentEvent.mousePosition, brushSize);
-
-                    //Al levantar click, si estábamos moviendo y no orbitando la cámara guardamos el estado de las enredaderas y ponemos la flag moving en falso
-                    /*if (!currentEvent.alt && currentEvent.type == EventType.MouseUp && shaving)
-                    {
-                        StopShaving();
-                    }*/
 
                     if (overLeaves.Count > 0)
                     {

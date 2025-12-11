@@ -21,9 +21,7 @@ namespace TeamCrescendo.ProceduralIvy
 			IvyController selectedIvy = GetFreeIvy();
 			if(selectedIvy == null)
 			{
-				IvyController ivyControllerInstance = Instantiate<IvyController>(prefabIvyController);
-				ivyControllerInstance.transform.parent = transform;
-
+				IvyController ivyControllerInstance = Instantiate(prefabIvyController, transform);
 				selectedIvy = ivyControllerInstance;
 				ivys.Add(ivyControllerInstance);
 			}

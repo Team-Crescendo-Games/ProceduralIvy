@@ -8,7 +8,7 @@ namespace TeamCrescendo.ProceduralIvy
     [Serializable]
     public class IvyParameters
     {
-        //Growth parameters
+        [Header("Growth Settings")]
         public float stepSize = 0.1f;
         public int randomSeed;
         public float branchProvability = 0.05f;
@@ -28,7 +28,7 @@ namespace TeamCrescendo.ProceduralIvy
         public int leaveEvery = 1;
         public int randomLeaveEvery = 1;
 
-        //Geometry parameters
+        [Header("Geometry Settings")]
         public bool buffer32Bits;
         public bool halfgeom;
         public int sides = 3;
@@ -50,27 +50,36 @@ namespace TeamCrescendo.ProceduralIvy
         public float LMUVPadding = 0.002f;
         public Material branchesMaterial;
 
-        public GameObject[] leavesPrefabs = new GameObject[0];
-        public float[] leavesProb = new float[0];
+        [Header("Prefab Settings")]
+        public GameObject[] leavesPrefabs = Array.Empty<GameObject>();
+        public float[] leavesProb = Array.Empty<float>();
+        
+        [Header("Generation")]
+        public bool generateBranches;
+        public bool generateLeaves;
+        public bool generateLightmapUVs;
 
-        public bool generateBranches, generateLeaves, generateLightmapUVs;
-
-        public IvyParameters()
+        public IvyParameters(IvyParametersGUI paramsGuiCopy)
         {
+            DeepCopy(paramsGuiCopy);
         }
 
-        public IvyParameters(IvyParameters copyFrom)
+        public IvyParameters(IvyParameters paramsCopy)
         {
-            CopyFrom(copyFrom);
+            DeepCopy(paramsCopy);
+        }
+        
+        public IvyParameters(IvyPreset preset)
+        {
+            DeepCopy(preset);
         }
 
-
-        public void CopyFrom(IvyPreset ivyPreset)
+        public void DeepCopy(IvyPreset ivyPreset)
         {
-            CopyFrom(ivyPreset.ivyParameters);
+            DeepCopy(ivyPreset.ivyParameters);
         }
 
-        public void CopyFrom(IvyParametersGUI copyFrom)
+        public void DeepCopy(IvyParametersGUI copyFrom)
         {
             stepSize = copyFrom.stepSize;
             branchProvability = copyFrom.branchProvability;
@@ -123,7 +132,7 @@ namespace TeamCrescendo.ProceduralIvy
             for (var i = 0; i < copyFrom.leavesProb.Count; i++) leavesProb[i] = copyFrom.leavesProb[i];
         }
 
-        public void CopyFrom(IvyParameters copyFrom)
+        public void DeepCopy(IvyParameters copyFrom)
         {
             stepSize = copyFrom.stepSize;
             branchProvability = copyFrom.branchProvability;
@@ -176,51 +185,63 @@ namespace TeamCrescendo.ProceduralIvy
 
         public bool IsEqualTo(IvyParameters compareTo)
         {
-            bool isEqual;
+            bool floatsEqual =
+                Mathf.Approximately(stepSize, compareTo.stepSize) &&
+                Mathf.Approximately(branchProvability, compareTo.branchProvability) &&
+                Mathf.Approximately(minDistanceToSurface, compareTo.minDistanceToSurface) &&
+                Mathf.Approximately(maxDistanceToSurface, compareTo.maxDistanceToSurface) &&
+                Mathf.Approximately(DTSFrequency, compareTo.DTSFrequency) &&
+                Mathf.Approximately(DTSRandomness, compareTo.DTSRandomness) &&
+                Mathf.Approximately(directionFrequency, compareTo.directionFrequency) &&
+                Mathf.Approximately(directionAmplitude, compareTo.directionAmplitude) &&
+                Mathf.Approximately(directionRandomness, compareTo.directionRandomness) &&
+                Mathf.Approximately(grabProvabilityOnFall, compareTo.grabProvabilityOnFall) &&
+                Mathf.Approximately(stiffness, compareTo.stiffness) &&
+                Mathf.Approximately(optAngleBias, compareTo.optAngleBias) &&
+                Mathf.Approximately(minRadius, compareTo.minRadius) &&
+                Mathf.Approximately(maxRadius, compareTo.maxRadius) &&
+                Mathf.Approximately(radiusVarFreq, compareTo.radiusVarFreq) &&
+                Mathf.Approximately(radiusVarOffset, compareTo.radiusVarOffset) &&
+                Mathf.Approximately(tipInfluence, compareTo.tipInfluence) &&
+                Mathf.Approximately(minScale, compareTo.minScale) &&
+                Mathf.Approximately(maxScale, compareTo.maxScale) &&
+                Mathf.Approximately(LMUVPadding, compareTo.LMUVPadding);
 
-            isEqual =
-                stepSize == compareTo.stepSize &&
-                branchProvability == compareTo.branchProvability &&
+            if (!floatsEqual) return false;
+
+            bool vectorsEqual =
+                gravity == compareTo.gravity &&
+                uvScale == compareTo.uvScale &&
+                uvOffset == compareTo.uvOffset &&
+                globalRotation == compareTo.globalRotation &&
+                rotation == compareTo.rotation &&
+                randomRotation == compareTo.randomRotation &&
+                offset == compareTo.offset;
+
+            if (!vectorsEqual) return false;
+
+            bool othersEqual =
+                randomSeed == compareTo.randomSeed &&
                 maxBranchs == compareTo.maxBranchs &&
                 layerMask == compareTo.layerMask &&
-                minDistanceToSurface == compareTo.minDistanceToSurface &&
-                maxDistanceToSurface == compareTo.maxDistanceToSurface &&
-                DTSFrequency == compareTo.DTSFrequency &&
-                DTSRandomness == compareTo.DTSRandomness &&
-                directionFrequency == compareTo.directionFrequency &&
-                directionAmplitude == compareTo.directionAmplitude &&
-                directionRandomness == compareTo.directionRandomness &&
-                gravity == compareTo.gravity &&
-                grabProvabilityOnFall == compareTo.grabProvabilityOnFall &&
-                stiffness == compareTo.stiffness &&
-                optAngleBias == compareTo.optAngleBias &&
                 leaveEvery == compareTo.leaveEvery &&
                 randomLeaveEvery == compareTo.randomLeaveEvery &&
                 buffer32Bits == compareTo.buffer32Bits &&
                 halfgeom == compareTo.halfgeom &&
                 sides == compareTo.sides &&
-                minRadius == compareTo.minRadius &&
-                maxRadius == compareTo.maxRadius &&
-                radiusVarFreq == compareTo.radiusVarFreq &&
-                radiusVarOffset == compareTo.radiusVarOffset &&
-                tipInfluence == compareTo.tipInfluence &&
-                uvScale == compareTo.uvScale &&
-                uvOffset == compareTo.uvOffset &&
-                minScale == compareTo.minScale &&
-                maxScale == compareTo.maxScale &&
                 globalOrientation == compareTo.globalOrientation &&
-                globalRotation == compareTo.globalRotation &&
-                rotation == compareTo.rotation &&
-                randomRotation == compareTo.randomRotation &&
-                offset == compareTo.offset &&
-                LMUVPadding == compareTo.LMUVPadding &&
-                branchesMaterial == compareTo.branchesMaterial &&
-                leavesPrefabs.SequenceEqual(compareTo.leavesPrefabs) &&
-                leavesProb.SequenceEqual(compareTo.leavesProb) &&
                 generateBranches == compareTo.generateBranches &&
                 generateLeaves == compareTo.generateLeaves &&
-                generateLightmapUVs == compareTo.generateLightmapUVs;
-            return isEqual;
+                generateLightmapUVs == compareTo.generateLightmapUVs &&
+                branchesMaterial == compareTo.branchesMaterial; // Checks Object Reference
+
+            if (!othersEqual) return false;
+
+            bool arraysEqual =
+                leavesPrefabs.SequenceEqual(compareTo.leavesPrefabs) &&
+                leavesProb.SequenceEqual(compareTo.leavesProb);
+
+            return arraysEqual;
         }
     }
 }

@@ -18,7 +18,6 @@ namespace TeamCrescendo.ProceduralIvy
             if (currentEvent.type == EventType.MouseLeaveWindow || currentEvent.type == EventType.MouseEnterWindow)
                 StopSmoothing();
 
-
             if (!smoothing && toolPaintingAllowed) DrawBrush(currentEvent, brushSize);
             //Empezamos la gui para pintar los puntos en screen space
 
@@ -89,7 +88,7 @@ namespace TeamCrescendo.ProceduralIvy
                             }
 
 
-                        overBranch.RepositionLeaves02();
+                        overBranch.RepositionLeaves(true);
 
                         RefreshMesh(true, true);
                     }

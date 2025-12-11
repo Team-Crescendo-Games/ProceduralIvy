@@ -15,8 +15,8 @@ namespace TeamCrescendo.ProceduralIvy
             if (GUILayout.Button("Edit in Real Ivy Editor"))
             {
                 var ivyInfo = (IvyInfo)target;
-                RealIvyWindow.Init();
-                RealIvyWindow.controller.ModifyIvy(ivyInfo);
+                ProceduralIvyWindow.Init();
+                ProceduralIvyWindow.Controller.ModifyIvy(ivyInfo);
             }
         }
     }

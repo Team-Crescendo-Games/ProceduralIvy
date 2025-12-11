@@ -57,14 +57,7 @@ namespace TeamCrescendo.ProceduralIvy
                             var newGrabVector = Vector3.Lerp(overPoint.grabVector,
                                 overPoint.GetNextPoint().grabVector, 0.5f);
 
-                            //BranchPoint nextPoint = overBranch.branchPoints[overPoint.index + 1];
-                            //float newLenght = Mathf.Lerp(overPoint.length, nextPoint.length, 0.5f);
-
-
                             overBranch.InsertBranchPoint(newPoint, newGrabVector, overPoint.index + 1);
-                            //insertedPoint.length = newLenght;
-                            //infoPool.ivyContainer.branches[overBranch].grabVectors.Insert(overPoint + 1, newGrabVector);
-
                             overBranch.RepositionLeavesAfterAdd02(overBranch.branchPoints[overPoint.index + 1]);
                             RefreshMesh(true, true);
                         }

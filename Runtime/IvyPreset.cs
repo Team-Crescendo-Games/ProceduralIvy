@@ -11,7 +11,7 @@ namespace TeamCrescendo.ProceduralIvy
 
         public void CopyFrom(IvyParametersGUI copyFrom)
         {
-            ivyParameters.CopyFrom(copyFrom);
+            ivyParameters.DeepCopy(copyFrom);
         }
 
 #if UNITY_EDITOR

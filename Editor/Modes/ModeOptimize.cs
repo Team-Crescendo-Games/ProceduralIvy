@@ -55,27 +55,5 @@ namespace TeamCrescendo.ProceduralIvy
         {
             EditorGUI.DrawRect(new Rect(pointToDraw.pointSS - Vector2.one * 2f, Vector2.one * 4f), color);
         }
-
-        private void DrawPoints(List<BranchPoint> pointsToDraw, Color color)
-        {
-            for (var i = 0; i < pointsToDraw.Count; i++) DrawPoint(pointsToDraw[i], color);
-        }
-
-        private void DrawLeavesInSegment(BranchPoint point)
-        {
-            var leaves = overBranch.GetLeavesInSegment(point);
-
-            for (var i = 0; i < leaves.Count; i++)
-            {
-                leaves[i].CalculatePointSS();
-                EditorGUI.DrawRect(new Rect(leaves[i].pointSS - Vector2.one * 2f, Vector2.one * 4f), Color.green);
-            }
-        }
-
-        private void CheckOrphanBranches(BranchPoint pointToCheck)
-        {
-            var pointsToCheck = new List<BranchPoint>();
-            pointsToCheck.Add(pointToCheck);
-        }
     }
 }

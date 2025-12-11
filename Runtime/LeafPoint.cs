@@ -30,15 +30,9 @@ namespace TeamCrescendo.ProceduralIvy
         public float currentScale;
         public float dstScale;
 
-
-        /* RUNTIME */
         public Vector3 leafCenter;
         public List<RTVertexData> verticesLeaves;
         public float leafScale;
-
-        public LeafPoint()
-        {
-        }
 
         public LeafPoint(Vector3 point, float lpLength, Vector3 lpForward,
             Vector3 lpUpward, int chosenLeave, BranchPoint initSegment,
@@ -69,9 +63,8 @@ namespace TeamCrescendo.ProceduralIvy
 
             displacementFromInitSegment = Mathf.Clamp(t, 0.01f, 0.99f);
             left = Vector3.Cross(lpForward, lpUpward).normalized;
-
-            //this.verticesLeaves = new List<RTVertexData>();
         }
+        
 #if UNITY_EDITOR
         public void CalculatePointSS()
         {
@@ -97,7 +90,6 @@ namespace TeamCrescendo.ProceduralIvy
             Vector3 left, forward;
             Quaternion quat;
 
-
             if (!ivyParameters.globalOrientation)
             {
                 forward = lpForward;
@@ -116,7 +108,6 @@ namespace TeamCrescendo.ProceduralIvy
                    Quaternion.AngleAxis(ivyParameters.rotation.z, forward) *
                    quat;
 
-
             quat = Quaternion.AngleAxis(Random.Range(-ivyParameters.randomRotation.x, ivyParameters.randomRotation.x),
                        left) *
                    Quaternion.AngleAxis(Random.Range(-ivyParameters.randomRotation.y, ivyParameters.randomRotation.y),
@@ -126,7 +117,6 @@ namespace TeamCrescendo.ProceduralIvy
                    quat;
 
             quat = forwarRot * quat;
-
 
             var scale = Random.Range(ivyParameters.minScale, ivyParameters.maxScale);
 

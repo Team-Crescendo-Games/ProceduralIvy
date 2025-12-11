@@ -447,27 +447,25 @@ namespace TeamCrescendo.ProceduralIvy
         }
 
 #if UNITY_EDITOR
-        public void RepositionLeaves02(List<LeafPoint> leaves, bool updatePosition)
+        public void RepositionLeaves(List<LeafPoint> leaves, bool updatePosition)
         {
+            if (branchPoints == null || branchPoints.Count < 2) return;
+
+            int maxIndex = branchPoints.Count - 1;
+
             for (var i = 0; i < leaves.Count; i++)
             {
-                BranchPoint previousPoint = null;
-                BranchPoint nextPoint = null;
+                int idxA = Mathf.Clamp(leaves[i].initSegmentIdx, 0, maxIndex - 1);
+        
+                int idxB = idxA + 1; 
 
-                if (leaves[i].initSegmentIdx > branchPoints.Count - 1 ||
-                    leaves[i].endSegmentIdx > branchPoints.Count - 1)
-                {
-                    previousPoint = branchPoints[leaves[i].initSegmentIdx];
-                    nextPoint = branchPoints[leaves[i].endSegmentIdx - 1];
-                }
-                else
-                {
-                    previousPoint = branchPoints[leaves[i].initSegmentIdx];
-                    nextPoint = branchPoints[leaves[i].endSegmentIdx];
-                }
+                BranchPoint previousPoint = branchPoints[idxA];
+                BranchPoint nextPoint = branchPoints[idxB];
 
-                var newForward = (nextPoint.point - previousPoint.point).normalized;
+                var direction = nextPoint.point - previousPoint.point;
+                if (direction == Vector3.zero) continue; 
 
+                var newForward = direction.normalized;
                 var oldForward = leaves[i].lpForward;
 
                 leaves[i].forwarRot = Quaternion.FromToRotation(oldForward, newForward);
@@ -480,15 +478,7 @@ namespace TeamCrescendo.ProceduralIvy
             }
         }
 
-        public void RepositionLeaves02()
-        {
-            RepositionLeaves02(leaves, true);
-        }
-
-        public void RepositionLeaves02(bool updatePositionLeaves)
-        {
-            RepositionLeaves02(leaves, updatePositionLeaves);
-        }
+        public void RepositionLeaves(bool updatePositionLeaves) => RepositionLeaves(leaves, updatePositionLeaves);
 #endif
     }
 }

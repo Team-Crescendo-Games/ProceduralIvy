@@ -14,7 +14,6 @@ namespace TeamCrescendo.ProceduralIvy
         protected Vector3 mouseNormal;
         protected Vector3 mousePoint;
 
-
         protected float normalizedSegmentOffset;
 
         protected BranchContainer overBranch;
@@ -25,16 +24,16 @@ namespace TeamCrescendo.ProceduralIvy
         protected bool pressingMouseButton;
         protected bool pressingRightButton;
 
-        protected RealIvyTools proToolsWindow;
+        protected ProceduralIvySceneGui ProSceneGuiWindow;
         protected bool rayCast;
         protected bool toolPaintingAllowed;
 
 
-        public void Init(InfoPool infoPool, MeshFilter mf, RealIvyTools proToolsWindow)
+        public void Init(InfoPool infoPool, MeshFilter mf, ProceduralIvySceneGui proSceneGuiWindow)
         {
             this.infoPool = infoPool;
             this.mf = mf;
-            this.proToolsWindow = proToolsWindow;
+            this.ProSceneGuiWindow = proSceneGuiWindow;
         }
 
         public virtual void Update(Event currentEvent, Rect forbiddenRect)
@@ -108,60 +107,6 @@ namespace TeamCrescendo.ProceduralIvy
             return res;
         }
 
-        //public void SelectBranchPointSS(Vector2 mousePosition, float brushSize)
-        //{
-        //	//Definimos una serie de listas. En estas guardaremos información sobre las ramas y los puntos al alcance de la brush
-        //	List<int> branchesInRange = new List<int>();
-        //	List<int> nearestPointPerBranch = new List<int>();
-        //	List<float> distancesPerBranch = new List<float>();
-
-        //	//variables locales para trabajar mas cómodo un poco mas abajo después del bucle
-        //	float closestDistance;
-        //	int indexOfClosestDistance;
-
-        //	//Aquí iteramos todas las ramas y todos los puntos
-        //	for (int b = 0; b < infoPool.ivyContainer.branches.Count; b++)
-        //	{
-        //		//y guardamos en estas listas locales los puntos y las distancias de todos los que están en rango de brush
-        //		List<int> pointIndexInRange = new List<int>();
-        //		List<float> pointDistanceInRange = new List<float>();
-        //		for (int p = 0; p < infoPool.ivyContainer.branches[b].branchPoints.Count; p++)
-        //		{
-        //			BranchPoint currentBranchPoint = infoPool.ivyContainer.branches[b].branchPoints[p];
-        //			float distance = Vector2.Distance(currentBranchPoint.pointSS, mousePosition);
-        //			if (distance < brushSize / 2f)
-        //			{
-        //				pointIndexInRange.Add(p);
-        //				pointDistanceInRange.Add(distance);
-        //			}
-        //		}
-        //		//para cada rama que hayamos encontrado dentro del alcance, encontramos la menor distancia y la guardamos en las listas declaradas al principio del método
-        //		if (pointIndexInRange.Count > 0)
-        //		{
-        //			float minDistance = pointDistanceInRange.Min();
-        //			int index = pointDistanceInRange.IndexOf(minDistance);
-        //			nearestPointPerBranch.Add(pointIndexInRange[index]);
-        //			distancesPerBranch.Add(pointDistanceInRange[index]);
-        //			branchesInRange.Add(b);
-        //		}
-        //	}
-
-        //	//por último si al menos hay una rama en el rango, elegimos la menor de las distancias como overbranch y overpoint
-        //	if (branchesInRange.Count > 0)
-        //	{
-        //		closestDistance = distancesPerBranch.Min();
-        //		indexOfClosestDistance = distancesPerBranch.IndexOf(closestDistance);
-
-        //		overBranch = branchesInRange[indexOfClosestDistance];
-        //		overPoint = nearestPointPerBranch[indexOfClosestDistance];
-        //	}
-        //	else
-        //	{
-        //		overBranch = -1;
-        //		overPoint = -1;
-        //	}
-        //}
-
         protected void DrawBrush(Event currentEvent, float brushSize)
         {
             var cam = SceneView.currentDrawingSceneView.camera;
@@ -232,7 +177,7 @@ namespace TeamCrescendo.ProceduralIvy
             {
                 if (repositionLeaves && infoPool.ivyParameters.generateLeaves)
                     for (var i = 0; i < infoPool.ivyContainer.branches.Count; i++)
-                        infoPool.ivyContainer.branches[i].RepositionLeaves02(updatePositionLeaves);
+                        infoPool.ivyContainer.branches[i].RepositionLeaves(updatePositionLeaves);
 
                 infoPool.meshBuilder.BuildGeometry();
                 mf.mesh = infoPool.meshBuilder.ivyMesh;

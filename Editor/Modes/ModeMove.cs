@@ -62,28 +62,10 @@ namespace TeamCrescendo.ProceduralIvy
                                                                              currentEvent.mousePosition) / brushSize *
                                                                          2f));
 
-
-                            //if (currenBranchPoint.HasLeave())
-                            //{
-                            //	overPointsLeavesIndex.Add(p);
-                            //	overPointsLeaves.Add(currenBranchPoint.point);
-                            //	overPointsLeavesInfluences.Add(brushCurve.Evaluate(1f - Vector2.Distance(currenBranchPoint.pointSS, currentEvent.mousePosition) / brushSize * 2f));
-                            //}
-
-
                             EditorGUI.DrawRect(new Rect(currenBranchPoint.pointSS - Vector2.one * 2f, Vector2.one * 4f),
                                 new Color(1f, 1f, 1f, overPointsInfluences[overPointsInfluences.Count - 1]));
                         }
                     }
-                    //for (int l = 0; l < branchesLeavesPointsSS[overBranch].Length; l++)
-                    //{
-                    //	if (Vector2.Distance(current.mousePosition, branchesLeavesPointsSS[overBranch][l]) < brushSize / 2f)
-                    //	{
-                    //		overPointsLeavesIndex.Add(l);
-                    //		overPointsLeaves.Add(infoPool.ivyContainer.branches[overBranch].leavesPoints[l]);
-                    //		overPointsLeavesInfluences.Add(brushCurve.Evaluate(1f - Vector2.Distance(branchesLeavesPointsSS[overBranch][l], current.mousePosition) / brushSize * 2f));
-                    //	}
-                    //}
                 }
 
                 Handles.EndGUI();
@@ -124,9 +106,7 @@ namespace TeamCrescendo.ProceduralIvy
                             .Move(overPoints[i] + delta * overPointsInfluences[i]);
                     }
 
-
-                    overBranch.RepositionLeaves02(leavesInInfluences, true);
-
+                    overBranch.RepositionLeaves(leavesInInfluences, true);
 
                     RefreshMesh(true, true);
                 }

@@ -10,7 +10,6 @@ namespace TeamCrescendo.ProceduralIvy
     [Serializable]
     public class BranchPoint
     {
-        public Vector3 originalPoint;
         public Vector3 point;
         public Vector3 grabVector;
         public Vector2 pointSS;
@@ -24,17 +23,10 @@ namespace TeamCrescendo.ProceduralIvy
         public int newBranchNumber;
 
         public float radius;
-        public float currentRadius;
-
-        public Quaternion forwardRotation;
 
         public List<RTVertexData> verticesLoop;
         public Vector3 firstVector;
         public Vector3 axis;
-
-        public BranchPoint()
-        {
-        }
 
         public BranchPoint(Vector3 point, Vector3 grabVector, int index, bool newBranch, int newBranchNumber,
             float length, BranchContainer branchContainer)
@@ -66,7 +58,6 @@ namespace TeamCrescendo.ProceduralIvy
             this.newBranchNumber = newBranchNumber;
 
             radius = 1f;
-            currentRadius = 1f;
 
             this.length = length;
 
@@ -85,11 +76,6 @@ namespace TeamCrescendo.ProceduralIvy
             pointSS = HandleUtility.WorldToGUIPoint(point);
         }
 #endif
-
-        public void SetOriginalPoint()
-        {
-            originalPoint = point;
-        }
 
         public BranchPoint GetNextPoint()
         {

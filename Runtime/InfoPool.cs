@@ -8,9 +8,11 @@ namespace TeamCrescendo.ProceduralIvy
     public class InfoPool : ScriptableObject
     {
         public IvyContainer ivyContainer;
-        public EditorMeshBuilder meshBuilder;
         public IvyParameters ivyParameters;
+#if UNITY_EDITOR
+        public EditorMeshBuilder meshBuilder;
         public EditorIvyGrowth growth;
+#endif
     }
 
     [Serializable]

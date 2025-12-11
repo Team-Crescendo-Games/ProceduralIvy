@@ -11,8 +11,7 @@ namespace TeamCrescendo.ProceduralIvy
         private Vector3 mousePointWS = Vector3.zero;
         private bool painting;
 
-
-        public RealIvyWindow realIvyProWindow;
+        public ProceduralIvyWindow ProceduralIvyProWindow;
 
         public void UpdateMode(Event currentEvent, Rect forbiddenRect, float brushSize)
         {
@@ -42,14 +41,7 @@ namespace TeamCrescendo.ProceduralIvy
                     EditorGUI.DrawRect(
                         new Rect(HandleUtility.WorldToGUIPoint(mousePointWS) - Vector2.one * 2f, Vector2.one * 4f),
                         pointColor);
-                    //if (overPoint.index == overBranch.branchPoints.Count - 1)
-                    //{
-                    //	EditorGUI.DrawRect(new Rect(HandleUtility.WorldToGUIPoint(overPoint.point) - Vector2.one * 2f, Vector2.one * 4f), Color.yellow);
-                    //}
-                    //else
-                    //{
-                    //	EditorGUI.DrawRect(new Rect(HandleUtility.WorldToGUIPoint(overPoint.point) - Vector2.one * 2f, Vector2.one * 4f), Color.cyan);
-                    //}
+                    
                     Handles.EndGUI();
                 }
 
@@ -96,7 +88,7 @@ namespace TeamCrescendo.ProceduralIvy
                         mouseNormal = -SceneView.currentDrawingSceneView.camera.transform.forward;
                     }
 
-                    if (overBranch == null) infoPool = realIvyProWindow.CreateNewIvy();
+                    if (overBranch == null) infoPool = ProceduralIvyProWindow.CreateNewIvy();
 
                     //iniciamos la ivy (solo lo hace si la ivy aún no está creada
                     var newIvy = StartIvy(mousePoint + mouseNormal * infoPool.ivyParameters.minDistanceToSurface,
@@ -127,7 +119,6 @@ namespace TeamCrescendo.ProceduralIvy
                         {
                             painting = true;
                         }
-                        //RefreshMesh(true, true);
                     }
                     //Si acabamos de crear la ivy, pues no hay mucho que hacer en este caso
                     else
@@ -135,7 +126,6 @@ namespace TeamCrescendo.ProceduralIvy
                         overBranch = infoPool.ivyContainer.branches[0];
                         overPoint = overBranch.branchPoints[0];
                         painting = true;
-                        //RefreshMesh(true, true);
                     }
 
                     RefreshMesh(true, true);
@@ -151,9 +141,6 @@ namespace TeamCrescendo.ProceduralIvy
                         RefreshBrushWS(currentEvent);
                         mousePoint = brushWS;
                         mouseNormal = -SceneView.currentDrawingSceneView.camera.transform.forward;
-
-
-                        //Debug.Log("NORMAL: " + mouseNormal);
                     }
 
                     CheckPainting();
@@ -166,7 +153,6 @@ namespace TeamCrescendo.ProceduralIvy
                     RefreshMesh(true, true);
                 }
             }
-
 
             //Si tenemos un mouseup y estábamos pintando y no tenemos el alt pulsado, creamos un undo state y decimos que dejamos de pintar. 
             //Esto está fuera del if gordo de arriba porque queremos que lo haga aunque lo haga dentro del forbidden rect
@@ -183,13 +169,12 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void CheckPainting()
         {
-            if (overPoint != null)
-                if (Vector3.Distance(mousePoint, overPoint.point) > infoPool.ivyParameters.stepSize)
-                {
-                    Random.state = infoPool.growth.randomstate;
-                    ProcessPoints();
-                    infoPool.growth.randomstate = Random.state;
-                }
+            if (overPoint != null && Vector3.Distance(mousePoint, overPoint.point) > infoPool.ivyParameters.stepSize)
+            {
+                Random.state = infoPool.growth.randomstate;
+                ProcessPoints();
+                infoPool.growth.randomstate = Random.state;
+            }
         }
 
         private void ProcessPoints()
@@ -203,25 +188,14 @@ namespace TeamCrescendo.ProceduralIvy
 
             var srcPoint = overPoint.point;
 
-
             if (dirDrag == Vector3.zero) dirDrag = Vector3.forward;
 
-
-            //infoPool.growth.Step();
-            //infoPool.growth.AddPoint(overBranch, mousePoint, mouseNormal);
             for (var i = 1; i < numPoints; i++)
             {
                 var intermediatePoint = srcPoint + i * infoPool.ivyParameters.stepSize * newGrowDirection;
-
-                //infoPool.growth.AddDrawingPoint(overBranch, intermediatePoint, mouseNormal, dirDrag);
                 infoPool.growth.AddPoint(overBranch, intermediatePoint, mouseNormal);
-
-
                 overPoint = overPoint.GetNextPoint();
-
-                //RefreshMesh(true, true);
             }
-
 
             overBranch.growDirection = newGrowDirection;
             infoPool.growth.randomstate = Random.state;
@@ -232,14 +206,13 @@ namespace TeamCrescendo.ProceduralIvy
             var needToCreateNewIvy = infoPool == null || infoPool.ivyContainer.branches.Count == 0 ||
                                      infoPool.ivyContainer.ivyGO == null;
 
-
             if (needToCreateNewIvy)
             {
-                realIvyProWindow.CreateIvyGO(firstPoint, firstGrabVector);
-                mf = RealIvyWindow.controller.mf;
+                ProceduralIvyProWindow.CreateIvyGO(firstPoint, firstGrabVector);
+                mf = ProceduralIvyWindow.Controller.mf;
                 infoPool.growth.Initialize(firstPoint, firstGrabVector);
                 infoPool.meshBuilder.InitLeavesData();
-                infoPool.meshBuilder.Initialize();
+                infoPool.meshBuilder.InitializeMeshBuilder();
             }
 
             return needToCreateNewIvy;

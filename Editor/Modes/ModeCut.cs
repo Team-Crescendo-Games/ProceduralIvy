@@ -18,7 +18,6 @@ namespace TeamCrescendo.ProceduralIvy
             //Y con este seleccionamos la rama y el punto mas cercanos al ratón en screen space
             SelectBranchPointSS(currentEvent.mousePosition, brushSize);
 
-
             if (overBranch != null && overPoint != null)
             {
                 if (toolPaintingAllowed)

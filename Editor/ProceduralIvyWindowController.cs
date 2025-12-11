@@ -16,30 +16,27 @@ namespace TeamCrescendo.ProceduralIvy
         public MeshRenderer mr;
 
         public IvyPreset selectedPreset;
-        public ProceduralIvyWindow proceduralIvyProWindow;
 
         private IvyParametersGUI ivyParametersGUI;
         public static event Action OnIvyGoCreated;
 
-        public void Init(ProceduralIvyWindow proceduralIvyProWindow, IvyParametersGUI ivyParametersGUI)
+        public void Init(IvyParametersGUI ivyParametersGUI)
         {
+            Selection.selectionChanged -= OnSelectionChanged;
             Selection.selectionChanged += OnSelectionChanged;
 
             this.ivyParametersGUI = ivyParametersGUI;
-            this.proceduralIvyProWindow = proceduralIvyProWindow;
         }
 
-        public void Destroy()
+        public void Cleanup()
         {
             Selection.selectionChanged -= OnSelectionChanged;
         }
 
-        public InfoPool CreateNewIvy() => CreateNewIvy(new IvyParameters(ivyParametersGUI));
+        public InfoPool CreateIvyDataObject() => CreateIvyDataObject(new IvyParameters(ivyParametersGUI));
 
-        public InfoPool CreateNewIvy(IvyParameters ivyParameters)
+        private InfoPool CreateIvyDataObject(IvyParameters ivyParameters)
         {
-            // Note: InfoPool still needs ScriptableObject.CreateInstance because InfoPool likely inherits from ScriptableObject.
-            // If InfoPool is also a raw object, change this to "new InfoPool()".
             infoPool = ScriptableObject.CreateInstance<InfoPool>();
             
             infoPool.ivyContainer = ScriptableObject.CreateInstance<IvyContainer>();
@@ -59,14 +56,14 @@ namespace TeamCrescendo.ProceduralIvy
             return infoPool;
         }
 
-        public InfoPool CreateNewIvy(IvyPreset selectedPreset)
+        public InfoPool CreateIvyDataObject(IvyPreset selectedPreset)
         {
             this.selectedPreset = selectedPreset;
 
             var parameters = new IvyParameters(selectedPreset);
             parameters.DeepCopy(selectedPreset);
 
-            return CreateNewIvy(parameters);
+            return CreateIvyDataObject(parameters);
         }
 
         public void ModifyIvy(IvyInfo ivyInfo)
@@ -268,7 +265,7 @@ namespace TeamCrescendo.ProceduralIvy
                     if (infoPool != null && infoPool.ivyContainer != null) 
                         infoPool.ivyContainer.Clear();
                     
-                    CreateNewIvy();
+                    CreateIvyDataObject();
                 }
 
                 currentIvyInfo = null;
@@ -277,7 +274,7 @@ namespace TeamCrescendo.ProceduralIvy
 
         public void OnVinesMaterialChanged(Material newMaterial)
         {
-            proceduralIvyProWindow.valueUpdated = true;
+            ProceduralIvyWindow.Instance.valueUpdated = true;
         }
 
         public void OnPresetChanged(IvyPreset newPreset)
@@ -291,9 +288,9 @@ namespace TeamCrescendo.ProceduralIvy
                 EditorPrefs.SetString("RealIvyDefaultGUID", presetGUID);
 
                 ivyParametersGUI.CopyFrom(selectedPreset);
-                proceduralIvyProWindow.SaveParameters();
+                ProceduralIvyWindow.Instance.SaveParameters();
                 infoPool.meshBuilder.InitLeavesData();
-                proceduralIvyProWindow.valueUpdated = true;
+                ProceduralIvyWindow.Instance.valueUpdated = true;
             }
         }
 
@@ -322,7 +319,7 @@ namespace TeamCrescendo.ProceduralIvy
         {
             if (Selection.activeGameObject == null)
             {
-                CreateNewIvy(selectedPreset);
+                CreateIvyDataObject(selectedPreset);
             }
             else
             {

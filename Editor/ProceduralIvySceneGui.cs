@@ -188,7 +188,7 @@ namespace TeamCrescendo.ProceduralIvy
                         if (!current.control && !current.shift && !current.alt)
                             if (rayCast)
                             {
-                                ProceduralIvyWindow.Controller.CreateNewIvy();
+                                ProceduralIvyWindow.Controller.CreateIvyDataObject();
                                 ProceduralIvyWindow.Instance.CreateIvyGO(mousePoint, mouseNormal);
                                 ProceduralIvyWindow.Instance.placingSeed = false;
                             }

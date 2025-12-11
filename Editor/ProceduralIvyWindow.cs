@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEditor.Callbacks;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Assertions;
 using UnityEngine.SceneManagement;
 
 namespace TeamCrescendo.ProceduralIvy
@@ -50,49 +51,51 @@ namespace TeamCrescendo.ProceduralIvy
         [MenuItem("Tools/Team Crescendo/Procedural Ivy")]
         public static void Init()
         {
+            // initialize self
             Instance = (ProceduralIvyWindow)GetWindow(typeof(ProceduralIvyWindow));
-
             Instance.minSize = new Vector2(450f, 455f);
             Instance.titleContent = new GUIContent("Procedural Ivy");
 
             ivyParametersGUI = CreateInstance<IvyParametersGUI>();
+
+            // initialize controller
             Controller = new ProceduralIvyWindowController();
-            Controller.Init(Instance, ivyParametersGUI);
-
-            var res = ProceduralIvyResources.Instance;
-            if (res != null)
-            {
-                windowSkin = res.windowSkin;
-                downArrowTex = res.arrowDown;
-                materialTex = res.materialIcon;
-                leaveTex = res.leafIcon;
-                dropdownShadowTex = res.dropdownShadow;
-                presetTex = res.presetIcon;
-                infoTex = res.infoIcon;
-            }
-
+            Controller.Init(ivyParametersGUI);
+            
+            // initialize gui view
             if (SceneGuiController != null)
                 SceneGuiController.Cleanup();
-
             SceneGuiController = new ProceduralIvySceneGui();
             SceneGuiController.Init(Controller.infoPool);
             
-            SceneView.duringSceneGui -= SceneGuiController.OnSceneGUI;
-            SceneView.duringSceneGui += SceneGuiController.OnSceneGUI;
+            // create new ivy
+            InfoPool dataObject = Controller.CreateIvyDataObject(ProceduralIvyResources.Instance.defaultPreset);
+            ivyParametersGUI.CopyFrom(dataObject.ivyParameters);
 
-            Controller.CreateNewIvy(ProceduralIvyResources.Instance.defaultPreset);
-            ivyParametersGUI.CopyFrom(Controller.infoPool.ivyParameters);
-
-            Undo.undoRedoPerformed += MyUndoCallback;
+            // cosmetics
+            var res = ProceduralIvyResources.Instance;
+            Assert.IsNotNull(res);
+            windowSkin = res.windowSkin;
+            downArrowTex = res.arrowDown;
+            materialTex = res.materialIcon;
+            leaveTex = res.leafIcon;
+            dropdownShadowTex = res.dropdownShadow;
+            presetTex = res.presetIcon;
+            infoTex = res.infoIcon;
+            
+            // callbacks
+            SceneView.duringSceneGui -= OnDrawSceneGui;
+            SceneView.duringSceneGui += OnDrawSceneGui;
+            Undo.undoRedoPerformed -= OnUndoPerformed;
+            Undo.undoRedoPerformed += OnUndoPerformed;
+            EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+            EditorSceneManager.sceneOpened -= OnSceneOpened;
             EditorSceneManager.sceneOpened += OnSceneOpened;
+            
             EditorPrefs.SetBool(KEY_WINDOW_OPENED, true);
-        }
-
-        private static void MyUndoCallback()
-        {
-            Controller.RefreshMesh();
-            RefreshEditorValues();
+            
+            Debug.Log("Procedural Ivy Window initialized");
         }
 
         private void Update()
@@ -105,15 +108,29 @@ namespace TeamCrescendo.ProceduralIvy
         {
             SceneGuiController.Cleanup();
             SceneGuiController = null;
-            Controller.Destroy();
+            
+            Controller.Cleanup();
+            Controller = null;
 
             SceneView.RepaintAll();
+            
+            SceneView.duringSceneGui -= OnDrawSceneGui;
+            Undo.undoRedoPerformed -= OnUndoPerformed;
+            EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
+            EditorSceneManager.sceneOpened -= OnSceneOpened;
 
             EditorPrefs.SetBool(KEY_WINDOW_OPENED, false);
+            
+            Debug.Log("Procedural Ivy Window destroyed");
+            
+            Instance = null;
         }
 
         private void OnGUI()
         {
+            if (Instance == null) 
+                Init();
+            
             oldSkin = GUI.skin;
             GUI.skin = windowSkin;
 
@@ -290,7 +307,20 @@ namespace TeamCrescendo.ProceduralIvy
 
         private static void OnPlayModeStateChanged(PlayModeStateChange state)
         {
-            if (state == PlayModeStateChange.EnteredEditMode) OnScriptsReloaded();
+            if (state == PlayModeStateChange.EnteredEditMode) 
+                OnScriptsReloaded();
+        }
+
+        private static void OnDrawSceneGui(SceneView sceneView)
+        {
+            if (SceneGuiController != null)
+                SceneGuiController.OnSceneGUI(sceneView);
+        }
+        
+        private static void OnUndoPerformed()
+        {
+            Controller.RefreshMesh();
+            RefreshEditorValues();
         }
     }
 }

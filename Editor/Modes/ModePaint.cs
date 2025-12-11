@@ -87,7 +87,7 @@ namespace TeamCrescendo.ProceduralIvy
                     }
 
                     if (overBranch == null) 
-                        infoPool = ProceduralIvyWindow.Controller.CreateNewIvy();
+                        infoPool = ProceduralIvyWindow.Controller.CreateIvyDataObject();
 
                     //iniciamos la ivy (solo lo hace si la ivy aún no está creada
                     var newIvy = StartIvy(mousePoint + mouseNormal * infoPool.ivyParameters.minDistanceToSurface,

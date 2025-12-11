@@ -1,0 +1,29 @@
+fileFormatVersion: 2
+guid: fe3530afa75248e40955f7a83775b99e
+TrueTypeFontImporter:
+  externalObjects: {}
+  serializedVersion: 4
+  fontSize: 12
+  forceTextureCase: -2
+  characterSpacing: 0
+  characterPadding: 1
+  includeFontData: 1
+  fontName: Muli
+  fontNames:
+  - Muli
+  fallbackFontReferences: []
+  customCharacters: 
+  fontRenderingMode: 0
+  ascentCalculationMode: 1
+  useLegacyBoundsCalculation: 0
+  shouldRoundAdvanceValue: 1
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 181402
+  packageName: Real Ivy 2 Procedural Ivy Generator
+  packageVersion: 2.0.8
+  assetPath: Assets/3Dynamite/Real Ivy/GuiSkins/Fonts/Muli-Regular.ttf
+  uploadId: 452850

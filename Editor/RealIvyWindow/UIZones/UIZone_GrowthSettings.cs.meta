@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: e97060a4cf7488e4f8fe3d260e52dff3
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 181402
+  packageName: Real Ivy 2 Procedural Ivy Generator
+  packageVersion: 2.0.8
+  assetPath: Assets/3Dynamite/Real Ivy/Scripts/Editor/RealIvyWindow/UIZones/UIZone_GrowthSettings.cs
+  uploadId: 452850

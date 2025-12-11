@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 9219b8a07ddc808449d3177bdcd3466d
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 181402
+  packageName: Real Ivy 2 Procedural Ivy Generator
+  packageVersion: 2.0.8
+  assetPath: Assets/3Dynamite/Real Ivy/SampleResources/Scripts/PlayerController.cs
+  uploadId: 452850

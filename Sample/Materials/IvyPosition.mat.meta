@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 9c7236cca2d35b748a63dc86319e19e8
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 181402
+  packageName: Real Ivy 2 Procedural Ivy Generator
+  packageVersion: 2.0.8
+  assetPath: Assets/3Dynamite/Real Ivy/SampleResources/Materials/IvyPosition.mat
+  uploadId: 452850

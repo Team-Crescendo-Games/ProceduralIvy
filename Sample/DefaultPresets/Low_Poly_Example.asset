@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 14d7701cd56353b42a02be1296fa2511, type: 3}
+  m_Name: Low_Poly_Example
+  m_EditorClassIdentifier: 
+  presetName: 
+  ivyParameters:
+    stepSize: 0.05
+    randomSeed: 0
+    branchProvability: 0.05
+    maxBranchs: 7
+    layerMask:
+      serializedVersion: 2
+      m_Bits: 55
+    minDistanceToSurface: 0.03
+    maxDistanceToSurface: 0.15
+    DTSFrequency: 5
+    DTSRandomness: 0.2
+    directionFrequency: 1
+    directionAmplitude: 20
+    directionRandomness: 1
+    gravity: {x: 0, y: -1, z: 0}
+    grabProvabilityOnFall: 1
+    stiffness: 0.03
+    optAngleBias: 15
+    leaveEvery: 2
+    randomLeaveEvery: 1
+    buffer32Bits: 0
+    halfgeom: 1
+    sides: 1
+    minRadius: 0.2
+    maxRadius: 0.2
+    radiusVarFreq: 1
+    radiusVarOffset: 0
+    tipInfluence: 0.5
+    uvScale: {x: 1, y: 2.38}
+    uvOffset: {x: 0, y: 0}
+    minScale: 0.7
+    maxScale: 1.2
+    globalOrientation: 1
+    globalRotation: {x: -0, y: -1, z: -0}
+    rotation: {x: 30, y: 180, z: 0}
+    randomRotation: {x: 0, y: 24, z: 22}
+    offset: {x: 0, y: 0, z: 0}
+    LMUVPadding: 0.002
+    branchesMaterial: {fileID: 2100000, guid: c5edf0220c452754ba6a0187134bac12, type: 2}
+    leavesPrefabs: []
+    leavesProb: []
+    generateBranches: 1
+    generateLeaves: 0
+    generateLightmapUVs: 0

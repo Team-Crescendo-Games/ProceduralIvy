@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: a94e331515ce1fc4bb1e410bbc0df605
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 181402
+  packageName: Real Ivy 2 Procedural Ivy Generator
+  packageVersion: 2.0.8
+  assetPath: Assets/3Dynamite/Real Ivy/DefaultPresets/Preset_01.asset
+  uploadId: 452850

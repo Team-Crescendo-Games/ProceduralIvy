@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 7b8427b7cce16a545a2e2be91db9342f
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 181402
+  packageName: Real Ivy 2 Procedural Ivy Generator
+  packageVersion: 2.0.8
+  assetPath: Assets/3Dynamite/Real Ivy/Example Scenes/Materials/Walls.mat
+  uploadId: 452850

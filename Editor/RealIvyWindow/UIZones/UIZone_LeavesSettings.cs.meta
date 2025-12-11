@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 61a8d5958f2f48940938ffac90687ec1
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 181402
+  packageName: Real Ivy 2 Procedural Ivy Generator
+  packageVersion: 2.0.8
+  assetPath: Assets/3Dynamite/Real Ivy/Scripts/Editor/RealIvyWindow/UIZones/UIZone_LeavesSettings.cs
+  uploadId: 452850

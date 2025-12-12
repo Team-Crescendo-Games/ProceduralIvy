@@ -1,0 +1,137 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <Style src="project://database/Assets/ProceduralIvy/ProceduralIvy/Editor/Resources/ProceduralIvyWindow.uss?fileID=7433441132597879392&amp;guid=83bd14d2ea2c900428b3c9b584730dc4&amp;type=3#ProceduralIvyWindow" />
+    <ui:VisualElement class="root-container" style="height: 504px;">
+        <ui:Label name="header-label" text="Editing object: None" class="header-box" style="margin-bottom: 5px; -unity-font-style: bold; height: 35px;" />
+        <uie:Toolbar class="tab-toolbar" style="margin-top: 10px; margin-bottom: 10px; padding-top: 0;">
+            <uie:ToolbarToggle name="tabGeneral" text="General" value="true" class="tab-button" style="width: 20%;" />
+            <uie:ToolbarToggle name="tabBranches" text="Branches" class="tab-button" style="width: 20%;" />
+            <uie:ToolbarToggle name="tabLeaves" text="Leaves" class="tab-button" style="width: 20%;" />
+            <uie:ToolbarToggle name="tabGrowth" text="Growth" class="tab-button" style="width: 20%;" />
+            <uie:ToolbarToggle name="tabExport" text="Export" class="tab-button" style="width: 20%;" />
+        </uie:Toolbar>
+        <ui:ScrollView mode="Vertical" style="height: 403px;">
+            <ui:VisualElement name="contentGeneral" class="tab-content">
+                <ui:VisualElement class="row">
+                    <uie:ToolbarToggle name="place-seed-toggle" text="Place Seed Mode" class="toggle-btn" style="width: 100%; height: 36px;" />
+                </ui:VisualElement>
+                <ui:VisualElement class="row">
+                    <ui:DropdownField name="preset-dropdown" label="Load Preset" class="compact-field" style="width: 100%;" />
+                </ui:VisualElement>
+                <ui:VisualElement name="contentGeneralSub">
+                    <ui:VisualElement class="row">
+                        <uie:ToolbarToggle name="growth-toggle" text="Start Growth" class="toggle-btn" style="height: 43px; width: 100%; -unity-font-style: normal;" />
+                    </ui:VisualElement>
+                    <ui:Button name="randomize-btn" text="Randomize Generation Seed" class="half-width-btn" />
+                    <ui:Button name="reset-btn" text="Reset Ivy" class="half-width-btn" />
+                    <ui:VisualElement class="row" style="margin-top: 10px; margin-bottom: 10px;">
+                        <ui:Button name="optimize-btn" text="Optimize" style="width: 100px;" />
+                        <uie:FloatField label="Angle" binding-path="infoPool.ivyParameters.optAngleBias" style="flex-grow: 1; margin-left: 10px;" />
+                    </ui:VisualElement>
+                    <ui:VisualElement style="flex-grow: 1; height: 49px; flex-direction: row; width: 100%; padding-top: 5px; margin-top: 10px; padding-bottom: 5px; margin-bottom: 10px;">
+                        <ui:Button text="Save to Preset" name="save-preset-btn" style="width: 50%;" />
+                        <ui:Button text="Save as New Preset" name="save-as-preset-btn" style="width: 50%;" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="row">
+                        <ui:Toggle label="Vines" binding-path="infoPool.ivyParameters.generateBranches" style="flex-grow: 1;" />
+                        <ui:Toggle label="Leaves" binding-path="infoPool.ivyParameters.generateLeaves" style="flex-grow: 1;" />
+                        <ui:Toggle label="Lightmap UVs" binding-path="infoPool.ivyParameters.generateLightmapUVs" style="flex-grow: 1;" />
+                    </ui:VisualElement>
+                    <uie:ObjectField label="Vines Material" binding-path="infoPool.ivyParameters.branchesMaterial" type="UnityEngine.Material, UnityEngine.CoreModule" />
+                    <uie:LayerMaskField label="Layer Mask" binding-path="infoPool.ivyParameters.layerMask" />
+                    <ui:Toggle label="32 bits mesh buffer" binding-path="infoPool.ivyParameters.buffer32Bits" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement name="contentBranches" class="tab-content" style="display: none;">
+                <ui:Label text="Branch Geometry" class="section-title" />
+                <ui:Label text="Radius" class="section-subtitle" />
+                <ui:VisualElement class="multi-field-row">
+                    <uie:FloatField label="Min" binding-path="infoPool.ivyParameters.minRadius" class="compact-field" />
+                    <uie:FloatField label="Max" binding-path="infoPool.ivyParameters.maxRadius" class="compact-field" />
+                </ui:VisualElement>
+                <ui:VisualElement class="multi-field-row">
+                    <uie:FloatField label="Freq" binding-path="infoPool.ivyParameters.radiusVarFreq" class="compact-field" />
+                    <uie:FloatField label="Offset" binding-path="infoPool.ivyParameters.radiusVarOffset" class="compact-field" />
+                    <uie:FloatField label="Tip Infl." binding-path="infoPool.ivyParameters.tipInfluence" class="compact-field" />
+                </ui:VisualElement>
+                <ui:Label text="UVs" class="section-subtitle" style="margin-top: 5px;" />
+                <uie:Vector2Field label="Scale" binding-path="infoPool.ivyParameters.uvScale" />
+                <uie:Vector2Field label="Offset" binding-path="infoPool.ivyParameters.uvOffset" />
+                <ui:Label text="Topology" class="section-subtitle" style="margin-top: 5px;" />
+                <ui:VisualElement class="row">
+                    <uie:IntegerField label="Sides" binding-path="infoPool.ivyParameters.sides" style="flex-grow: 1; margin-right: 10px;" />
+                    <ui:Toggle label="Half Section" binding-path="infoPool.ivyParameters.halfGeom" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement name="contentLeaves" class="tab-content" style="display: none;">
+                <ui:Label text="Foliage Settings" class="section-title" />
+                <ui:Label text="Prefabs List" class="section-subtitle" />
+                <ui:VisualElement name="leaves-list-container" class="list-container" />
+                <ui:Button name="add-leaf-btn" text="+ Add Leaf Slot" style="margin-bottom: 10px;" />
+                <ui:Label text="Distribution" class="section-subtitle" />
+                <ui:VisualElement class="row">
+                    <uie:IntegerField label="Interval" binding-path="infoPool.ivyParameters.leaveEvery" style="flex-grow: 1;" />
+                    <uie:IntegerField label="Random" binding-path="infoPool.ivyParameters.randomLeaveEvery" style="flex-grow: 1;" />
+                </ui:VisualElement>
+                <ui:Label text="Orientation" class="section-subtitle" style="margin-top: 5px;" />
+                <ui:Toggle name="global-orientation-toggle" label="Use Global Orientation" binding-path="infoPool.ivyParameters.globalOrientation" />
+                <ui:VisualElement name="rotation-container">
+                    <uie:Vector3Field label="Base Rotation" binding-path="infoPool.ivyParameters.rotation" />
+                </ui:VisualElement>
+                <uie:Vector3Field label="Random Rotation" binding-path="infoPool.ivyParameters.randomRotation" />
+                <uie:Vector3Field label="Position Offset" binding-path="infoPool.ivyParameters.offset" />
+                <ui:Label text="Scale" class="section-subtitle" />
+                <ui:VisualElement class="row">
+                    <uie:FloatField label="Min" binding-path="infoPool.ivyParameters.minScale" style="flex-grow: 1;" />
+                    <uie:FloatField label="Max" binding-path="infoPool.ivyParameters.maxScale" style="flex-grow: 1;" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement name="contentGrowth" class="tab-content" style="display: none;">
+                <ui:Label text="Simulation Rules" class="section-title" />
+                <uie:FloatField label="Step Size" binding-path="infoPool.ivyParameters.stepSize" />
+                <ui:Label text="Direction Noise" class="section-subtitle" />
+                <ui:VisualElement class="multi-field-row">
+                    <uie:FloatField label="Freq" binding-path="infoPool.ivyParameters.directionFrequency" class="compact-field" />
+                    <uie:FloatField label="Amp" binding-path="infoPool.ivyParameters.directionAmplitude" class="compact-field" />
+                    <uie:FloatField label="Rnd" binding-path="infoPool.ivyParameters.directionRandomness" class="compact-field" />
+                </ui:VisualElement>
+                <uie:Vector3Field label="Gravity" binding-path="infoPool.ivyParameters.gravity" />
+                <ui:VisualElement class="row" style="margin-top: 5px;">
+                    <uie:FloatField label="Stiffness" binding-path="infoPool.ivyParameters.stiffness" style="flex-grow: 1;" />
+                    <uie:FloatField label="Grab Prob" binding-path="infoPool.ivyParameters.grabProbabilityOnFall" style="flex-grow: 1;" />
+                </ui:VisualElement>
+                <ui:Label text="Distance To Surface" class="section-subtitle" style="margin-top: 5px;" />
+                <ui:VisualElement class="multi-field-row">
+                    <uie:FloatField label="Min" binding-path="infoPool.ivyParameters.minDistanceToSurface" class="compact-field" />
+                    <uie:FloatField label="Max" binding-path="infoPool.ivyParameters.maxDistanceToSurface" class="compact-field" />
+                </ui:VisualElement>
+                <ui:VisualElement class="multi-field-row">
+                    <uie:FloatField label="Freq" binding-path="infoPool.ivyParameters.DTSFrequency" class="compact-field" />
+                    <uie:FloatField label="Rnd" binding-path="infoPool.ivyParameters.DTSRandomness" class="compact-field" />
+                </ui:VisualElement>
+                <ui:Label text="Branching" class="section-subtitle" style="margin-top: 5px;" />
+                <ui:VisualElement class="row">
+                    <uie:IntegerField label="Max Branches" binding-path="infoPool.ivyParameters.maxBranches" style="flex-grow: 1;" />
+                    <uie:FloatField label="Probability" binding-path="infoPool.ivyParameters.branchProbability" style="flex-grow: 1;" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement name="contentExport" class="tab-content" style="display: none;">
+                <ui:Label text="Output Options" class="section-title" />
+                <ui:VisualElement class="row" style="align-items: flex-start; margin-top: 10px;">
+                    <ui:VisualElement class="column-half">
+                        <ui:Label text="Save Ivy" class="section-subtitle" />
+                        <ui:Button name="save-scene-btn" text="Save into Scene" class="large-btn" />
+                        <ui:Button name="save-prefab-btn" text="Save as Prefab" class="large-btn" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="separator-vertical" />
+                    <ui:VisualElement class="column-half">
+                        <ui:Label text="Convert to Runtime" class="section-subtitle" />
+                        <ui:VisualElement class="row">
+                            <ui:Button name="convert-proc-btn" text="Procedural" class="large-btn" style="flex-grow: 1; margin-right: 2px;" />
+                            <ui:Button name="convert-baked-btn" text="Baked" class="large-btn" style="flex-grow: 1; margin-left: 2px;" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:ScrollView>
+    </ui:VisualElement>
+</ui:UXML>

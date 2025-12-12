@@ -39,7 +39,7 @@ namespace TeamCrescendo.ProceduralIvy
 
             var startStopButtonStyle = windowSkin.button;
             var startStopButtonText = "Start Growth";
-            if (ProceduralIvyWindow.Instance.infoPool.growth.growing)
+            if (ProceduralIvyWindow.Instance.infoPool.growth.IsGrowing())
             {
                 startStopButtonStyle = windowSkin.GetStyle("buttonorange");
                 startStopButtonText = "Stop Growth";
@@ -106,7 +106,7 @@ namespace TeamCrescendo.ProceduralIvy
         {
             if (ProceduralIvyWindow.Instance.currentIvyInfo == null)
                 UIUtils.NoIvySelectedLogMessage();
-            else if (ProceduralIvyWindow.Instance.infoPool.growth.growing)
+            else if (ProceduralIvyWindow.Instance.infoPool.growth.IsGrowing())
                 UIUtils.CannotEditGrowingIvy();
             else
                 action();
@@ -128,7 +128,7 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void Reset()
         {
-            ProceduralIvyWindow.Instance.infoPool.growth.growing = false;
+            ProceduralIvyWindow.Instance.infoPool.growth.SetGrowing(false);
             ProceduralIvyWindow.Instance.ResetIvy();
         }
 
@@ -177,10 +177,14 @@ namespace TeamCrescendo.ProceduralIvy
         private void StartStopGrowth()
         {
             if (ProceduralIvyWindow.Instance.ivyGO)
-                ProceduralIvyWindow.Instance.StartIvy(ProceduralIvyWindow.Instance.infoPool.ivyContainer.ivyGO.transform.position,
+                ProceduralIvyWindow.Instance.StartIvy(
+                    ProceduralIvyWindow.Instance.infoPool.ivyContainer.ivyGO.transform.position,
                     -ProceduralIvyWindow.Instance.infoPool.ivyContainer.ivyGO.transform.up);
-            if (!ProceduralIvyWindow.Instance.infoPool.growth.growing) ProceduralIvyWindow.Instance.RecordIvyToUndo();
-            ProceduralIvyWindow.Instance.infoPool.growth.growing = !ProceduralIvyWindow.Instance.infoPool.growth.growing;
+            
+            if (!ProceduralIvyWindow.Instance.infoPool.growth.IsGrowing()) 
+                ProceduralIvyWindow.Instance.RecordIvyToUndo();
+            
+            ProceduralIvyWindow.Instance.infoPool.growth.ToggleGrowing();
         }
     }
 }

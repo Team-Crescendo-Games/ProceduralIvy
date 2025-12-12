@@ -47,8 +47,8 @@ namespace TeamCrescendo.ProceduralIvy
                 leavesPool[i] = leafPoint;
             }
 
-            branchesPool = new RTBranchContainer[ivyParameters.maxBranchs];
-            for (var i = 0; i < ivyParameters.maxBranchs; i++)
+            branchesPool = new RTBranchContainer[ivyParameters.maxBranches];
+            for (var i = 0; i < ivyParameters.maxBranches; i++)
                 branchesPool[i] = new RTBranchContainer(numPoints, numLeaves);
 
             Random.InitState(Environment.TickCount);
@@ -273,8 +273,8 @@ namespace TeamCrescendo.ProceduralIvy
 
             CalculateVerticesLastPoint(branch);
 
-            if (Random.value < ivyParameters.branchProvability &&
-                rtIvyContainer.branches.Count < ivyParameters.maxBranchs)
+            if (Random.value < ivyParameters.branchProbability &&
+                rtIvyContainer.branches.Count < ivyParameters.maxBranches)
                 AddBranch(branch, branch.GetLastBranchPoint(), branch.branchPoints[branch.branchPoints.Count - 1].point,
                     normal);
 
@@ -346,8 +346,8 @@ namespace TeamCrescendo.ProceduralIvy
 
             CalculateVerticesLastPoint(branch);
 
-            if (Random.value < ivyParameters.branchProvability &&
-                rtIvyContainer.branches.Count < ivyParameters.maxBranchs)
+            if (Random.value < ivyParameters.branchProbability &&
+                rtIvyContainer.branches.Count < ivyParameters.maxBranches)
                 AddBranch(branch, branch.GetLastBranchPoint(), branch.branchPoints[branch.branchPoints.Count - 1].point,
                     -branch.GetLastBranchPoint().grabVector);
 

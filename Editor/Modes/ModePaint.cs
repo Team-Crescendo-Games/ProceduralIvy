@@ -170,9 +170,9 @@ namespace TeamCrescendo.ProceduralIvy
         {
             if (overPoint != null && Vector3.Distance(mousePoint, overPoint.point) > infoPool.ivyParameters.stepSize)
             {
-                Random.state = infoPool.growth.randomstate;
+                Random.state = infoPool.growth.rng;
                 ProcessPoints();
-                infoPool.growth.randomstate = Random.state;
+                infoPool.growth.rng = Random.state;
             }
         }
 
@@ -197,7 +197,7 @@ namespace TeamCrescendo.ProceduralIvy
             }
 
             overBranch.growDirection = newGrowDirection;
-            infoPool.growth.randomstate = Random.state;
+            infoPool.growth.rng = Random.state;
         }
 
         private bool StartIvy(Vector3 firstPoint, Vector3 firstGrabVector)

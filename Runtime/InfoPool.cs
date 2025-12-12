@@ -142,8 +142,8 @@ namespace TeamCrescendo.ProceduralIvy
         public void CopyFrom(IvyParameters copyFrom)
         {
             stepSize = copyFrom.stepSize;
-            branchProvability = copyFrom.branchProvability;
-            maxBranchs = copyFrom.maxBranchs;
+            branchProvability = copyFrom.branchProbability;
+            maxBranchs = copyFrom.maxBranches;
             layerMask = copyFrom.layerMask;
             minDistanceToSurface = copyFrom.minDistanceToSurface;
             maxDistanceToSurface = copyFrom.maxDistanceToSurface;

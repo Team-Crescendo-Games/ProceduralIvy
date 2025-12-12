@@ -110,7 +110,7 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void Update()
         {
-            if (infoPool != null && infoPool.growth != null && infoPool.growth.growing)
+            if (infoPool != null && infoPool.growth != null && infoPool.growth.IsGrowing())
             {
                 if (!IsVertexLimitReached())
                 {
@@ -123,7 +123,7 @@ namespace TeamCrescendo.ProceduralIvy
                         Debug.LogWarning("Vertices limit reached at " + Constants.VERTEX_LIMIT_32 + ".", infoPool.ivyContainer.ivyGO);
                     else
                         Debug.LogWarning("Vertices limit reached at " + Constants.VERTEX_LIMIT_16 + ".", infoPool.ivyContainer.ivyGO);
-                    infoPool.growth.growing = false;
+                    infoPool.growth.SetGrowing(false);
                 }
             }
         }
@@ -295,7 +295,6 @@ namespace TeamCrescendo.ProceduralIvy
             ivyGO.name = "New Ivy";
 
             infoPool.ivyContainer.ivyGO = ivyGO;
-            infoPool.growth.origin = ivyGO.transform.position;
 
             var mr = ivyGO.AddComponent<MeshRenderer>();
             mr.sharedMaterials = new [] {infoPool.ivyParameters.branchesMaterial};
@@ -303,7 +302,7 @@ namespace TeamCrescendo.ProceduralIvy
             ivyGO.AddComponent<MeshFilter>();
 
             var ivyInfo = ivyGO.AddComponent<IvyInfo>();
-            ivyInfo.Setup(infoPool, selectedPreset);
+            ivyInfo.Setup(infoPool);
 
             ModifyIvy(ivyInfo);
 
@@ -400,7 +399,6 @@ namespace TeamCrescendo.ProceduralIvy
             if (newPreset)
             {
                 selectedPreset = newPreset;
-                if (currentIvyInfo != null) currentIvyInfo.originalPreset = selectedPreset;
 
                 var presetGUID = UIUtils.GetGUIDByAsset(selectedPreset);
                 EditorPrefs.SetString("RealIvyDefaultGUID", presetGUID);
@@ -577,14 +575,13 @@ namespace TeamCrescendo.ProceduralIvy
         public void ModifyIvy(IvyInfo ivyInfo)
         {
             currentIvyInfo = ivyInfo;
-            selectedPreset = ivyInfo.originalPreset;
 
             infoPool = ivyInfo.infoPool;
             infoPool.ivyContainer.ivyGO = ivyInfo.gameObject;
 
             ivyGO = ivyInfo.gameObject;
 
-            infoPool.growth.growing = false;
+            infoPool.growth.SetGrowing(false);
 
             infoPool.ivyParameters.branchesMaterial = infoPool.GetMeshRenderer().sharedMaterials[0];
 

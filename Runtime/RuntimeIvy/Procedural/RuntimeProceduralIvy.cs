@@ -52,7 +52,7 @@ namespace TeamCrescendo.ProceduralIvy
         protected override int GetMaxNumPoints()
         {
             var timePerPoint = ivyParameters.stepSize / growthParameters.growthSpeed;
-            var res = Mathf.CeilToInt(growthParameters.lifetime / timePerPoint) * ivyParameters.maxBranchs * 2;
+            var res = Mathf.CeilToInt(growthParameters.lifetime / timePerPoint) * ivyParameters.maxBranches * 2;
 
             res = 20;
 

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace TeamCrescendo.ProceduralIvy
 {
@@ -11,8 +12,8 @@ namespace TeamCrescendo.ProceduralIvy
         [Header("Growth Settings")]
         public float stepSize = 0.1f;
         public int randomSeed;
-        public float branchProvability = 0.05f;
-        public int maxBranchs = 5;
+        public float branchProbability = 0.05f;
+        public int maxBranches = 5;
         public LayerMask layerMask = -1;
         public float minDistanceToSurface = 0.01f;
         public float maxDistanceToSurface = 0.03f;
@@ -55,9 +56,14 @@ namespace TeamCrescendo.ProceduralIvy
         public float[] leavesProb = Array.Empty<float>();
         
         [Header("Generation")]
-        public bool generateBranches;
-        public bool generateLeaves;
+        public bool generateBranches = true;
+        public bool generateLeaves = true;
         public bool generateLightmapUVs;
+        
+        public IvyParameters()
+        {
+            // create a default parameter set
+        }
 
         public IvyParameters(IvyParametersGUI paramsGuiCopy)
         {
@@ -76,14 +82,17 @@ namespace TeamCrescendo.ProceduralIvy
 
         public void DeepCopy(IvyPreset ivyPreset)
         {
+            if (ivyPreset == null) return;
             DeepCopy(ivyPreset.ivyParameters);
         }
 
         public void DeepCopy(IvyParametersGUI copyFrom)
         {
+            if (copyFrom == null) return;
+            
             stepSize = copyFrom.stepSize;
-            branchProvability = copyFrom.branchProvability;
-            maxBranchs = copyFrom.maxBranchs;
+            branchProbability = copyFrom.branchProvability;
+            maxBranches = copyFrom.maxBranchs;
             layerMask = copyFrom.layerMask;
             minDistanceToSurface = copyFrom.minDistanceToSurface;
             maxDistanceToSurface = copyFrom.maxDistanceToSurface;
@@ -134,9 +143,11 @@ namespace TeamCrescendo.ProceduralIvy
 
         public void DeepCopy(IvyParameters copyFrom)
         {
+            if (copyFrom == null) return;
+             
             stepSize = copyFrom.stepSize;
-            branchProvability = copyFrom.branchProvability;
-            maxBranchs = copyFrom.maxBranchs;
+            branchProbability = copyFrom.branchProbability;
+            maxBranches = copyFrom.maxBranches;
             layerMask = copyFrom.layerMask;
             minDistanceToSurface = copyFrom.minDistanceToSurface;
             maxDistanceToSurface = copyFrom.maxDistanceToSurface;
@@ -187,7 +198,7 @@ namespace TeamCrescendo.ProceduralIvy
         {
             bool floatsEqual =
                 Mathf.Approximately(stepSize, compareTo.stepSize) &&
-                Mathf.Approximately(branchProvability, compareTo.branchProvability) &&
+                Mathf.Approximately(branchProbability, compareTo.branchProbability) &&
                 Mathf.Approximately(minDistanceToSurface, compareTo.minDistanceToSurface) &&
                 Mathf.Approximately(maxDistanceToSurface, compareTo.maxDistanceToSurface) &&
                 Mathf.Approximately(DTSFrequency, compareTo.DTSFrequency) &&
@@ -222,7 +233,7 @@ namespace TeamCrescendo.ProceduralIvy
 
             bool othersEqual =
                 randomSeed == compareTo.randomSeed &&
-                maxBranchs == compareTo.maxBranchs &&
+                maxBranches == compareTo.maxBranches &&
                 layerMask == compareTo.layerMask &&
                 leaveEvery == compareTo.leaveEvery &&
                 randomLeaveEvery == compareTo.randomLeaveEvery &&

@@ -6,13 +6,11 @@ namespace TeamCrescendo.ProceduralIvy
 {
     public class IvyInfo : MonoBehaviour
     {
-        public IvyPreset originalPreset;
         public InfoPool infoPool;
 
-        public void Setup(InfoPool infoPool, IvyPreset originalPreset)
+        public void Setup(InfoPool infoPool)
         {
             this.infoPool = infoPool;
-            this.originalPreset = originalPreset;
         }
 
         private void OnValidate()

@@ -1,16 +1,19 @@
 ﻿using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace TeamCrescendo.ProceduralIvy
 {
     public class EditorIvyGrowth : ScriptableObject
     {
         public InfoPool infoPool;
-        public Vector3 origin;
-        public bool growing;
+        private bool growing;
         
-        public Random.State randomstate;
+        public Random.State rng;
+        
+        public bool IsGrowing() => growing;
+        public void SetGrowing(bool value) => growing = value;
+        public void ToggleGrowing() => growing = !growing;
 
-        //Creamos las estructuras de info para las ramas y asignamos las variables iniciales de la primera rama
         public void Initialize(Vector3 firstPoint, Vector3 firstGrabVector)
         {
             Random.InitState(infoPool.ivyParameters.randomSeed);
@@ -29,7 +32,7 @@ namespace TeamCrescendo.ProceduralIvy
             infoPool.ivyContainer.branches[0].randomizeHeight = Random.Range(4f, 8f);
             CalculateNewHeight(infoPool.ivyContainer.branches[0]);
             infoPool.ivyContainer.branches[0].branchSense = ChooseBranchSense();
-            randomstate = Random.state;
+            rng = Random.state;
         }
 
         //Este método es para calcular la altura del próximo punto
@@ -62,7 +65,7 @@ namespace TeamCrescendo.ProceduralIvy
         //todo parte del calculatenewpoint, a partir de ahí se entrama todo
         public void Step()
         {
-            Random.state = randomstate;
+            Random.state = rng;
 
             for (var b = 0; b < infoPool.ivyContainer.branches.Count; b++)
             {
@@ -72,7 +75,7 @@ namespace TeamCrescendo.ProceduralIvy
 //				Refine (infoPool.ivyContainer.branches [b]);
             }
 
-            randomstate = Random.state;
+            rng = Random.state;
         }
 
         //Si la rama no está cayendo (está agarrada a una superficie) calculamos la nueva altura del próximo punto y buscamos un muro delante. Si está cayendo, buscamos el próximo punto de la caída.
@@ -258,8 +261,8 @@ namespace TeamCrescendo.ProceduralIvy
 
             //Con este if lo que comprobamos realmente es si estamos en modo procedural o en modo pintado
             if (growing)
-                if (Random.value < infoPool.ivyParameters.branchProvability &&
-                    infoPool.ivyContainer.branches.Count < infoPool.ivyParameters.maxBranchs)
+                if (Random.value < infoPool.ivyParameters.branchProbability &&
+                    infoPool.ivyContainer.branches.Count < infoPool.ivyParameters.maxBranches)
                     AddBranch(branch, branch.GetLastBranchPoint(),
                         branch.branchPoints[branch.branchPoints.Count - 1].point, normal);
 
@@ -278,8 +281,8 @@ namespace TeamCrescendo.ProceduralIvy
                 grabVector);
 
 
-            if (Random.value < infoPool.ivyParameters.branchProvability &&
-                infoPool.ivyContainer.branches.Count < infoPool.ivyParameters.maxBranchs)
+            if (Random.value < infoPool.ivyParameters.branchProbability &&
+                infoPool.ivyContainer.branches.Count < infoPool.ivyParameters.maxBranches)
                 AddBranch(branch, branch.GetLastBranchPoint(), branch.branchPoints[branch.branchPoints.Count - 1].point,
                     -branch.GetLastBranchPoint().grabVector);
 

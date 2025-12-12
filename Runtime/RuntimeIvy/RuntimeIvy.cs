@@ -125,8 +125,8 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void SetUpMaxBranches(IvyContainer ivyContainer)
         {
-            maxBranches = ivyParameters.maxBranchs;
-            if (ivyContainer != null) maxBranches = Mathf.Max(ivyParameters.maxBranchs, ivyContainer.branches.Count);
+            maxBranches = ivyParameters.maxBranches;
+            if (ivyContainer != null) maxBranches = Mathf.Max(ivyParameters.maxBranches, ivyContainer.branches.Count);
         }
 
         protected void InitMeshBuilder()

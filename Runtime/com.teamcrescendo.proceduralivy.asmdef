@@ -1,5 +1,5 @@
 {
-  "name": "com.teamcrescendo.proceduralivy.common",
+  "name": "com.teamcrescendo.proceduralivy",
   "rootNamespace": "TeamCrescendo.ProceduralIvy",
   "references": [],
   "includePlatforms": [],

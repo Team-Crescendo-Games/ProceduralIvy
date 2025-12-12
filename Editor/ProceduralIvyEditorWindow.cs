@@ -60,8 +60,6 @@ namespace TeamCrescendo.ProceduralIvy
         private Label MeshStatsLabel => rootVisualElement.Q<Label>("mesh-stats-label");
 
         // Leaves Tab Controls
-        private VisualElement LeavesListContainer => rootVisualElement.Q<VisualElement>("leaves-list-container");
-        private Button AddLeafBtn => rootVisualElement.Q<Button>("add-leaf-btn");
         private Toggle GlobalOrientationToggle => rootVisualElement.Q<Toggle>("global-orientation-toggle");
         private VisualElement RotationContainer => rootVisualElement.Q<VisualElement>("rotation-container");
         private Vector3Field RotField => rootVisualElement.Q<Vector3Field>("rot-field");
@@ -409,7 +407,6 @@ namespace TeamCrescendo.ProceduralIvy
             PresetSelectFromDropdownButton.clicked += OnPresetSelectFromDropdownClicked;
 
             // Leaves Tab
-            AddLeafBtn.clicked += OnAddLeafClicked;
             GlobalOrientationToggle.RegisterValueChangedCallback(OnGlobalOrientationChanged);
     
             // Export Tab
@@ -672,12 +669,6 @@ namespace TeamCrescendo.ProceduralIvy
         #endregion
 
         #region Leaves
-
-        private void OnAddLeafClicked()
-        {
-            // TODO: Add null entry to list -> Refresh UI
-            Debug.Log("Add Leaf Clicked");
-        }
 
         private void OnGlobalOrientationChanged(ChangeEvent<bool> evt)
         {

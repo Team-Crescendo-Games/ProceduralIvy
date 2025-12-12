@@ -3,6 +3,7 @@ using UnityEngine.Serialization;
 
 namespace TeamCrescendo.ProceduralIvy
 {
+    [PreferBinarySerialization]
     public class EditorIvyGrowth : ScriptableObject
     {
         public InfoPool infoPool;

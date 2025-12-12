@@ -8,6 +8,7 @@ using UnityEditor;
 namespace TeamCrescendo.ProceduralIvy
 {
     [Serializable]
+    [PreferBinarySerialization]
     public class IvyContainer : ScriptableObject
     {
         public int lastNumberAssigned;

@@ -50,6 +50,7 @@ namespace TeamCrescendo.ProceduralIvy
         private Button DeleteBtn => rootVisualElement.Q<Button>("delete-btn");
         private Button OptimizeBtn => rootVisualElement.Q<Button>("optimize-btn");
         private ObjectField PresetDropdown => rootVisualElement.Q<ObjectField>("preset-dropdown");
+        private Button ReloadPresetsBtn => rootVisualElement.Q<Button>("reload-presets-btn");
         private Button PresetSelectFromDropdownButton => rootVisualElement.Q<Button>("preset-select-from-dropdown");
         private ObjectField SelectedPresetObjectField => rootVisualElement.Q<ObjectField>("selected-preset-objectfield");
         private Button SavePresetBtn => rootVisualElement.Q<Button>("save-preset-btn");
@@ -94,7 +95,7 @@ namespace TeamCrescendo.ProceduralIvy
         
         public void CreateGUI()
         {
-            var visualTree = LoadAsset<VisualTreeAsset>("ProceduralIvyEditorWindow");
+            var visualTree = LoadAssetByName<VisualTreeAsset>("ProceduralIvyEditorWindow");
     
             if (visualTree == null)
             {
@@ -108,7 +109,7 @@ namespace TeamCrescendo.ProceduralIvy
             visualTree.CloneTree(rootVisualElement);
 
             // load stylesheet
-            var styleSheet = LoadAsset<StyleSheet>("ProceduralIvyWindow");
+            var styleSheet = LoadAssetByName<StyleSheet>("ProceduralIvyWindow");
             if (styleSheet != null && !rootVisualElement.styleSheets.Contains(styleSheet))
                 rootVisualElement.styleSheets.Add(styleSheet);
             
@@ -119,9 +120,9 @@ namespace TeamCrescendo.ProceduralIvy
             RegisterTabCallbacks();
             RegisterCallbacks();
             OnSelectionChanged();
-            SetupPresetsCallbacks();
+            ReloadPresets();
             UpdateDisabledScopes();
-            BindElements();
+            RebindEditorProperties();
             SetupMeshPreview();
         }
         
@@ -180,7 +181,9 @@ namespace TeamCrescendo.ProceduralIvy
             }
         }
 
-        private T LoadAsset<T>(string name) where T : Object
+        #region Asset Helpers
+        
+        private T LoadAssetByName<T>(string name) where T : Object
         {
             string[] guids = AssetDatabase.FindAssets($"{name} t:{typeof(T).Name}");
     
@@ -192,22 +195,76 @@ namespace TeamCrescendo.ProceduralIvy
     
             return null;
         }
-
-        private void SetupPresetsCallbacks()
+        
+        private T[] LoadAllAssets<T>() where T : Object
         {
-            var loadedPresets = Resources.LoadAll<IvyPreset>("DefaultPresets");
-            var presetNames = loadedPresets.Select(p => p.name).ToList();
+            string[] guids = AssetDatabase.FindAssets($"t:{typeof(T).Name}");
+    
+            if (guids.Length > 0)
+            {
+                List<T> assets = new List<T>();
+                foreach (string guid in guids)
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(guid);
+                    assets.Add(AssetDatabase.LoadAssetAtPath<T>(path));
+                }
+                return assets.ToArray();
+            }
+    
+            return null;
+        }
+        
+        #endregion
+
+        private void ReloadPresets()
+        {
+            var loadedPresets = LoadAllAssets<IvyPreset>();
+            var presetMap = new Dictionary<string, IvyPreset>();
+
+            foreach (var preset in loadedPresets)
+            {
+                string path = AssetDatabase.GetAssetPath(preset);
+        
+                // REPLACEMENT: Change forward slashes to a safe visual separator (like ' > ')
+                // This prevents Unity from creating nested sub-menus in the dropdown.
+                string safePath = path.Replace("/", " > ");
+
+                // Example result: "MyPreset (Assets > Ivy > Presets > MyPreset.asset)"
+                string uniqueDisplay = $"{preset.name} ({safePath})";
+
+                if (!presetMap.ContainsKey(uniqueDisplay))
+                {
+                    presetMap.Add(uniqueDisplay, preset);
+                }
+            }
 
             var presetDropdown = rootVisualElement.Q<DropdownField>("preset-dropdown");
 
             if (presetDropdown != null)
             {
-                presetDropdown.choices = presetNames;
-                if (presetNames.Count > 0) presetDropdown.value = presetNames[0];
+                presetDropdown.choices = presetMap.Keys.ToList();
+
+                // Handle selection logic (keep previous selection if valid, else select first)
+                if (presetDropdown.choices.Count > 0)
+                {
+                    if (presetSelectedInDropdown != null && presetMap.ContainsValue(presetSelectedInDropdown))
+                    {
+                        string currentKey = presetMap.FirstOrDefault(x => x.Value == presetSelectedInDropdown).Key;
+                        presetDropdown.value = currentKey;
+                    }
+                    else
+                    {
+                        presetDropdown.value = presetDropdown.choices[0];
+                        presetSelectedInDropdown = presetMap[presetDropdown.value];
+                    }
+                }
 
                 presetDropdown.RegisterValueChangedCallback(evt =>
                 {
-                    presetSelectedInDropdown = loadedPresets.FirstOrDefault(p => p.name == evt.newValue);
+                    if (presetMap.TryGetValue(evt.newValue, out var selectedPreset))
+                    {
+                        presetSelectedInDropdown = selectedPreset;
+                    }
                 });
             }
         }
@@ -402,6 +459,7 @@ namespace TeamCrescendo.ProceduralIvy
             OptimizeBtn.clicked += OnOptimizeClicked;
 
             PresetDropdown.RegisterValueChangedCallback(OnPresetChanged);
+            ReloadPresetsBtn.clicked += OnReloadPresetsClicked;
             SavePresetBtn.clicked += OnSavePresetClicked;
             SaveAsPresetBtn.clicked += OnSaveAsPresetClicked;
             PresetSelectFromDropdownButton.clicked += OnPresetSelectFromDropdownClicked;
@@ -416,7 +474,7 @@ namespace TeamCrescendo.ProceduralIvy
             ConvertBakedBtn.clicked += OnConvertBakedClicked;
         }
 
-        private void BindElements()
+        private void RebindEditorProperties()
         {
             serializedEditorObject = new SerializedObject(this);
             
@@ -622,12 +680,17 @@ namespace TeamCrescendo.ProceduralIvy
             Assert.IsNotNull(presetSelectedInDropdown);
         }
         
+        private void OnReloadPresetsClicked()
+        {
+            ReloadPresets();
+        }
+        
         private void OnPresetSelectFromDropdownClicked()
         {
             if (presetSelectedInDropdown == null) return;
             
             currentSelectedPreset = presetSelectedInDropdown;
-            serializedEditorObject.Update(); // currentSelectedPreset is binded to the ObjectField
+            RebindEditorProperties();
         }
 
         private void OnSavePresetClicked()
@@ -802,16 +865,85 @@ namespace TeamCrescendo.ProceduralIvy
                 SaveAsPrefabTask(currentIvyInfo.gameObject.name);
         }
 
-        private void OnConvertProceduralClicked()
-        {
-            // TODO: Switch component mode
-            Debug.Log("Convert Procedural Clicked");
-        }
-
         private void OnConvertBakedClicked()
         {
-            // TODO: Switch component mode
-            Debug.Log("Convert Baked Clicked");
+            if (currentIvyInfo.TryGetComponent(out RuntimeIvy existingIvy))
+            {
+                EditorUtility.DisplayDialog(
+                    "Warning",
+                    $"A RuntimeIvy component ({existingIvy.GetType().Name}) already exists on '{currentIvyInfo.gameObject.name}'.",
+                    "OK"
+                );
+                return;
+            }
+            
+            bool confirmed = EditorUtility.DisplayDialog(
+                "Convert to Runtime Baked Ivy",
+                "Are you sure you want to convert the current ivy to a Runtime Baked Ivy? " +
+                "This will replace the current Ivy component with a Runtime Baked Ivy component.",
+                "Yes, Convert it",
+                "Cancel"
+            );
+            
+            if (confirmed)
+                ConvertToRuntimeIvy<RuntimeBakedIvy>(currentIvyInfo.gameObject);
+        }
+
+        private void OnConvertProceduralClicked()
+        {
+            if (currentIvyInfo.TryGetComponent(out RuntimeIvy existingIvy))
+            {
+                EditorUtility.DisplayDialog(
+                    "Warning",
+                    $"A RuntimeIvy component ({existingIvy.GetType().Name}) already exists on '{currentIvyInfo.gameObject.name}'.",
+                    "OK"
+                );
+                return;
+            }
+            
+            bool confirmed = EditorUtility.DisplayDialog(
+                "Convert to Runtime Procedural Ivy",
+                "Are you sure you want to convert the current ivy to a Runtime Procedural Ivy? " +
+                "This will replace the current Ivy component with a Runtime Procedural Ivy component.",
+                "Yes, Convert it",
+                "Cancel"
+            );
+            
+            if (confirmed)
+                ConvertToRuntimeIvy<RuntimeProceduralIvy>(currentIvyInfo.gameObject);
+        }
+        
+        private void ConvertToRuntimeIvy<T>(GameObject target) where T : RuntimeIvy
+        {
+            // Get or Add the specific Ivy component (Baked or Procedural)
+            if (!target.TryGetComponent(out T specificIvy))
+                specificIvy = target.AddComponent<T>();
+
+            // Get or Add IvyController
+            if (!target.TryGetComponent(out IvyController ivyController))
+                ivyController = target.AddComponent<IvyController>();
+
+            // Setup Controller
+            ivyController.runtimeIvy = specificIvy;
+            ivyController.ivyContainer = currentIvyInfo.infoPool.ivyContainer;
+            ivyController.ivyParameters = currentIvyInfo.infoPool.ivyParameters;
+    
+            // Reset growth parameters for new components
+            if (ivyController.growthParameters == null)
+                ivyController.growthParameters = new RuntimeGrowthParameters();
+
+            SetupProcessedMesh(specificIvy);
+        }
+        
+        private void SetupProcessedMesh(RuntimeIvy rtBakedIvy)
+        {
+            var processedMesh = new GameObject("ProcessedMesh");
+    
+            processedMesh.transform.SetParent(rtBakedIvy.transform);
+            processedMesh.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+
+            rtBakedIvy.mrProcessedMesh = processedMesh.AddComponent<MeshRenderer>();
+            rtBakedIvy.mfProcessedMesh = processedMesh.AddComponent<MeshFilter>();
         }
 
         #endregion

@@ -8,6 +8,7 @@ using Random = UnityEngine.Random;
 namespace TeamCrescendo.ProceduralIvy
 {
     [Serializable]
+    [PreferBinarySerialization]
     public class BranchContainer : ScriptableObject
     {
         public List<BranchPoint> branchPoints;

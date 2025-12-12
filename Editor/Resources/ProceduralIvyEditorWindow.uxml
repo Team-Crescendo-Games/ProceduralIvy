@@ -14,6 +14,7 @@
                 <ui:VisualElement style="flex-grow: 1; margin-top: 5px; margin-bottom: 5px; background-color: rgba(0, 0, 0, 0.34); padding-top: 5px; padding-left: 5px; padding-right: 5px; padding-bottom: 5px;">
                     <ui:Label text="Preset Selection" style="font-size: 16px; -unity-font-style: normal; height: 25px;" />
                     <ui:DropdownField name="preset-dropdown" label="Load Preset" class="compact-field" style="width: 100%;" />
+                    <ui:Button text="Reload All Presets" name="reload-presets-btn" style="width: 100%;" />
                     <ui:Button text="Select From Dropdown" name="preset-select-from-dropdown" style="width: 100%;" />
                     <uie:ObjectField label="Currently Selected Preset" name="selected-preset-objectfield" enabled="false" />
                     <ui:VisualElement name="preset-actions" style="flex-grow: 1; margin-top: 5px; margin-bottom: 5px; margin-left: 5px; margin-right: 5px;">
@@ -77,7 +78,6 @@
             <ui:VisualElement name="contentLeaves" class="tab-content" style="margin-top: 10px; display: none;">
                 <ui:ListView binding-path="ivyParameters.leavesPrefabs" header-title="Leaves Prefabs" show-foldout-header="true" />
                 <ui:ListView header-title="Leaves Probabilities" binding-path="ivyParameters.leavesProb" show-foldout-header="true" />
-                <ui:Button name="add-leaf-btn" text="+ Add Leaf Slot" style="margin-bottom: 10px;" />
                 <ui:Label text="Distribution" class="section-subtitle" />
                 <ui:VisualElement class="row">
                     <uie:IntegerField label="Interval" binding-path="ivyParameters.leaveEvery" style="flex-grow: 1;" />

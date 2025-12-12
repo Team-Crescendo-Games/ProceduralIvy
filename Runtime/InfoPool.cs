@@ -5,6 +5,7 @@ using UnityEngine;
 namespace TeamCrescendo.ProceduralIvy
 {
     [Serializable]
+    [PreferBinarySerialization]
     public class InfoPool : ScriptableObject
     {
         public IvyContainer ivyContainer;

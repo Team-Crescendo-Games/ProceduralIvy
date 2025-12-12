@@ -506,10 +506,16 @@ namespace TeamCrescendo.ProceduralIvy
                     rtProceduralIvy.mrProcessedMesh = mrProcessedMesh;
                 }
             }
+            else
+            {
+                Debug.Log("RuntimeIvy component already exists on the selected object.");
+            }
         }
 
         public void OptimizeCurrentIvy()
         {
+            RecordIvyToUndo();
+            
             for (var b = 0; b < infoPool.ivyContainer.branches.Count; b++)
             {
                 var branch = infoPool.ivyContainer.branches[b];
@@ -519,12 +525,11 @@ namespace TeamCrescendo.ProceduralIvy
                     var segment2 = branch.branchPoints[p + 1].point - branch.branchPoints[p].point;
                     if (Vector3.Angle(segment1, segment2) < infoPool.ivyParameters.optAngleBias)
                     {
-                        RecordIvyToUndo();
                         branch.RemoveBranchPoint(p);
-                        RefreshMesh();
                     }
                 }
             }
+            RefreshMesh();
         }
         
         public void OrientationToggle(float XSpace, float YSpace)
@@ -602,8 +607,7 @@ namespace TeamCrescendo.ProceduralIvy
                 newMaterials[0] = infoPool.ivyParameters.branchesMaterial;
                 mr.sharedMaterials = newMaterials;
 
-                var mf = infoPool.GetMeshFilter();
-                mf.mesh = infoPool.meshBuilder.ivyMesh;
+                infoPool.GetMeshFilter().mesh = infoPool.meshBuilder.ivyMesh;
             }
         }
 

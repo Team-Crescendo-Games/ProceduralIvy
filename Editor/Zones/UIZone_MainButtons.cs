@@ -139,28 +139,33 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void SaveCurrentIvyIntoScene()
         {
-            if (!ProceduralIvyWindow.Instance.ivyGO.GetComponent<RuntimeIvy>())
+            if (ProceduralIvyWindow.Instance.ivyGO.GetComponent<RuntimeIvy>())
             {
-                Action confirmCallback = () => { ProceduralIvyWindow.Instance.SaveCurrentIvyIntoScene(); };
-
-                CustomDisplayDialog.Init(windowSkin, EditorConstants.CONFIRM_SAVE_IVY, "Save ivy into scene",
-                    ProceduralIvyWindow.infoTex, 370f, 155f, confirmCallback, true);
+                UIUtils.CannotConvertToRuntimeIvy();
+                return;
             }
+
+            CustomDisplayDialog.Init(windowSkin, EditorConstants.CONFIRM_SAVE_IVY, "Save ivy into scene",
+                ProceduralIvyWindow.infoTex, 370f, 155f, 
+                ProceduralIvyWindow.Instance.SaveCurrentIvyIntoScene, true);
         }
 
         private void SaveAsPrefab()
         {
-            if (!ProceduralIvyWindow.Instance.ivyGO.GetComponent<RuntimeIvy>())
+            if (ProceduralIvyWindow.Instance.ivyGO.GetComponent<RuntimeIvy>())
             {
-                Action confirmCallback = () =>
-                {
-                    var fileName = ProceduralIvyWindow.Instance.ivyGO.name;
-                    ProceduralIvyWindow.Instance.SaveCurrentIvyAsPrefab(fileName);
-                };
-
-                CustomDisplayDialog.Init(windowSkin, EditorConstants.CONFIRM_SAVE_IVY, "Save ivy into scene",
-                    ProceduralIvyWindow.infoTex, 370f, 155f, confirmCallback, true);
+                UIUtils.CannotConvertToRuntimeIvy();
+                return;
             }
+            
+            Action confirmCallback = () =>
+            {
+                var fileName = ProceduralIvyWindow.Instance.ivyGO.name;
+                ProceduralIvyWindow.Instance.SaveCurrentIvyAsPrefab(fileName);
+            };
+
+            CustomDisplayDialog.Init(windowSkin, EditorConstants.CONFIRM_SAVE_IVY, "Save ivy into scene",
+                ProceduralIvyWindow.infoTex, 370f, 155f, confirmCallback, true);
         }
 
         private void PrepareRuntimeProcedural()

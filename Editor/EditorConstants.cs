@@ -18,6 +18,7 @@ namespace TeamCrescendo.ProceduralIvy
         public const string CONFIRM_SAVE_IVY = "Saving the ivy means that editability will be lost. Are you sure?";
         public const string NO_IVY_SELECTED_MESSAGE = "Select or create an editable ivy first.";
         public const string CANNOT_EDIT_GROWING_IVY = "Can't edit a growing ivy.";
+        public const string CANNOT_CONVERT_TO_RUNTIME_IVY = "Remove the runtime component before saving.";
         public const string LIGHTMAP_UVS_WARNING =
             "Lightmap UVs will be generated when you save the ivy either in a scene or as prefab.";
     }

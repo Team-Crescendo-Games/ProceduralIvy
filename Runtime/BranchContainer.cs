@@ -210,11 +210,8 @@ namespace TeamCrescendo.ProceduralIvy
 
                 var newLeafPosition = previousPoint.point + newSegmentDir * dotProduct;
 
-                //leaves[i].point = newLeafPosition;
                 leaves[i].SetValues(newLeafPosition, leaves[i].lpLength, previousPoint.initialGrowDir,
                     -previousPoint.grabVector, leaves[i].chosenLeave, previousPoint, nextPoint);
-
-                //leaves[i].lpLength = 0f;
             }
         }
 

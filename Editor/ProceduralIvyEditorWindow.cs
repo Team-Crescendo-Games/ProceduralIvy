@@ -11,12 +11,14 @@ using UnityEngine.Assertions;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 using Object = UnityEngine.Object;
+using Random = UnityEngine.Random;
 
 namespace TeamCrescendo.ProceduralIvy
 {
     public class ProceduralIvyEditorWindow : EditorWindow
     {
-        private SerializedObject serializedObject;
+        private SerializedObject serializedInfoPool;
+        private SerializedObject serializedEditorObject;
         private IvyInfo currentIvyInfo;
         
         #region Query Methods
@@ -40,14 +42,22 @@ namespace TeamCrescendo.ProceduralIvy
         private VisualElement ContentExport => rootVisualElement.Q<VisualElement>("contentExport");
 
         // General Tab Controls
+        private VisualElement PresetActions => rootVisualElement.Q<VisualElement>("preset-actions");
         private ToolbarToggle PlaceSeedToggle => rootVisualElement.Q<ToolbarToggle>("place-seed-toggle");
         private ToolbarToggle GrowthToggle => rootVisualElement.Q<ToolbarToggle>("growth-toggle");
         private Button RandomizeBtn => rootVisualElement.Q<Button>("randomize-btn");
         private Button ResetBtn => rootVisualElement.Q<Button>("reset-btn");
+        private Button DeleteBtn => rootVisualElement.Q<Button>("delete-btn");
         private Button OptimizeBtn => rootVisualElement.Q<Button>("optimize-btn");
-        private ObjectField PresetField => rootVisualElement.Q<ObjectField>("preset-field");
+        private ObjectField PresetDropdown => rootVisualElement.Q<ObjectField>("preset-dropdown");
+        private Button PresetSelectFromDropdownButton => rootVisualElement.Q<Button>("preset-select-from-dropdown");
+        private ObjectField SelectedPresetObjectField => rootVisualElement.Q<ObjectField>("selected-preset-objectfield");
         private Button SavePresetBtn => rootVisualElement.Q<Button>("save-preset-btn");
         private Button SaveAsPresetBtn => rootVisualElement.Q<Button>("save-as-preset-btn");
+        
+        // mesh preview
+        private IMGUIContainer MeshPreviewContainer => rootVisualElement.Q<IMGUIContainer>("mesh-preview-display");
+        private Label MeshStatsLabel => rootVisualElement.Q<Label>("mesh-stats-label");
 
         // Leaves Tab Controls
         private VisualElement LeavesListContainer => rootVisualElement.Q<VisualElement>("leaves-list-container");
@@ -65,7 +75,14 @@ namespace TeamCrescendo.ProceduralIvy
         #endregion
         
         private bool isPlacingSeed = false;
-        private IvyPreset currentSelectedPreset;
+        private IvyPreset presetSelectedInDropdown; // preset selected in the dropdown menu
+        [SerializeField] private IvyPreset currentSelectedPreset; // the preset in the object selector
+        
+        // mesh preview fields
+        private PreviewRenderUtility previewUtility;
+        private Mesh currentMesh;
+        private Material previewMaterial;
+        private Vector2 meshPreviewDrag = new (180, 0);
         
         #region Init
 
@@ -97,13 +114,17 @@ namespace TeamCrescendo.ProceduralIvy
             if (styleSheet != null && !rootVisualElement.styleSheets.Contains(styleSheet))
                 rootVisualElement.styleSheets.Add(styleSheet);
             
-            if (PresetField != null) PresetField.objectType = typeof(IvyPreset);
+            if (PresetDropdown != null) PresetDropdown.objectType = typeof(IvyPreset);
+            if (SelectedPresetObjectField != null) SelectedPresetObjectField.objectType = typeof(IvyPreset);
 
             SetupTabs();
+            RegisterTabCallbacks();
             RegisterCallbacks();
             OnSelectionChanged();
             SetupPresetsCallbacks();
-            UpdateMenuState();
+            UpdateDisabledScopes();
+            BindElements();
+            SetupMeshPreview();
         }
         
         private void SetupTabs()
@@ -146,6 +167,20 @@ namespace TeamCrescendo.ProceduralIvy
             TabGeneral.value = false; 
             TabGeneral.value = true;
         }
+        
+        private void RegisterTabCallbacks()
+        {
+            var buttons = rootVisualElement.Query<Button>(className: "tab-button").ToList();
+
+            foreach (var btn in buttons)
+            {
+                btn.clicked += () => 
+                {
+                    buttons.ForEach(b => b.RemoveFromClassList("tab-button--active"));
+                    btn.AddToClassList("tab-button--active");
+                };
+            }
+        }
 
         private T LoadAsset<T>(string name) where T : Object
         {
@@ -174,7 +209,7 @@ namespace TeamCrescendo.ProceduralIvy
 
                 presetDropdown.RegisterValueChangedCallback(evt =>
                 {
-                    currentSelectedPreset = loadedPresets.FirstOrDefault(p => p.name == evt.newValue);
+                    presetSelectedInDropdown = loadedPresets.FirstOrDefault(p => p.name == evt.newValue);
                 });
             }
         }
@@ -184,6 +219,12 @@ namespace TeamCrescendo.ProceduralIvy
             Undo.undoRedoPerformed += OnUndoPerformed;
             Selection.selectionChanged += OnSelectionChanged;
             SceneView.duringSceneGui += OnSceneGUI;
+            
+            if (previewUtility == null)
+            {
+                previewUtility = new PreviewRenderUtility();
+                previewMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit")); 
+            }
         }
 
         private void OnDisable()
@@ -193,7 +234,112 @@ namespace TeamCrescendo.ProceduralIvy
             SceneView.duringSceneGui -= OnSceneGUI;
             
             isPlacingSeed = false;
+            
+            if (previewUtility != null)
+            {
+                previewUtility.Cleanup();
+                previewUtility = null;
+            }
+
+            if (previewMaterial != null)
+            {
+                DestroyImmediate(previewMaterial);
+                previewMaterial = null;
+            }
         }
+
+        #region Mesh Preview
+        
+        private void SetupMeshPreview()
+        {
+            if (MeshPreviewContainer != null)
+                MeshPreviewContainer.onGUIHandler = RenderPreview;
+        }
+
+        private void RenderPreview()
+        {
+            if (previewUtility == null || currentMesh == null)
+            {
+                GUILayout.Label("No Mesh Generated", EditorStyles.centeredGreyMiniLabel);
+                return;
+            }
+
+            Rect rect = MeshPreviewContainer.contentRect;
+            if (rect.width <= 1 || rect.height <= 1) return;
+
+            HandlePreviewInput(rect);
+
+            previewUtility.BeginPreview(rect, GUIStyle.none);
+
+            // Setup Camera (Automatic Fit)
+            // Calculate bounds to keep the object centered and visible
+            Bounds bounds = currentMesh.bounds;
+            float magnitude = bounds.extents.magnitude;
+            float distance = magnitude * 3.5f; // Adjust zoom factor here
+            
+            previewUtility.camera.transform.position = bounds.center + new Vector3(0, 0, -distance);
+            previewUtility.camera.transform.rotation = Quaternion.identity;
+            previewUtility.camera.nearClipPlane = 0.1f;
+            previewUtility.camera.farClipPlane = distance + magnitude * 2;
+
+            // We rotate the mesh itself based on drag input
+            Quaternion rot = Quaternion.Euler(meshPreviewDrag.y, meshPreviewDrag.x, 0);
+            previewUtility.DrawMesh(currentMesh, Matrix4x4.TRS(Vector3.zero, rot, Vector3.one), previewMaterial, 0);
+
+            // Render
+            previewUtility.camera.Render();
+            Texture result = previewUtility.EndPreview();
+            GUI.DrawTexture(rect, result, ScaleMode.StretchToFill, false);
+        }
+        
+        private void HandlePreviewInput(Rect rect)
+        {
+            Event e = Event.current;
+        
+            // Only handle drag if mouse is inside the preview box
+            if (rect.Contains(e.mousePosition) && e.type == EventType.MouseDrag && e.button == 0) // Left Click Drag
+            {
+                meshPreviewDrag.x -= e.delta.x * 1f;
+                meshPreviewDrag.y -= e.delta.y * 1f;
+            
+                // Force the UI to redraw immediately
+                MeshPreviewContainer.MarkDirtyRepaint();
+                e.Use();
+            }
+        }
+        
+        private void UpdatePreviewMesh(Mesh newMesh)
+        {
+            currentMesh = newMesh;
+            
+            if (MeshStatsLabel != null)
+            {
+                if (newMesh != null)
+                {
+                    // Format numbers with commas (e.g. 1,024)
+                    string verts = newMesh.vertexCount.ToString("N0");
+            
+                    // Triangles is index count / 3
+                    // (Note: use .triangles.Length if you want precise count, 
+                    // but .vertexCount is usually enough for a quick check)
+                    // Using GetIndexCount is faster than accessing .triangles array
+                    long tris = 0;
+                    for (int i = 0; i < newMesh.subMeshCount; i++)
+                    {
+                        tris += newMesh.GetIndexCount(i) / 3;
+                    }
+
+                    MeshStatsLabel.text = $"Verts: {verts}\nTris: {tris:N0}\nSubs: {newMesh.subMeshCount}";
+                }
+                else
+                    MeshStatsLabel.text = "No Mesh Data";
+            }
+
+            if (MeshPreviewContainer != null) 
+                MeshPreviewContainer.MarkDirtyRepaint();
+        }
+
+        #endregion
         
         private void RegisterCallbacks()
         {
@@ -254,21 +400,34 @@ namespace TeamCrescendo.ProceduralIvy
             
             RandomizeBtn.clicked += OnRandomizeClicked;
             ResetBtn.clicked += OnResetClicked;
+            DeleteBtn.clicked += OnDeleteClicked; 
             OptimizeBtn.clicked += OnOptimizeClicked;
 
-            PresetField.RegisterValueChangedCallback(OnPresetChanged);
+            PresetDropdown.RegisterValueChangedCallback(OnPresetChanged);
             SavePresetBtn.clicked += OnSavePresetClicked;
             SaveAsPresetBtn.clicked += OnSaveAsPresetClicked;
+            PresetSelectFromDropdownButton.clicked += OnPresetSelectFromDropdownClicked;
 
             // Leaves Tab
             AddLeafBtn.clicked += OnAddLeafClicked;
             GlobalOrientationToggle.RegisterValueChangedCallback(OnGlobalOrientationChanged);
     
             // Export Tab
-            SaveSceneBtn.clicked += OnSaveSceneClicked;
+            SaveSceneBtn.clicked += OnSaveToSceneClicked;
             SavePrefabBtn.clicked += OnSavePrefabClicked;
             ConvertProcBtn.clicked += OnConvertProceduralClicked;
             ConvertBakedBtn.clicked += OnConvertBakedClicked;
+        }
+
+        private void BindElements()
+        {
+            serializedEditorObject = new SerializedObject(this);
+            
+            if (SelectedPresetObjectField != null)
+            {
+                SerializedProperty prop = serializedEditorObject.FindProperty("currentSelectedPreset");
+                SelectedPresetObjectField.BindProperty(prop);
+            }
         }
         
         private void Update()
@@ -278,18 +437,24 @@ namespace TeamCrescendo.ProceduralIvy
         
         private void OnInspectorUpdate()
         {
-            UpdateMenuState();
+            UpdateDisabledScopes();
         }
         
-        private void UpdateMenuState()
+        private void UpdateDisabledScopes()
         {
-            bool shouldEnable = currentIvyInfo != null;
+            bool hasCurrentObj = currentIvyInfo != null;
 
-            ContentBranches.SetEnabled(shouldEnable);
-            ContentLeaves.SetEnabled(shouldEnable);
-            ContentGrowth.SetEnabled(shouldEnable);
-            ContentExport.SetEnabled(shouldEnable);
-            ContentGeneralSub.SetEnabled(shouldEnable);
+            ContentBranches.SetEnabled(hasCurrentObj);
+            ContentLeaves.SetEnabled(hasCurrentObj);
+            ContentGrowth.SetEnabled(hasCurrentObj);
+            ContentExport.SetEnabled(hasCurrentObj);
+            ContentGeneralSub.SetEnabled(hasCurrentObj);
+            PresetActions.SetEnabled(hasCurrentObj);
+            
+            bool notGrowingAndNotInPlantingSeedMode = hasCurrentObj && !currentIvyInfo.infoPool.growth.IsGrowing() && !isPlacingSeed;
+            ResetBtn.SetEnabled(notGrowingAndNotInPlantingSeedMode);
+            RandomizeBtn.SetEnabled(notGrowingAndNotInPlantingSeedMode);
+            OptimizeBtn.SetEnabled(notGrowingAndNotInPlantingSeedMode);
         }
         
         #endregion
@@ -395,52 +560,107 @@ namespace TeamCrescendo.ProceduralIvy
 
         #region General
 
-        private void OnPlaceSeedClicked()
-        {
-            // TODO: Instantiate seed logic
-            Debug.Log("Place Seed Clicked");
-        }
-
         private void OnRandomizeClicked()
         {
-            // TODO: Undo.RecordObject -> Randomize params
-            Debug.Log("Randomize Clicked");
-        }
-
-        private void OnGrowthClicked()
-        {
-            // TODO: Start coroutine or iteration
-            Debug.Log("Growth Clicked");
+            Assert.IsNotNull(currentIvyInfo);
+            
+            var newSeed = Environment.TickCount;
+            currentIvyInfo.infoPool.ivyParameters.randomSeed = newSeed;
+            Random.InitState(newSeed);
+            
+            currentIvyInfo.infoPool.meshBuilder.InitLeavesData();
+            
+            RefreshMesh();
         }
 
         private void OnResetClicked()
         {
-            // TODO: Reset to default values
-            Debug.Log("Reset Clicked");
+            Assert.IsNotNull(currentIvyInfo);
+            
+            currentIvyInfo.infoPool.growth.SetGrowing(false);
+            currentIvyInfo.infoPool.ivyContainer.Clear();
+            
+            currentIvyInfo.infoPool.meshBuilder.InitLeavesData();
+            
+            RefreshMesh();
+        }
+        
+        private void OnDeleteClicked()
+        {
+            Assert.IsNotNull(currentIvyInfo);
+            
+            DestroyImmediate(currentIvyInfo.infoPool);
+            DestroyImmediate(currentIvyInfo.gameObject);
+            currentIvyInfo = null;
+
+            UpdatePreviewMesh(null);
         }
 
         private void OnOptimizeClicked()
         {
-            // TODO: Run optimization algorithm
-            Debug.Log("Optimize Clicked");
+            Assert.IsNotNull(currentIvyInfo);
+            
+            currentIvyInfo.infoPool.ivyContainer.RecordUndo();
+            
+            for (var b = 0; b < currentIvyInfo.infoPool.ivyContainer.branches.Count; b++)
+            {
+                var branch = currentIvyInfo.infoPool.ivyContainer.branches[b];
+                for (var p = 1; p < branch.branchPoints.Count - 1; p++)
+                {
+                    var segment1 = branch.branchPoints[p].point - branch.branchPoints[p - 1].point;
+                    var segment2 = branch.branchPoints[p + 1].point - branch.branchPoints[p].point;
+                    if (Vector3.Angle(segment1, segment2) < currentIvyInfo.infoPool.ivyParameters.optAngleBias)
+                    {
+                        branch.RemoveBranchPoint(p);
+                    }
+                }
+            }
+            
+            RefreshMesh();
         }
 
-        private void OnPresetChanged(ChangeEvent<UnityEngine.Object> evt)
+        private void OnPresetChanged(ChangeEvent<Object> evt)
         {
-            // TODO: Load values from new preset
-            Debug.Log($"Preset Changed to: {evt.newValue}");
+            presetSelectedInDropdown = evt.newValue as IvyPreset;
+            Assert.IsNotNull(presetSelectedInDropdown);
+        }
+        
+        private void OnPresetSelectFromDropdownClicked()
+        {
+            if (presetSelectedInDropdown == null) return;
+            
+            currentSelectedPreset = presetSelectedInDropdown;
+            serializedEditorObject.Update(); // currentSelectedPreset is binded to the ObjectField
         }
 
         private void OnSavePresetClicked()
         {
-            // TODO: Write current values to asset
-            Debug.Log("Save Preset Clicked");
+            Assert.IsNotNull(currentIvyInfo);
+            
+            // set the preset's ivy parameters to the current monobehavior's parameters
+            currentSelectedPreset.ivyParameters.DeepCopy(currentIvyInfo.infoPool.ivyParameters);
+
+            EditorUtility.SetDirty(currentSelectedPreset);
+            AssetDatabase.SaveAssets();
+            
+            Debug.Log("Saved preset: " + currentSelectedPreset.name);
         }
 
         private void OnSaveAsPresetClicked()
         {
-            // TODO: Open SaveFilePanel -> Create Asset
-            Debug.Log("Save As Preset Clicked");
+            Assert.IsNotNull(currentIvyInfo);
+            
+            var filePath = EditorUtility.SaveFilePanelInProject("Save preset as...", "Procedural Ivy Preset", "asset", "");
+            if (filePath != "")
+            {
+                var newPreset = CreateInstance<IvyPreset>();
+                newPreset.ivyParameters = new IvyParameters(currentIvyInfo.infoPool.ivyParameters);
+
+                AssetDatabase.CreateAsset(newPreset, filePath);
+                AssetDatabase.SaveAssets();
+            }
+            
+            Debug.Log("Created new preset: " + filePath);
         }
 
         #endregion
@@ -508,24 +728,87 @@ namespace TeamCrescendo.ProceduralIvy
                 return true;
             }
 
-            Debug.LogWarning("Ivy already has branches!");
+            Debug.LogWarning("Ivy already has branches. Should reset and grow again!");
             return false;
         }
 
         #endregion
 
         #region Export
-
-        private void OnSaveSceneClicked()
+        
+        private GameObject RemoveAllScripts()
         {
-            // TODO: Detach mesh to new GO
-            Debug.Log("Save to Scene Clicked");
+            if (currentIvyInfo.infoPool.ivyParameters.generateLightmapUVs) 
+                currentIvyInfo.infoPool.meshBuilder.GenerateLMUVs();
+            
+            // need to cache since currentIvyInfo will be destroyed
+            GameObject go = currentIvyInfo.gameObject;
+            
+            // Destroy all components
+            foreach (var component in go.GetComponentsInChildren<MonoBehaviour>())
+                DestroyImmediate(component);
+            
+            currentIvyInfo = null;
+
+            // Instantiate the object
+            var newGameObject = Instantiate(go);
+            newGameObject.name = newGameObject.name.Remove(newGameObject.name.Length - 7, 7); // Remove " (Clone)"
+            newGameObject.name += " - Static";
+            
+            // Destroy the original object
+            DestroyImmediate(go);
+            
+            return newGameObject;
+        }
+
+        private void SaveToSceneTask()
+        {
+            GameObject go = RemoveAllScripts();
+            Selection.activeGameObject = go;
+            OnSelectionChanged();
+        }
+
+        private void OnSaveToSceneClicked()
+        {
+            bool confirmed = EditorUtility.DisplayDialog(
+                "Save Ivy into Scene",
+                "Are you sure you want to save the current ivy into the scene? This cannot be undone.",
+                "Yes, Save it",
+                "Cancel"
+            );
+
+            if (confirmed)
+                SaveToSceneTask();
+        }
+        
+        private void SaveAsPrefabTask(string fileName)
+        {
+            var filePath = EditorUtility.SaveFilePanelInProject("Save Ivy as prefab", fileName, "prefab", "");
+            if (!string.IsNullOrEmpty(filePath))
+            {
+                var go = RemoveAllScripts();
+                var prefabSaved = PrefabUtility.SaveAsPrefabAssetAndConnect(go, filePath, InteractionMode.AutomatedAction);
+                EditorGUIUtility.PingObject(prefabSaved);
+            }
         }
 
         private void OnSavePrefabClicked()
         {
-            // TODO: Create prefab asset
-            Debug.Log("Save as Prefab Clicked");
+            if (currentIvyInfo.GetComponent<RuntimeIvy>())
+            {
+                Debug.LogWarning("Cannot save prefab since a Runtime Ivy component is present");
+                return;
+            }
+            
+            bool confirmed = EditorUtility.DisplayDialog(
+                "Save Ivy as Prefab",
+                "Are you sure you want to save the current ivy as a prefab? This cannot be undone.",
+                "Yes, Save it",
+                "Cancel"
+            );
+
+            if (confirmed)
+                SaveAsPrefabTask(currentIvyInfo.gameObject.name);
         }
 
         private void OnConvertProceduralClicked()
@@ -549,8 +832,8 @@ namespace TeamCrescendo.ProceduralIvy
             if (currentIvyInfo == null || rootVisualElement == null) return;
             
             Repaint();
-            serializedObject.Update();
-            rootVisualElement.Bind(serializedObject);
+            serializedInfoPool.Update();
+            rootVisualElement.Bind(serializedInfoPool);
         }
 
         private void OnSelectionChanged()
@@ -563,16 +846,18 @@ namespace TeamCrescendo.ProceduralIvy
             {
                 currentIvyInfo = ivy;
                 // Create the SO and store it in the class member
-                serializedObject = new SerializedObject(currentIvyInfo);
-                rootVisualElement.Bind(serializedObject);
-                HeaderLabel.text = $"Editing object: {ivy.name}";
+                serializedInfoPool = new SerializedObject(currentIvyInfo.infoPool);
+                rootVisualElement.Bind(serializedInfoPool);
+                if (HeaderLabel != null) HeaderLabel.text = $"Editing object: {ivy.name}";
+                UpdatePreviewMesh(currentIvyInfo.infoPool.meshBuilder.ivyMesh);
             }
             else
             {
                 currentIvyInfo = null;
-                serializedObject = null;
+                serializedInfoPool = null;
                 rootVisualElement.Unbind();
-                HeaderLabel.text = "Editing object: None";
+                if (HeaderLabel != null) HeaderLabel.text = "Editing object: None";
+                UpdatePreviewMesh(null);
             }
         }
 
@@ -593,7 +878,11 @@ namespace TeamCrescendo.ProceduralIvy
                 mr.sharedMaterials = newMaterials;
 
                 var mf = currentIvyInfo.infoPool.GetMeshFilter();
-                mf.mesh = currentIvyInfo.infoPool.meshBuilder.ivyMesh;
+                Mesh newMesh = currentIvyInfo.infoPool.meshBuilder.ivyMesh;
+                mf.mesh = newMesh;
+
+                // do not call mf.mesh, will leak!
+                UpdatePreviewMesh(newMesh);
             }
         }
         

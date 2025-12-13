@@ -758,7 +758,7 @@ namespace TeamCrescendo.ProceduralIvy
             if (GrowthController != null) GrowthController.SetGrowing(false);
             CurrentIvyInfo.infoPool.ivyContainer.Clear();
             
-            RebuildMesh();
+            RebuildMesh(true);
         }
 
         private void PromptDeleteIvyData(InfoPool infoPool)
@@ -836,7 +836,7 @@ namespace TeamCrescendo.ProceduralIvy
                 }
             }
             
-            RebuildMesh();
+            RebuildMesh(true);
             
             GetMeshInfo(mf.sharedMesh, out int vertsAfter, out long trisAfter);
             

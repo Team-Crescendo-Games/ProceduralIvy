@@ -269,24 +269,6 @@ namespace TeamCrescendo.ProceduralIvy
             return res;
         }
 
-        public BranchPoint GetNearestPointSSFrom(Vector2 from)
-        {
-            BranchPoint res = null;
-            var minDistance = float.MaxValue;
-
-            for (var i = 0; i < branchPoints.Count; i++)
-            {
-                var newSqrDst = (branchPoints[i].pointSS - from).sqrMagnitude;
-                if (newSqrDst <= minDistance)
-                {
-                    res = branchPoints[i];
-                    minDistance = newSqrDst;
-                }
-            }
-
-            return res;
-        }
-
         public Vector3[] GetSegmentPoints(Vector3 worldPoint)
         {
             var res = new Vector3[2];
@@ -321,15 +303,9 @@ namespace TeamCrescendo.ProceduralIvy
             return res;
         }
 
-        public BranchPoint GetLastBranchPoint()
-        {
-            return branchPoints[^1];
-        }
+        public BranchPoint GetLastBranchPoint() => branchPoints[^1];
 
-        public void AddLeaf(LeafPoint leafPoint)
-        {
-            leaves.Add(leafPoint);
-        }
+        public void AddLeaf(LeafPoint leafPoint) => leaves.Add(leafPoint);
 
         public LeafPoint AddLeaf(Vector3 leafPoint, float lpLength, Vector3 lpForward, Vector3 lpUpward,
             int chosenLeave, BranchPoint initSegment, BranchPoint endSegment)

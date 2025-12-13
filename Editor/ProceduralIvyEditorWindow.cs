@@ -748,7 +748,7 @@ namespace TeamCrescendo.ProceduralIvy
             CurrentIvyInfo.infoPool.ivyParameters.randomSeed = newSeed;
             Random.InitState(newSeed);
             
-            RebuildMesh();
+            RebuildMesh(true);
         }
 
         private void OnResetClicked()

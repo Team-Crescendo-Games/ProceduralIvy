@@ -40,6 +40,7 @@ namespace TeamCrescendo.ProceduralIvy
 
         // Header
         private Label HeaderLabel => rootVisualElement.Q<Label>("header-label");
+        private ObjectField InfoPoolObjectField => rootVisualElement.Q<ObjectField>("infopool-obj");
 
         // Tabs (Navigation)
         private ToolbarToggle TabGeneral => rootVisualElement.Q<ToolbarToggle>("tabGeneral");
@@ -74,7 +75,10 @@ namespace TeamCrescendo.ProceduralIvy
         // mesh preview
         private IMGUIContainer MeshPreviewContainer => rootVisualElement.Q<IMGUIContainer>("mesh-preview-display");
         private Label MeshStatsLabel => rootVisualElement.Q<Label>("mesh-stats-label");
-
+        
+        // Branch
+        private ScrollView BranchScroll => rootVisualElement.Q<ScrollView>("branch-scroll");
+        
         // Leaves Tab Controls
         private Toggle GlobalOrientationToggle => rootVisualElement.Q<Toggle>("global-orientation-toggle");
         private VisualElement RotationContainer => rootVisualElement.Q<VisualElement>("rotation-container");
@@ -137,7 +141,7 @@ namespace TeamCrescendo.ProceduralIvy
             OnSelectionChanged();
             ReloadPresets();
             UpdateDisabledScopes();
-            RebindEditorProperties();
+            RebindEditorSerializedObject();
             SetupMeshPreview();
         }
         
@@ -299,10 +303,9 @@ namespace TeamCrescendo.ProceduralIvy
             SceneView.duringSceneGui += OnSceneGUI;
             
             if (previewUtility == null)
-            {
                 previewUtility = new PreviewRenderUtility();
-                previewMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit")); 
-            }
+
+            RecreatePreviewMaterial();
         }
 
         private void OnDisable()
@@ -332,8 +335,15 @@ namespace TeamCrescendo.ProceduralIvy
                 previewMaterial = null;
             }
         }
-
+        
         #region Mesh Preview
+        
+        private void RecreatePreviewMaterial()
+        {
+            if (previewMaterial != null)
+                DestroyImmediate(previewMaterial);
+            previewMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit")); 
+        }
         
         private void SetupMeshPreview()
         {
@@ -401,19 +411,7 @@ namespace TeamCrescendo.ProceduralIvy
             {
                 if (newMesh != null)
                 {
-                    // Format numbers with commas (e.g. 1,024)
-                    string verts = newMesh.vertexCount.ToString("N0");
-            
-                    // Triangles is index count / 3
-                    // (Note: use .triangles.Length if you want precise count, 
-                    // but .vertexCount is usually enough for a quick check)
-                    // Using GetIndexCount is faster than accessing .triangles array
-                    long tris = 0;
-                    for (int i = 0; i < newMesh.subMeshCount; i++)
-                    {
-                        tris += newMesh.GetIndexCount(i) / 3;
-                    }
-
+                    GetMeshInfo(newMesh, out int verts, out long tris);
                     MeshStatsLabel.text = $"Verts: {verts}\nTris: {tris:N0}\nSubs: {newMesh.subMeshCount}";
                 }
                 else
@@ -422,6 +420,21 @@ namespace TeamCrescendo.ProceduralIvy
 
             if (MeshPreviewContainer != null) 
                 MeshPreviewContainer.MarkDirtyRepaint();
+        }
+
+        private static void GetMeshInfo(Mesh mesh, out int verts, out long tris)
+        {
+            if (mesh == null)
+            {
+                verts = 0;
+                tris = 0;
+            }
+            
+            verts = mesh.vertexCount;
+            
+            tris = 0;
+            for (int i = 0; i < mesh.subMeshCount; i++)
+                tris += mesh.GetIndexCount(i) / 3;
         }
 
         #endregion
@@ -475,8 +488,13 @@ namespace TeamCrescendo.ProceduralIvy
                     {
                         bool success = StartGrowthIvy(CurrentIvyInfo.transform.position,
                             -CurrentIvyInfo.transform.up);
-                        
                         if (!success) CurrentIvyInfo.infoPool.growth.SetGrowing(false);
+                    }
+                    
+                    // logic for stop growth: set scene dirty
+                    if (wasGrowing && !CurrentIvyInfo.infoPool.growth.IsGrowing())
+                    {
+                        EditorSceneManager.MarkSceneDirty(CurrentIvyInfo.gameObject.scene);
                     }
                     
                     SceneView.RepaintAll();
@@ -504,7 +522,7 @@ namespace TeamCrescendo.ProceduralIvy
             ConvertBakedBtn.clicked += OnConvertBakedClicked;
         }
 
-        private void RebindEditorProperties()
+        private void RebindEditorSerializedObject()
         {
             serializedEditorObject = new SerializedObject(this);
             
@@ -512,6 +530,35 @@ namespace TeamCrescendo.ProceduralIvy
             {
                 SerializedProperty prop = serializedEditorObject.FindProperty("currentSelectedPreset");
                 SelectedPresetObjectField.BindProperty(prop);
+            }
+        }
+        
+        private void RenderAllInspectors(IvyContainer container)
+        {
+            if (BranchScroll == null)
+                return;
+
+            BranchScroll.Clear();
+            
+            foreach (var branch in container.branches)
+            {
+                if (branch == null) continue;
+
+                var rowContainer = new VisualElement();
+                rowContainer.style.marginBottom = 5;
+                rowContainer.style.borderBottomWidth = 1;
+                rowContainer.style.borderBottomColor = new Color(0.3f, 0.3f, 0.3f);
+
+                var foldout = new Foldout();
+                foldout.text = $"Branch {branch.branchNumber}";
+                foldout.value = false;
+
+                var inspector = new InspectorElement(branch);
+                inspector.SetEnabled(false);
+        
+                foldout.Add(inspector);
+                rowContainer.Add(foldout);
+                BranchScroll.Add(rowContainer);
             }
         }
         
@@ -654,8 +701,6 @@ namespace TeamCrescendo.ProceduralIvy
         
         public void CreateNewIvyGameObject(Vector3 rootPosition, Vector3 normal)
         {
-            Debug.Log("Creating new Ivy GameObject");
-            
             InfoPool infoPool = CreateNewInfoPool(new IvyParameters(currentSelectedPreset));
             
             var newIvy = new GameObject("Ivy Container");
@@ -674,7 +719,12 @@ namespace TeamCrescendo.ProceduralIvy
             CurrentIvyInfo = newIvy.AddComponent<IvyInfo>();
             CurrentIvyInfo.infoPool = infoPool;
 
-            infoPool.meshBuilder.InitLeavesData(CurrentIvyInfo.transform, CurrentIvyInfo.GetComponent<MeshRenderer>());
+            infoPool.meshBuilder.InitializeLeafMaterials(CurrentIvyInfo.transform, CurrentIvyInfo.GetComponent<MeshRenderer>());
+            
+            // could also use undo
+            EditorSceneManager.MarkSceneDirty(newIvy.scene);
+            
+            ShowNotification(new GUIContent($"Ivy ({infoPool.name}) Generated Successfully!"));
         }
 
         #endregion
@@ -689,7 +739,7 @@ namespace TeamCrescendo.ProceduralIvy
             CurrentIvyInfo.infoPool.ivyParameters.randomSeed = newSeed;
             Random.InitState(newSeed);
             
-            CurrentIvyInfo.infoPool.meshBuilder.InitLeavesData(CurrentIvyInfo.transform, CurrentIvyInfo.GetComponent<MeshRenderer>());
+            CurrentIvyInfo.infoPool.meshBuilder.InitializeLeafMaterials(CurrentIvyInfo.transform, CurrentIvyInfo.GetComponent<MeshRenderer>());
             
             RefreshMesh();
         }
@@ -701,27 +751,71 @@ namespace TeamCrescendo.ProceduralIvy
             CurrentIvyInfo.infoPool.growth.SetGrowing(false);
             CurrentIvyInfo.infoPool.ivyContainer.Clear();
             
-            CurrentIvyInfo.infoPool.meshBuilder.InitLeavesData(CurrentIvyInfo.transform, CurrentIvyInfo.GetComponent<MeshRenderer>());
+            CurrentIvyInfo.infoPool.meshBuilder.InitializeLeafMaterials(CurrentIvyInfo.transform, CurrentIvyInfo.GetComponent<MeshRenderer>());
             
             RefreshMesh();
+        }
+
+        private void PromptDeleteIvyData(InfoPool infoPool)
+        {
+            bool deleteDatablock = EditorUtility.DisplayDialog(
+                $"Delete {infoPool}",
+                $"Delete the InfoPool ({infoPool.name})?",
+                "Yes, Delete it",
+                "Cancel"
+            );
+            
+            if (deleteDatablock)
+            {
+                string path = AssetDatabase.GetAssetPath(infoPool);
+                Assert.IsFalse(string.IsNullOrEmpty(path));
+                AssetDatabase.DeleteAsset(path);
+            }
         }
         
         private void OnDeleteClicked()
         {
+            bool confirm = EditorUtility.DisplayDialog(
+                "Delete Ivy",
+                $"Delete Ivy ({CurrentIvyInfo.name})? This operation is irreversible.",
+                "Yes",
+                "Cancel"
+            );
+            
+            if (!confirm) return;
+            
             Assert.IsNotNull(CurrentIvyInfo);
             
-            DestroyImmediate(CurrentIvyInfo.infoPool);
+            Scene scene = CurrentIvyInfo.gameObject.scene;
+            
+            PromptDeleteIvyData(CurrentIvyInfo.infoPool);
             DestroyImmediate(CurrentIvyInfo.gameObject);
             CurrentIvyInfo = null;
 
             UpdatePreviewMesh(null);
+            
+            EditorSceneManager.MarkSceneDirty(scene);
         }
 
         private void OnOptimizeClicked()
         {
+            bool confirm = EditorUtility.DisplayDialog(
+                "Optimize Ivy",
+                $"Optimize Ivy ({CurrentIvyInfo.name})? This operation is irreversible.",
+                "Yes",
+                "Cancel"
+            );
+            
+            if (!confirm) return;
+            
             Assert.IsNotNull(CurrentIvyInfo);
             
-            CurrentIvyInfo.infoPool.ivyContainer.RecordUndo();
+            Scene scene = CurrentIvyInfo.gameObject.scene;
+            
+            MeshFilter mf = CurrentIvyInfo.GetComponent<MeshFilter>();
+            Assert.IsNotNull(mf);
+            
+            GetMeshInfo(mf.sharedMesh, out int vertsBefore, out long trisBefore);
             
             for (var b = 0; b < CurrentIvyInfo.infoPool.ivyContainer.branches.Count; b++)
             {
@@ -738,6 +832,18 @@ namespace TeamCrescendo.ProceduralIvy
             }
             
             RefreshMesh();
+            
+            GetMeshInfo(mf.sharedMesh, out int vertsAfter, out long trisAfter);
+            
+            EditorUtility.DisplayDialog(
+                "Optimize Ivy",
+                $"Optimized Ivy ({CurrentIvyInfo.name})\n" +
+                $"Verts: {vertsBefore:N0} -> {vertsAfter:N0} (-{(vertsBefore - vertsAfter) / (float)vertsBefore * 100:N2}%), \n" +
+                $"Tris: {trisBefore:N0} -> {trisAfter:N0} (-{(trisBefore - trisAfter) / (float)trisBefore * 100:N2}%)",
+                "OK"
+            );
+            
+            EditorSceneManager.MarkSceneDirty(scene);
         }
 
         private void OnPresetChanged(ChangeEvent<Object> evt)
@@ -756,7 +862,7 @@ namespace TeamCrescendo.ProceduralIvy
             if (presetSelectedInDropdown == null) return;
             
             currentSelectedPreset = presetSelectedInDropdown;
-            RebindEditorProperties();
+            RebindEditorSerializedObject();
         }
 
         private void OnSavePresetClicked()
@@ -810,7 +916,7 @@ namespace TeamCrescendo.ProceduralIvy
                 && CurrentIvyInfo.infoPool.growth != null 
                 && CurrentIvyInfo.infoPool.growth.IsGrowing())
             {
-                if (!IsVertexLimitReached())
+                if (!CurrentIvyInfo.infoPool.meshBuilder.IsVertexLimitReached(CurrentIvyInfo.infoPool.ivyParameters))
                 {
                     CurrentIvyInfo.infoPool.growth.Step();
                     RefreshMesh();
@@ -837,12 +943,12 @@ namespace TeamCrescendo.ProceduralIvy
             if (CurrentIvyInfo.infoPool.ivyContainer.branches.Count == 0)
             {
                 CurrentIvyInfo.infoPool.growth.Initialize(CurrentIvyInfo.transform, firstPoint, firstGrabVector);
-                CurrentIvyInfo.infoPool.meshBuilder.InitLeavesData(CurrentIvyInfo.transform, CurrentIvyInfo.GetComponent<MeshRenderer>());
+                CurrentIvyInfo.infoPool.meshBuilder.InitializeLeafMaterials(CurrentIvyInfo.transform, CurrentIvyInfo.GetComponent<MeshRenderer>());
                 CurrentIvyInfo.infoPool.meshBuilder.InitializeMeshBuilder();
                 return true;
             }
-
-            Debug.LogWarning("Ivy already has branches. Should reset and grow again!");
+            
+            EditorGUILayout.HelpBox("Ivy already has branches. Should reset and grow again!", MessageType.Warning);
             return false;
         }
 
@@ -850,35 +956,102 @@ namespace TeamCrescendo.ProceduralIvy
 
         #region Export
         
-        private GameObject RemoveAllScripts()
+        private static Mesh DeepCopyMesh(Mesh sharedMesh)
+        {
+            return new Mesh
+            {
+                name = sharedMesh.name,
+                vertices = sharedMesh.vertices,
+                triangles = sharedMesh.triangles,
+                uv = sharedMesh.uv,
+                normals = sharedMesh.normals,
+                colors = sharedMesh.colors,
+                tangents = sharedMesh.tangents
+            };
+        }
+
+        // instantiate a new mesh and prompt the user to either embed in scene directly or save as asset
+        private static Mesh SaveMeshOperation(Mesh sharedMesh)
+        {
+            Mesh newMesh = DeepCopyMesh(sharedMesh);
+            
+            bool saveAsAsset = EditorUtility.DisplayDialog(
+                "Save Mesh as Asset",
+                "Do you want to save the mesh as an asset? Otherwise, it will be embedded in the scene.",
+                "Yes",
+                "No"
+            );
+
+            if (saveAsAsset)
+            {
+                string filePath = EditorUtility.SaveFilePanelInProject("Save Mesh as Asset", newMesh.name, "asset", "");
+                if (!string.IsNullOrEmpty(filePath))
+                {
+                    AssetDatabase.CreateAsset(newMesh, filePath);
+                    AssetDatabase.SaveAssets();
+                }
+                else
+                {
+                    EditorUtility.DisplayDialog("Error", "Mesh operation cancelled.", "OK");
+                    return null;
+                }
+            }
+
+            newMesh.name += " (Scene Embed)";
+            return newMesh;
+        }
+        
+        // Clone the current IvyInfo object and strip it of any editor components
+        // used for saving as a prefab or scene
+        private GameObject CloneAndStrip()
         {
             if (CurrentIvyInfo.infoPool.ivyParameters.generateLightmapUVs) 
                 CurrentIvyInfo.infoPool.meshBuilder.GenerateLMUVs();
             
             // need to cache since CurrentIvyInfo will be destroyed
-            GameObject go = CurrentIvyInfo.gameObject;
+            InfoPool oldInfo = CurrentIvyInfo.infoPool;
+            GameObject old = CurrentIvyInfo.gameObject;
             
-            // Destroy all components
-            foreach (var component in go.GetComponentsInChildren<MonoBehaviour>())
-                DestroyImmediate(component);
+            Mesh newMesh = SaveMeshOperation(old.GetComponent<MeshFilter>().sharedMesh);
+            if (newMesh == null)
+            {
+                Debug.LogWarning("Mesh operation failed or canceled. Please follow instructions or try again.");
+                return null; 
+            }
             
-            CurrentIvyInfo = null;
-
-            // Instantiate the object
-            var newGameObject = Instantiate(go);
-            newGameObject.name = newGameObject.name.Remove(newGameObject.name.Length - 7, 7); // Remove " (Clone)"
+            var newGameObject = new GameObject(old.name);
+            newGameObject.name = newGameObject.name.Replace("(Clone)", "").Trim();
             newGameObject.name += " - Static";
             
-            // Destroy the original object
-            DestroyImmediate(go);
+            newGameObject.transform.position = old.transform.position;
+            newGameObject.transform.rotation = old.transform.rotation;
+            newGameObject.layer = old.layer;
+            newGameObject.tag = old.tag;
             
+            var mf = newGameObject.AddComponent<MeshFilter>();
+            
+            mf.sharedMesh = newMesh;
+            
+            var mr = newGameObject.AddComponent<MeshRenderer>();
+            mr.sharedMaterials = CurrentIvyInfo.GetComponent<MeshRenderer>().sharedMaterials;
+
+            // Destroy the original object
+            PromptDeleteIvyData(oldInfo);
+            DestroyImmediate(old);
+            
+            CurrentIvyInfo = null;
             return newGameObject;
         }
 
         private void SaveToSceneTask()
         {
-            GameObject go = RemoveAllScripts();
-            Selection.activeGameObject = go;
+            GameObject go = CloneAndStrip();
+            if (go != null)
+            {
+                Selection.activeGameObject = go;
+                EditorSceneManager.MarkSceneDirty(go.scene);
+            }
+
             OnSelectionChanged();
         }
 
@@ -895,15 +1068,18 @@ namespace TeamCrescendo.ProceduralIvy
                 SaveToSceneTask();
         }
         
-        private void SaveAsPrefabTask(string fileName)
+        private bool SaveAsPrefabTask(string fileName)
         {
             var filePath = EditorUtility.SaveFilePanelInProject("Save Ivy as prefab", fileName, "prefab", "");
             if (!string.IsNullOrEmpty(filePath))
             {
-                var go = RemoveAllScripts();
+                var go = CloneAndStrip();
                 var prefabSaved = PrefabUtility.SaveAsPrefabAssetAndConnect(go, filePath, InteractionMode.AutomatedAction);
                 EditorGUIUtility.PingObject(prefabSaved);
+                return true;
             }
+            
+            return false;
         }
 
         private void OnSavePrefabClicked()
@@ -922,7 +1098,10 @@ namespace TeamCrescendo.ProceduralIvy
             );
 
             if (confirmed)
-                SaveAsPrefabTask(CurrentIvyInfo.gameObject.name);
+            {
+                if(SaveAsPrefabTask(CurrentIvyInfo.gameObject.name))
+                    EditorSceneManager.MarkSceneDirty(CurrentIvyInfo.gameObject.scene);
+            }
         }
 
         private void OnConvertBakedClicked()
@@ -944,9 +1123,12 @@ namespace TeamCrescendo.ProceduralIvy
                 "Yes, Convert it",
                 "Cancel"
             );
-            
+
             if (confirmed)
+            {
                 ConvertToRuntimeIvy<RuntimeBakedIvy>(CurrentIvyInfo.gameObject);
+                EditorSceneManager.MarkSceneDirty(CurrentIvyInfo.gameObject.scene);
+            }
         }
 
         private void OnConvertProceduralClicked()
@@ -968,9 +1150,12 @@ namespace TeamCrescendo.ProceduralIvy
                 "Yes, Convert it",
                 "Cancel"
             );
-            
+
             if (confirmed)
+            {
                 ConvertToRuntimeIvy<RuntimeProceduralIvy>(CurrentIvyInfo.gameObject);
+                EditorSceneManager.MarkSceneDirty(CurrentIvyInfo.gameObject.scene);
+            }
         }
         
         private void ConvertToRuntimeIvy<T>(GameObject target) where T : RuntimeIvy
@@ -1038,15 +1223,23 @@ namespace TeamCrescendo.ProceduralIvy
                 // Create the SO and store it in the class member
                 serializedInfoPool = new SerializedObject(CurrentIvyInfo.infoPool);
                 rootVisualElement.Bind(serializedInfoPool);
+                
                 if (HeaderLabel != null) HeaderLabel.text = $"Editing object: {ivy.name}";
+                if (InfoPoolObjectField != null) InfoPoolObjectField.value = CurrentIvyInfo.infoPool;
+                
                 UpdatePreviewMesh(CurrentIvyInfo.infoPool.meshBuilder.ivyMesh);
+                
+                RenderAllInspectors(CurrentIvyInfo.infoPool.ivyContainer);
             }
             else
             {
                 CurrentIvyInfo = null;
                 serializedInfoPool = null;
                 rootVisualElement.Unbind();
+                
                 if (HeaderLabel != null) HeaderLabel.text = "Editing object: None";
+                if (InfoPoolObjectField != null) InfoPoolObjectField.value = null;
+                
                 UpdatePreviewMesh(null);
             }
         }
@@ -1059,7 +1252,7 @@ namespace TeamCrescendo.ProceduralIvy
         {
             if (CurrentIvyInfo != null)
             {
-                CurrentIvyInfo.infoPool.meshBuilder.InitLeavesData(CurrentIvyInfo.transform, CurrentIvyInfo.GetComponent<MeshRenderer>());
+                CurrentIvyInfo.infoPool.meshBuilder.InitializeLeafMaterials(CurrentIvyInfo.transform, CurrentIvyInfo.GetComponent<MeshRenderer>());
                 CurrentIvyInfo.infoPool.meshBuilder.BuildGeometry();
 
                 if (!CurrentIvyInfo.TryGetComponent<MeshRenderer>(out var mr)) 
@@ -1076,16 +1269,6 @@ namespace TeamCrescendo.ProceduralIvy
                 // do not call mf.mesh, will leak!
                 UpdatePreviewMesh(newMesh);
             }
-        }
-        
-        private bool IsVertexLimitReached()
-        {
-            var numVertices = CurrentIvyInfo.infoPool.meshBuilder.verts.Length + 
-                              CurrentIvyInfo.infoPool.ivyParameters.sides + 1;
-            int limit = CurrentIvyInfo.infoPool.ivyParameters.buffer32Bits 
-                ? Constants.VERTEX_LIMIT_32 
-                : Constants.VERTEX_LIMIT_16;
-            return numVertices >= limit;
         }
 
         #endregion

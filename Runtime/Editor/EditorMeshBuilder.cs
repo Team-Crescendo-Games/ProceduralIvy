@@ -1,7 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Assertions;
 using UnityEngine.Rendering;
+using Random = UnityEngine.Random;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -11,34 +12,41 @@ namespace TeamCrescendo.ProceduralIvy
     public class EditorMeshBuilder : ScriptableObject
     {
         public InfoPool infoPool;
-        private Transform ivyRootTransform;
+        [NonSerialized] private Transform ivyRootTransform;
 
         //The final mesh of the ivy as a whole
         public Mesh ivyMesh;
-        public Vector3[] verts;
-        private Vector3[] normals;
-        private int[] trisBranches;
-        private Vector2[] uvs;
-        private Color[] vColor;
+        [NonSerialized] private Vector3[] verts;
+        [NonSerialized] private Vector3[] normals;
+        [NonSerialized] private int[] trisBranches;
+        [NonSerialized] private Vector2[] uvs;
+        [NonSerialized] private Color[] vColor;
         
-        public List<Material> leavesMaterials;
-
-        public bool leavesDataInitialized;
-
         //Angle for the generation of each ring
         private float angle;
 
         //Dictionary used in lightmap UV generation
         private readonly Dictionary<int, int[]> branchesLeavesIndices = new();
 
-        //Leaf triangles, divided by material of each leaf type to make submeshes. Could be done with arrays, but taking liberties given the complexity
+        // leaf triangles, divided by material of each leaf type to make submeshes.
         private List<List<int>> trisLeaves;
 
-        //Here we store which leaf types correspond to each material
-        public List<List<int>> typesByMat;
+        // leaf types correspond to each material
+        public List<Material> leavesMaterials;
+        private bool initializedMaterials;
+        // leaf types correspond to each material
+        private List<List<int>> typesByMat;
+        
+        public bool IsVertexLimitReached(IvyParameters ivyParams)
+        {
+            var numVertices = verts.Length + ivyParams.sides + 1;
+            int limit = ivyParams.buffer32Bits 
+                ? Constants.VERTEX_LIMIT_32 
+                : Constants.VERTEX_LIMIT_16;
+            return numVertices >= limit;
+        }
 
-        //Here leaf structures are initialized before starting to generate the ivy and geometry
-        public void InitLeavesData(Transform rootTransform, MeshRenderer mr)
+        public void InitializeLeafMaterials(Transform rootTransform, MeshRenderer mr)
         {
             if (rootTransform == null || mr == null)
             {
@@ -93,7 +101,7 @@ namespace TeamCrescendo.ProceduralIvy
                 mr.sharedMaterials = new [] { infoPool.ivyParameters.branchesMaterial };
             }
 
-            leavesDataInitialized = true;
+            initializedMaterials = true;
         }
         
         public void InitializeMeshBuilder()
@@ -264,160 +272,162 @@ namespace TeamCrescendo.ProceduralIvy
 
         public void BuildGeometry()
         {
-            if (leavesDataInitialized)
+            if (!initializedMaterials)
             {
-                InitializeMeshBuilder();
-                //These counters track where we are calculating vertices and triangles, since we calculate everything in one go, not branch by branch
-                var vertCount = 0;
-                var triBranchesCount = 0;
+                Debug.LogError("Leaves data not initialized");
+                return;
+            }
 
-                //Iterate each branch and define the first vertex to write in the array, taken from vertCount updated in the previous iteration
-                for (var b = 0; b < infoPool.ivyContainer.branches.Count; b++)
+            InitializeMeshBuilder();
+            //These counters track where we are calculating vertices and triangles, since we calculate everything in one go, not branch by branch
+            var vertCount = 0;
+            var triBranchesCount = 0;
+
+            //Iterate each branch and define the first vertex to write in the array, taken from vertCount updated in the previous iteration
+            for (var b = 0; b < infoPool.ivyContainer.branches.Count; b++)
+            {
+                var firstVertex = vertCount;
+                Random.InitState(b + infoPool.ivyParameters.randomSeed);
+                if (infoPool.ivyContainer.branches[b].branchPoints.Count > 1)
                 {
-                    var firstVertex = vertCount;
-                    Random.InitState(b + infoPool.ivyParameters.randomSeed);
-                    if (infoPool.ivyContainer.branches[b].branchPoints.Count > 1)
+                    //Store how many vertices the current branch has in this counter, to account for it in the next one and know which vertices to write
+                    var lastVertCount = 0;
+                    //Iterate each point of the branch up to the penultimate one
+                    for (var p = 0; p < infoPool.ivyContainer.branches[b].branchPoints.Count; p++)
                     {
-                        //Store how many vertices the current branch has in this counter, to account for it in the next one and know which vertices to write
-                        var lastVertCount = 0;
-                        //Iterate each point of the branch up to the penultimate one
-                        for (var p = 0; p < infoPool.ivyContainer.branches[b].branchPoints.Count; p++)
+                        var branchPoint = infoPool.ivyContainer.branches[b].branchPoints[p];
+                        branchPoint.verticesLoop = new List<RTVertexData>();
+
+                        var centerVertexPosition =
+                            branchPoint.point - ivyRootTransform.position;
+                        centerVertexPosition = Quaternion.Inverse(ivyRootTransform.rotation) *
+                                               centerVertexPosition;
+                        var radius = CalculateRadius(branchPoint.length,
+                            infoPool.ivyContainer.branches[b].totalLenght);
+
+                        branchPoint.radius = radius;
+
+                        if (p != infoPool.ivyContainer.branches[b].branchPoints.Count - 1)
                         {
-                            var branchPoint = infoPool.ivyContainer.branches[b].branchPoints[p];
-                            branchPoint.verticesLoop = new List<RTVertexData>();
+                            //In this array, the method puts firstVector at index 0 and ring rotation axis at index 1
+                            var vectors = CalculateVectors(infoPool.ivyContainer.branches[b].branchPoints[p].point,
+                                p, b);
 
-                            var centerVertexPosition =
-                                branchPoint.point - ivyRootTransform.position;
-                            centerVertexPosition = Quaternion.Inverse(ivyRootTransform.rotation) *
-                                                   centerVertexPosition;
-                            var radius = CalculateRadius(branchPoint.length,
-                                infoPool.ivyContainer.branches[b].totalLenght);
-
-                            branchPoint.radius = radius;
-
-                            if (p != infoPool.ivyContainer.branches[b].branchPoints.Count - 1)
-                            {
-                                //In this array, the method puts firstVector at index 0 and ring rotation axis at index 1
-                                var vectors = CalculateVectors(infoPool.ivyContainer.branches[b].branchPoints[p].point,
-                                    p, b);
-
-                                branchPoint.firstVector = vectors[0];
-                                branchPoint.axis = vectors[1];
+                            branchPoint.firstVector = vectors[0];
+                            branchPoint.axis = vectors[1];
 
 
-                                for (var v = 0; v < infoPool.ivyParameters.sides + 1; v++)
-                                    if (infoPool.ivyParameters.generateBranches)
-                                    {
-                                        //BranchPoint branchPoint = infoPool.ivyContainer.branches[b].branchPoints[p];
-                                        var tipInfluence = GetTipInfluence(branchPoint.length,
-                                            infoPool.ivyContainer.branches[b].totalLenght);
-                                        infoPool.ivyContainer.branches[b].branchPoints[p].radius = radius;
-
-                                        var quat = Quaternion.AngleAxis(angle * v, vectors[1]);
-                                        var direction = quat * vectors[0];
-                                        //Exception for normal calculation if we have half geometry and 1 side
-                                        if (infoPool.ivyParameters.halfgeom && infoPool.ivyParameters.sides == 1)
-                                            normals[vertCount] = -infoPool.ivyContainer.branches[b].branchPoints[p]
-                                                .grabVector;
-                                        else
-                                            normals[vertCount] = direction;
-
-                                        var vertexForRuntime = direction * radius + centerVertexPosition;
-
-                                        verts[vertCount] = direction * radius * tipInfluence +
-                                                           infoPool.ivyContainer.branches[b].branchPoints[p].point;
-                                        verts[vertCount] -= ivyRootTransform.position;
-                                        verts[vertCount] =
-                                            Quaternion.Inverse(ivyRootTransform.rotation) *
-                                            verts[vertCount];
-                                        
-                                        uvs[vertCount] =
-                                            new Vector2(
-                                                branchPoint.length * infoPool.ivyParameters.uvScale.y +
-                                                infoPool.ivyParameters.uvOffset.y - infoPool.ivyParameters.stepSize,
-                                                1f / infoPool.ivyParameters.sides * v *
-                                                infoPool.ivyParameters.uvScale.x + infoPool.ivyParameters.uvOffset.x);
-
-                                        normals[vertCount] = Quaternion.Inverse(ivyRootTransform.rotation) * normals[vertCount];
-                                        
-                                        var vertexData = new RTVertexData(vertexForRuntime, normals[vertCount],
-                                            uvs[vertCount], Vector2.zero, vColor[vertCount]);
-                                        branchPoint.verticesLoop.Add(vertexData);
-
-
-                                        //Update these counters to know where we were writing in the array for the next pass
-                                        vertCount++;
-                                        lastVertCount++;
-                                    }
-                            }
-                            //If it's the last point, instead of calculating the ring, use the last point to write the last vertex of this branch
-                            else
-                            {
+                            for (var v = 0; v < infoPool.ivyParameters.sides + 1; v++)
                                 if (infoPool.ivyParameters.generateBranches)
                                 {
-                                    verts[vertCount] = infoPool.ivyContainer.branches[b].branchPoints[p].point;
-                                    //Local space correction
+                                    //BranchPoint branchPoint = infoPool.ivyContainer.branches[b].branchPoints[p];
+                                    var tipInfluence = GetTipInfluence(branchPoint.length,
+                                        infoPool.ivyContainer.branches[b].totalLenght);
+                                    infoPool.ivyContainer.branches[b].branchPoints[p].radius = radius;
+
+                                    var quat = Quaternion.AngleAxis(angle * v, vectors[1]);
+                                    var direction = quat * vectors[0];
+                                    //Exception for normal calculation if we have half geometry and 1 side
+                                    if (infoPool.ivyParameters.halfgeom && infoPool.ivyParameters.sides == 1)
+                                        normals[vertCount] = -infoPool.ivyContainer.branches[b].branchPoints[p]
+                                            .grabVector;
+                                    else
+                                        normals[vertCount] = direction;
+
+                                    var vertexForRuntime = direction * radius + centerVertexPosition;
+
+                                    verts[vertCount] = direction * radius * tipInfluence +
+                                                       infoPool.ivyContainer.branches[b].branchPoints[p].point;
                                     verts[vertCount] -= ivyRootTransform.position;
                                     verts[vertCount] =
                                         Quaternion.Inverse(ivyRootTransform.rotation) *
                                         verts[vertCount];
+                                    
+                                    uvs[vertCount] =
+                                        new Vector2(
+                                            branchPoint.length * infoPool.ivyParameters.uvScale.y +
+                                            infoPool.ivyParameters.uvOffset.y - infoPool.ivyParameters.stepSize,
+                                            1f / infoPool.ivyParameters.sides * v *
+                                            infoPool.ivyParameters.uvScale.x + infoPool.ivyParameters.uvOffset.x);
 
-                                    //Exception for normals in the case of half geometry and only 1 side
-                                    if (infoPool.ivyParameters.halfgeom && infoPool.ivyParameters.sides == 1)
-                                        normals[vertCount] =
-                                            -infoPool.ivyContainer.branches[b].branchPoints[p].grabVector;
-                                    else
-                                        normals[vertCount] = Vector3.Normalize(
-                                            infoPool.ivyContainer.branches[b].branchPoints[p].point -
-                                            infoPool.ivyContainer.branches[b].branchPoints[p - 1].point);
-                                    uvs[vertCount] = new Vector2(
-                                        infoPool.ivyContainer.branches[b].totalLenght *
-                                        infoPool.ivyParameters.uvScale.y + infoPool.ivyParameters.uvOffset.y,
-                                        0.5f * infoPool.ivyParameters.uvScale.x + infoPool.ivyParameters.uvOffset.x);
-
-                                    normals[vertCount] =
-                                        Quaternion.Inverse(ivyRootTransform.rotation) *
-                                        normals[vertCount];
-
-                                    var vertexForRuntime = centerVertexPosition;
-
+                                    normals[vertCount] = Quaternion.Inverse(ivyRootTransform.rotation) * normals[vertCount];
+                                    
                                     var vertexData = new RTVertexData(vertexForRuntime, normals[vertCount],
                                         uvs[vertCount], Vector2.zero, vColor[vertCount]);
                                     branchPoint.verticesLoop.Add(vertexData);
 
+
                                     //Update these counters to know where we were writing in the array for the next pass
                                     vertCount++;
                                     lastVertCount++;
-
-                                    //And after placing the last vertex, triangulate
-                                    TriangulateBranch(b, ref triBranchesCount, vertCount, lastVertCount);
                                 }
+                        }
+                        //If it's the last point, instead of calculating the ring, use the last point to write the last vertex of this branch
+                        else
+                        {
+                            if (infoPool.ivyParameters.generateBranches)
+                            {
+                                verts[vertCount] = infoPool.ivyContainer.branches[b].branchPoints[p].point;
+                                //Local space correction
+                                verts[vertCount] -= ivyRootTransform.position;
+                                verts[vertCount] =
+                                    Quaternion.Inverse(ivyRootTransform.rotation) *
+                                    verts[vertCount];
+
+                                //Exception for normals in the case of half geometry and only 1 side
+                                if (infoPool.ivyParameters.halfgeom && infoPool.ivyParameters.sides == 1)
+                                    normals[vertCount] =
+                                        -infoPool.ivyContainer.branches[b].branchPoints[p].grabVector;
+                                else
+                                    normals[vertCount] = Vector3.Normalize(
+                                        infoPool.ivyContainer.branches[b].branchPoints[p].point -
+                                        infoPool.ivyContainer.branches[b].branchPoints[p - 1].point);
+                                uvs[vertCount] = new Vector2(
+                                    infoPool.ivyContainer.branches[b].totalLenght *
+                                    infoPool.ivyParameters.uvScale.y + infoPool.ivyParameters.uvOffset.y,
+                                    0.5f * infoPool.ivyParameters.uvScale.x + infoPool.ivyParameters.uvOffset.x);
+
+                                normals[vertCount] =
+                                    Quaternion.Inverse(ivyRootTransform.rotation) *
+                                    normals[vertCount];
+
+                                var vertexForRuntime = centerVertexPosition;
+
+                                var vertexData = new RTVertexData(vertexForRuntime, normals[vertCount],
+                                    uvs[vertCount], Vector2.zero, vColor[vertCount]);
+                                branchPoint.verticesLoop.Add(vertexData);
+
+                                //Update these counters to know where we were writing in the array for the next pass
+                                vertCount++;
+                                lastVertCount++;
+
+                                //And after placing the last vertex, triangulate
+                                TriangulateBranch(b, ref triBranchesCount, vertCount, lastVertCount);
                             }
                         }
                     }
-
-                    //Write the index where we stopped into the dictionary to later transform UVs of each element according to its real dimension
-                    var fromTo = new int[2] { firstVertex, vertCount - 1 };
-                    branchesLeavesIndices.Add(branchesLeavesIndices.Count, fromTo);
-
-                    if (infoPool.ivyParameters.generateLeaves)
-                        //infoPool.ivyContainer.branches[b].ClearRuntimeVerticesLeaves();
-                        BuildLeaves(b, ref vertCount);
                 }
 
-                //And pass vertices and tris to the mesh
-                ivyMesh.vertices = verts;
-                ivyMesh.normals = normals;
-                ivyMesh.uv = uvs;
-                ivyMesh.colors = vColor;
-                ivyMesh.SetTriangles(trisBranches, 0);
-                //For each material, put leaf triangles into the corresponding submesh
-                for (var i = 0; i < leavesMaterials.Count; i++) ivyMesh.SetTriangles(trisLeaves[i], i + 1);
-                ivyMesh.RecalculateTangents();
-                ivyMesh.RecalculateBounds();
-            }
-        }
+                //Write the index where we stopped into the dictionary to later transform UVs of each element according to its real dimension
+                var fromTo = new int[2] { firstVertex, vertCount - 1 };
+                branchesLeavesIndices.Add(branchesLeavesIndices.Count, fromTo);
 
+                if (infoPool.ivyParameters.generateLeaves)
+                    //infoPool.ivyContainer.branches[b].ClearRuntimeVerticesLeaves();
+                    BuildLeaves(b, ref vertCount);
+            }
+
+            //And pass vertices and tris to the mesh
+            ivyMesh.vertices = verts;
+            ivyMesh.normals = normals;
+            ivyMesh.uv = uvs;
+            ivyMesh.colors = vColor;
+            ivyMesh.SetTriangles(trisBranches, 0);
+            //For each material, put leaf triangles into the corresponding submesh
+            for (var i = 0; i < leavesMaterials.Count; i++) ivyMesh.SetTriangles(trisLeaves[i], i + 1);
+            ivyMesh.RecalculateTangents();
+            ivyMesh.RecalculateBounds();
+        }
 
         //This calculates vectors for each ring calculation
         private Vector3[] CalculateVectors(Vector3 branchPoint, int p, int b)
@@ -468,21 +478,14 @@ namespace TeamCrescendo.ProceduralIvy
                                    infoPool.ivyParameters.radiusVarOffset) + 1f) / 2f;
             var radius = Mathf.Lerp(infoPool.ivyParameters.minRadius, infoPool.ivyParameters.maxRadius, value);
 
-            //I don't remember why I put this -0.1f here :S
-            /*if (lenght - 0.1f >= totalLenght - infoPool.ivyParameters.tipInfluence) {
-                radius *= Mathf.InverseLerp (totalLenght, totalLenght - infoPool.ivyParameters.tipInfluence, lenght - 0.1f);
-            }*/
             return radius;
         }
 
         private float GetTipInfluence(float lenght, float totalLenght)
         {
-            var res = 1.0f;
-
             if (lenght - 0.1f >= totalLenght - infoPool.ivyParameters.tipInfluence)
-                res = Mathf.InverseLerp(totalLenght, totalLenght - infoPool.ivyParameters.tipInfluence, lenght - 0.1f);
-
-            return res;
+                return Mathf.InverseLerp(totalLenght, totalLenght - infoPool.ivyParameters.tipInfluence, lenght - 0.1f);
+            return 1.0f;
         }
 
         //Triangulation algorithm, using branch point count, global triangle counter, global vertex counter, and vertex count of the last branch.

@@ -10,7 +10,7 @@
             <uie:ToolbarToggle name="tabExport" text="Export" class="tab-button" style="width: 20%;" />
         </uie:Toolbar>
         <ui:ScrollView mode="Vertical">
-            <ui:VisualElement name="contentGeneral" class="tab-content" style="margin-top: 10px;">
+            <ui:VisualElement name="contentGeneral" class="tab-content" style="margin-top: 10px; display: flex;">
                 <ui:VisualElement style="flex-grow: 1; margin-top: 5px; margin-bottom: 5px; background-color: rgba(0, 0, 0, 0.34); padding-top: 5px; padding-left: 5px; padding-right: 5px; padding-bottom: 5px;">
                     <ui:Label text="Preset Selection" style="font-size: 16px; -unity-font-style: normal; height: 25px;" />
                     <ui:DropdownField name="preset-dropdown" label="Load Preset" class="compact-field" style="width: 100%;" />
@@ -21,6 +21,9 @@
                         <ui:Button text="Save to Preset" name="save-preset-btn" style="width: 100%;" />
                         <ui:Button text="Save as New Preset" name="save-as-preset-btn" style="width: 100%;" />
                     </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:VisualElement style="flex-grow: 1;">
+                    <uie:ObjectField label="Ivy Data" enabled="false" name="infopool-obj" type="TeamCrescendo.ProceduralIvy.InfoPool, com.teamcrescendo.proceduralivy" style="margin-top: 3px; margin-bottom: 15px;" />
                 </ui:VisualElement>
                 <ui:VisualElement class="row">
                     <uie:ToolbarToggle name="place-seed-toggle" text="Place Seed Mode" class="toggle-btn" style="width: 100%; height: 40px;" />
@@ -55,7 +58,7 @@
                     </ui:VisualElement>
                 </ui:VisualElement>
             </ui:VisualElement>
-            <ui:VisualElement name="contentBranches" class="tab-content" style="margin-top: 10px; display: none;">
+            <ui:VisualElement name="contentBranches" class="tab-content" style="margin-top: 10px;">
                 <ui:Label text="Radius" class="section-subtitle" />
                 <ui:VisualElement class="multi-field-row">
                     <uie:FloatField label="Min" binding-path="ivyParameters.minRadius" class="compact-field" />
@@ -73,6 +76,10 @@
                 <ui:VisualElement class="row">
                     <uie:IntegerField label="Sides" binding-path="ivyParameters.sides" style="flex-grow: 1; margin-right: 10px;" />
                     <ui:Toggle label="Half Section" binding-path="ivyParameters.halfGeom" />
+                </ui:VisualElement>
+                <ui:VisualElement style="flex-grow: 1; background-color: rgba(0, 0, 0, 0.45); margin-top: 10px; margin-left: 5px; margin-right: 5px; margin-bottom: 0;">
+                    <ui:Label text="Branch Viewer" style="-unity-font-style: bold; font-size: 15px; padding-left: 10px; padding-top: 5px; padding-right: 0;" />
+                    <ui:ScrollView name="branch-scroll" focusable="true" enabled="true" style="height: auto; margin-top: 10px;" />
                 </ui:VisualElement>
             </ui:VisualElement>
             <ui:VisualElement name="contentLeaves" class="tab-content" style="margin-top: 10px; display: none;">

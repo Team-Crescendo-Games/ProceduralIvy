@@ -13,9 +13,6 @@ namespace TeamCrescendo.ProceduralIvy
         
         public Random.State rng;
 
-        // world transform of the currently editing ivy GameObject
-        private Transform rootTransform;
-        
         public bool IsGrowing() => growing;
         public void SetGrowing(bool value) => growing = value;
         public void ToggleGrowing() => growing = !growing;
@@ -23,8 +20,6 @@ namespace TeamCrescendo.ProceduralIvy
         public void Initialize(Transform rootTransform, Vector3 firstPoint, Vector3 firstGrabVector)
         {
             Assert.IsTrue(infoPool.ivyContainer.branches.Count == 0, "Cannot initialize Ivy with existing branches");
-            
-            this.rootTransform = rootTransform;
             
             Random.InitState(infoPool.ivyParameters.randomSeed);
             rng = Random.state;

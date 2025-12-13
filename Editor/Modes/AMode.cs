@@ -219,12 +219,5 @@ namespace TeamCrescendo.ProceduralIvy
             Assert.IsTrue(growthController.infoPool == infoPool, "Should be growing the ivy on the same object!");
             return growthController;
         }
-
-        protected EditorMeshBuilder GetMeshBuilder()
-        {
-            Assert.IsNotNull(ProceduralIvyEditorWindow.Instance.MeshBuilder);
-            Assert.IsTrue(ProceduralIvyEditorWindow.Instance.MeshBuilder.infoPool == infoPool, "Should be building the mesh for the same ivy!");
-            return ProceduralIvyEditorWindow.Instance.MeshBuilder;
-        }
     }
 }

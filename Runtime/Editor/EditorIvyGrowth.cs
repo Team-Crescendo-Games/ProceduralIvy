@@ -1,4 +1,5 @@
-﻿using UnityEditor;
+﻿using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.Serialization;
@@ -39,6 +40,34 @@ namespace TeamCrescendo.ProceduralIvy
             
             Debug.Log($"Initialized new branch: {newBranchContainer.branchNumber}");
         }
+        
+        public void Step()
+        {
+            Random.state = rng;
+            
+            // prevent collection modified on add branch
+            List<BranchContainer> branchesToEnumerate = new(infoPool.ivyContainer.branches);
+            
+            foreach (var branch in branchesToEnumerate)
+            {
+                branch.heightParameter += infoPool.ivyParameters.stepSize;
+                
+                // If the branch is not falling (it is clinging to a surface),
+                // we calculate the new height for the next point and check for a wall ahead.
+                // If it is falling, we calculate the next point of the drop.
+                if (branch.falling)
+                {
+                    CheckFall(branch);
+                }
+                else
+                {
+                    CalculateNewHeight(branch);
+                    CheckWall(branch);
+                }
+            }
+
+            rng = Random.state;
+        }
 
         //Este método es para calcular la altura del próximo punto
         private void CalculateNewHeight(BranchContainer branch)
@@ -59,34 +88,6 @@ namespace TeamCrescendo.ProceduralIvy
         }
 
         private int ChooseBranchSense() => Random.value < 0.5f ? -1 : 1;
-
-        //todo parte del calculatenewpoint, a partir de ahí se entrama todo
-        public void Step()
-        {
-            Random.state = rng;
-
-            for (var b = 0; b < infoPool.ivyContainer.branches.Count; b++)
-            {
-                infoPool.ivyContainer.branches[b].heightParameter += infoPool.ivyParameters.stepSize;
-                CalculateNewPoint(infoPool.ivyContainer.branches[b]);
-            }
-
-            rng = Random.state;
-        }
-
-        //Si la rama no está cayendo (está agarrada a una superficie) calculamos la nueva altura del próximo punto y buscamos un muro delante. Si está cayendo, buscamos el próximo punto de la caída.
-        private void CalculateNewPoint(BranchContainer branch)
-        {
-            if (!branch.falling)
-            {
-                CalculateNewHeight(branch);
-                CheckWall(branch);
-            }
-            else
-            {
-                CheckFall(branch);
-            }
-        }
 
         //Definimos el punto a checkear y la dirección a él. Tiramos un raycast y si está libre buscamos el suelo. Si por el contrario topamos con un muro, añadimos un punto y calculamos una nueva growdirection
         private void CheckWall(BranchContainer branch)

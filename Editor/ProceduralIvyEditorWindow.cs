@@ -9,6 +9,7 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.SceneManagement;
+using UnityEngine.Serialization;
 using UnityEngine.UIElements;
 using Object = UnityEngine.Object;
 using Random = UnityEngine.Random;
@@ -61,6 +62,7 @@ namespace TeamCrescendo.ProceduralIvy
         private VisualElement PresetActions => rootVisualElement.Q<VisualElement>("preset-actions");
         private ToolbarToggle PlaceSeedToggle => rootVisualElement.Q<ToolbarToggle>("place-seed-toggle");
         private ToolbarToggle GrowthToggle => rootVisualElement.Q<ToolbarToggle>("growth-toggle");
+        private Slider MeshRebuildThrottle => rootVisualElement.Q<Slider>("mesh-rebuild-throttle");
         private Button RandomizeBtn => rootVisualElement.Q<Button>("randomize-btn");
         private Button ResetBtn => rootVisualElement.Q<Button>("reset-btn");
         private Button DeleteBtn => rootVisualElement.Q<Button>("delete-btn");
@@ -104,9 +106,11 @@ namespace TeamCrescendo.ProceduralIvy
         
         // controls growing a single instance of ivy in the editor 
         public EditorIvyGrowth GrowthController { get; private set; }
-        
-        // mesh builder for a single instance of ivy in the editor
-        public EditorMeshBuilder MeshBuilder { get; private set; }
+
+        // mesh building control
+        [SerializeField] private float buildInterval = 0.05f;
+        private bool requestedMeshRebuild = false;
+        private double lastBuildTime;
         
         #region Init
 
@@ -307,6 +311,7 @@ namespace TeamCrescendo.ProceduralIvy
             Undo.undoRedoPerformed += OnUndoPerformed;
             Selection.selectionChanged += OnSelectionChanged;
             SceneView.duringSceneGui += OnSceneGUI;
+            EditorApplication.update += EditorUpdate;
             
             if (previewUtility == null)
                 previewUtility = new PreviewRenderUtility();
@@ -323,12 +328,12 @@ namespace TeamCrescendo.ProceduralIvy
             SceneGuiController.Cleanup();
             SceneGuiController = null;
 
-            MeshBuilder = null;
             GrowthController = null;
             
             Undo.undoRedoPerformed -= OnUndoPerformed;
             Selection.selectionChanged -= OnSelectionChanged;
             SceneView.duringSceneGui -= OnSceneGUI;
+            EditorApplication.update -= EditorUpdate;
             
             IsPlacingSeed = false;
             
@@ -482,8 +487,6 @@ namespace TeamCrescendo.ProceduralIvy
                     bool wasGrowing = GrowthController != null && GrowthController.IsGrowing();
                     bool isTargetGrowing = evt.newValue;
 
-                    Debug.Log($"Is growing? {wasGrowing} -> {isTargetGrowing}");
-                    
                     if (GrowthController != null) GrowthController.SetGrowing(isTargetGrowing);
 
                     if (isTargetGrowing)
@@ -509,7 +512,7 @@ namespace TeamCrescendo.ProceduralIvy
                     
                     // logic for stop growth: set scene dirty
                     if (wasGrowing && !isTargetGrowing)
-                        EditorSceneManager.MarkSceneDirty(CurrentIvyInfo.gameObject.scene);
+                        MarkSceneDirty(CurrentIvyInfo.gameObject.scene);
         
                     SceneView.RepaintAll();
                 });
@@ -519,6 +522,11 @@ namespace TeamCrescendo.ProceduralIvy
             ResetBtn.clicked += OnResetClicked;
             DeleteBtn.clicked += OnDeleteClicked; 
             OptimizeBtn.clicked += OnOptimizeClicked;
+            
+            if (MeshRebuildThrottle != null)
+            {
+                MeshRebuildThrottle.RegisterValueChangedCallback(evt => buildInterval = evt.newValue);
+            }
 
             PresetDropdown.RegisterValueChangedCallback(OnPresetChanged);
             ReloadPresetsBtn.clicked += OnReloadPresetsClicked;
@@ -576,9 +584,10 @@ namespace TeamCrescendo.ProceduralIvy
             }
         }
         
-        private void Update()
+        private void EditorUpdate()
         {
             HandleGrowthUpdate();
+            HandleBuildTaskUpdate();
         }
         
         private void OnInspectorUpdate()
@@ -721,7 +730,8 @@ namespace TeamCrescendo.ProceduralIvy
             mf.sharedMesh = infoPool.mesh;
             
             // could also use undo
-            EditorSceneManager.MarkSceneDirty(newIvy.scene);
+            if (!EditorApplication.isPlaying)
+                MarkSceneDirty(newIvy.scene);
             
             ShowNotification(new GUIContent($"Ivy ({infoPool.name}) Generated Successfully!"));
         }
@@ -789,7 +799,7 @@ namespace TeamCrescendo.ProceduralIvy
 
             UpdatePreviewMesh(null);
             
-            EditorSceneManager.MarkSceneDirty(scene);
+            MarkSceneDirty(scene);
         }
 
         private void OnOptimizeClicked()
@@ -838,7 +848,7 @@ namespace TeamCrescendo.ProceduralIvy
                 "OK"
             );
             
-            EditorSceneManager.MarkSceneDirty(scene);
+            MarkSceneDirty(scene);
         }
 
         private void OnPresetChanged(ChangeEvent<Object> evt)
@@ -911,33 +921,14 @@ namespace TeamCrescendo.ProceduralIvy
                 && GrowthController != null 
                 && GrowthController.IsGrowing())
             {
-                bool isVertexLimitReached = MeshBuilder == null 
-                    ? false 
-                    : MeshBuilder.IsVertexLimitReached(CurrentIvyInfo.infoPool.ivyParameters);
-                
-                Debug.Log($"Is vertex limit reached? {isVertexLimitReached}");
-                
-                if (!isVertexLimitReached)
-                {
-                    GrowthController.Step();
-                    RebuildMesh();
-                }
-                else
-                {
-                    if (CurrentIvyInfo.infoPool.ivyParameters.buffer32Bits)
-                        Debug.LogWarning("Vertices limit reached at " + Constants.VERTEX_LIMIT_32 + ".", CurrentIvyInfo.gameObject);
-                    else
-                        Debug.LogWarning("Vertices limit reached at " + Constants.VERTEX_LIMIT_16 + ".", CurrentIvyInfo.gameObject);
-                    GrowthController.SetGrowing(false);
-                }
+                GrowthController.Step();
+                RebuildMesh();
             }
         }
         
         // lazily initializes the growth controller
         public bool StartGrowthIvy(Vector3 firstPoint, Vector3 firstGrabVector)
         {
-            Debug.Log("Start growth ivy");
-            
             if (CurrentIvyInfo == null || rootVisualElement == null)
             {
                 Debug.LogWarning("No Ivy Info or Root Visual Element");
@@ -1010,9 +1001,8 @@ namespace TeamCrescendo.ProceduralIvy
         // used for saving as a prefab or scene
         private GameObject CloneAndStrip()
         {
-            Assert.IsNotNull(MeshBuilder);
             if (CurrentIvyInfo.infoPool.ivyParameters.generateLightmapUVs)
-                MeshBuilder.GenerateLMUVs();
+                Unwrapping.GenerateSecondaryUVSet(CurrentIvyInfo.GetComponent<MeshFilter>().sharedMesh);
             
             // need to cache since CurrentIvyInfo will be destroyed
             InfoPool oldInfo = CurrentIvyInfo.infoPool;
@@ -1055,7 +1045,7 @@ namespace TeamCrescendo.ProceduralIvy
             if (go != null)
             {
                 Selection.activeGameObject = go;
-                EditorSceneManager.MarkSceneDirty(go.scene);
+                MarkSceneDirty(go.scene);
             }
 
             OnSelectionChanged();
@@ -1106,7 +1096,7 @@ namespace TeamCrescendo.ProceduralIvy
             if (confirmed)
             {
                 if(SaveAsPrefabTask(CurrentIvyInfo.gameObject.name))
-                    EditorSceneManager.MarkSceneDirty(CurrentIvyInfo.gameObject.scene);
+                    MarkSceneDirty(CurrentIvyInfo.gameObject.scene);
             }
         }
 
@@ -1133,7 +1123,7 @@ namespace TeamCrescendo.ProceduralIvy
             if (confirmed)
             {
                 ConvertToRuntimeIvy<RuntimeBakedIvy>(CurrentIvyInfo.gameObject);
-                EditorSceneManager.MarkSceneDirty(CurrentIvyInfo.gameObject.scene);
+                MarkSceneDirty(CurrentIvyInfo.gameObject.scene);
             }
         }
 
@@ -1160,7 +1150,7 @@ namespace TeamCrescendo.ProceduralIvy
             if (confirmed)
             {
                 ConvertToRuntimeIvy<RuntimeProceduralIvy>(CurrentIvyInfo.gameObject);
-                EditorSceneManager.MarkSceneDirty(CurrentIvyInfo.gameObject.scene);
+                MarkSceneDirty(CurrentIvyInfo.gameObject.scene);
             }
         }
         
@@ -1233,8 +1223,6 @@ namespace TeamCrescendo.ProceduralIvy
                 if (HeaderLabel != null) HeaderLabel.text = $"Editing object: {ivy.name}";
                 if (InfoPoolObjectField != null) InfoPoolObjectField.value = CurrentIvyInfo.infoPool;
                 
-                UpdatePreviewMesh(MeshBuilder?.GetIvyMesh());
-                
                 RenderAllInspectors(CurrentIvyInfo.infoPool.ivyContainer);
             }
             else
@@ -1250,36 +1238,70 @@ namespace TeamCrescendo.ProceduralIvy
 
                 // invalidate the controllers
                 GrowthController = null;
-                MeshBuilder = null;
             }
         }
 
         #endregion
 
         #region Mesh Helpers
+        
+        public void RebuildMesh(bool immediate=false)
+        {
+            if (immediate) RebuildImmediate();
+            else requestedMeshRebuild = true;
+        }
 
-        public void RebuildMesh()
+        private void RebuildImmediate()
         {
             if (CurrentIvyInfo == null) return;
             
-            MeshBuilder = new EditorMeshBuilder(CurrentIvyInfo.infoPool.mesh, CurrentIvyInfo.infoPool,
-                CurrentIvyInfo.transform, CurrentIvyInfo.GetComponent<MeshRenderer>());
-            MeshBuilder.PrepareMeshBuilder();
-            MeshBuilder.BuildGeometry();
+            if (!CurrentIvyInfo.TryGetComponent<MeshFilter>(out var mf))
+            {
+                Debug.LogError("No MeshFilter found on IvyInfo.");
+                return;
+            }
+            
+            if (!CurrentIvyInfo.TryGetComponent<MeshRenderer>(out var mr))
+            {
+                Debug.LogError("No MeshRenderer found on IvyInfo.");
+                return;
+            }
 
-            // if (!CurrentIvyInfo.TryGetComponent<MeshRenderer>(out var mr)) 
-            //     throw new InvalidOperationException("No MeshRenderer found on IvyInfo");
-            // var newMaterials = mr.sharedMaterials;
-            // newMaterials[0] = CurrentIvyInfo.infoPool.ivyParameters.branchesMaterial;
-            // mr.sharedMaterials = newMaterials;
-
-            if (!CurrentIvyInfo.TryGetComponent<MeshFilter>(out var mf)) 
-                throw new InvalidOperationException("No MeshFilter found on IvyInfo");
-            Mesh newMesh = MeshBuilder.GetIvyMesh();
-            mf.mesh = newMesh;
+            bool success = EditorMeshBuilder.Build(CurrentIvyInfo.infoPool, CurrentIvyInfo.transform, mr, mf.sharedMesh);
+            if (!success)
+                return;
+            
+            mf.sharedMesh = mf.sharedMesh;
             
             // do not call mf.mesh, will leak!
-            UpdatePreviewMesh(newMesh);
+            UpdatePreviewMesh(mf.sharedMesh);
+            requestedMeshRebuild = false;
+            
+            // The Scene View will NOT update automatically when you change data from a Window.
+            // You must force it to repaint.
+            SceneView.RepaintAll();
+        }
+
+        private void HandleBuildTaskUpdate()
+        {
+            if (!requestedMeshRebuild) return;
+
+            if (EditorApplication.timeSinceStartup - lastBuildTime >= buildInterval)
+            {
+                RebuildImmediate();
+                lastBuildTime = EditorApplication.timeSinceStartup;
+                requestedMeshRebuild = false;
+            }
+        }
+
+        #endregion
+
+        #region Misc Helpers
+
+        private void MarkSceneDirty(Scene scene)
+        {
+            if (!EditorApplication.isPlaying)
+                EditorSceneManager.MarkSceneDirty(scene);
         }
 
         #endregion

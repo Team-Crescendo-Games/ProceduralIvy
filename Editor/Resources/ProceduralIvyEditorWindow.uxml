@@ -32,6 +32,7 @@
                     <ui:VisualElement class="row">
                         <uie:ToolbarToggle name="growth-toggle" text="Start Growth" class="toggle-btn" style="height: 40px; width: 100%; -unity-font-style: normal;" />
                     </ui:VisualElement>
+                    <ui:Slider label="Mesh Rebuild Throttle" value="0.02" high-value="0.5" name="mesh-rebuild-throttle" tooltip="Interval of which the mesh is allowed to update" />
                     <ui:Button name="randomize-btn" text="Randomize Generation Seed" class="half-width-btn" />
                     <ui:Button name="reset-btn" text="Reset Ivy" class="half-width-btn" />
                     <ui:Button name="delete-btn" text="Delete Ivy Gameobject" class="half-width-btn" style="background-color: rgb(109, 46, 46);" />

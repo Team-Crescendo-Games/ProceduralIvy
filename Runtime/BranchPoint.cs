@@ -77,21 +77,11 @@ namespace TeamCrescendo.ProceduralIvy
         }
 #endif
 
-        public BranchPoint GetNextPoint()
-        {
-            BranchPoint res = null;
-            if (index < branchContainer.branchPoints.Count - 1) res = branchContainer.branchPoints[index + 1];
+        public BranchPoint GetNextPoint() =>
+            index < branchContainer.branchPoints.Count - 1 ? branchContainer.branchPoints[index + 1] : null;
 
-            return res;
-        }
-
-        public BranchPoint GetPreviousPoint()
-        {
-            BranchPoint res = null;
-            if (index > 0) res = branchContainer.branchPoints[index - 1];
-
-            return res;
-        }
+        public BranchPoint GetPreviousPoint() =>
+            index > 0 ? branchContainer.branchPoints[index - 1] : null;
 
         public void Move(Vector3 newPosition)
         {

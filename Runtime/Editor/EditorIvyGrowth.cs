@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿using UnityEditor;
+using UnityEngine;
+using UnityEngine.Assertions;
 using UnityEngine.Serialization;
 
 namespace TeamCrescendo.ProceduralIvy
@@ -10,38 +12,42 @@ namespace TeamCrescendo.ProceduralIvy
         private bool growing;
         
         public Random.State rng;
+
+        // world transform of the currently editing ivy GameObject
+        private Transform rootTransform;
         
         public bool IsGrowing() => growing;
         public void SetGrowing(bool value) => growing = value;
         public void ToggleGrowing() => growing = !growing;
 
-        public void Initialize(Vector3 firstPoint, Vector3 firstGrabVector)
+        public void Initialize(Transform rootTransform, Vector3 firstPoint, Vector3 firstGrabVector)
         {
+            Assert.IsTrue(infoPool.ivyContainer.branches.Count == 0, "Cannot initialize Ivy with existing branches");
+            
+            this.rootTransform = rootTransform;
+            
             Random.InitState(infoPool.ivyParameters.randomSeed);
+            rng = Random.state;
 
             var newBranchContainer = CreateInstance<BranchContainer>();
-            newBranchContainer.Init();
+            
             newBranchContainer.currentHeight = infoPool.ivyParameters.minDistanceToSurface;
-
+            
+            newBranchContainer.AddBranchPoint(firstPoint, firstGrabVector, true, newBranchContainer.branchNumber);
+            newBranchContainer.growDirection = Quaternion.AngleAxis(Random.value * 360f, rootTransform.up) * rootTransform.forward;
+            infoPool.ivyContainer.firstVertexVector = newBranchContainer.growDirection;
+            newBranchContainer.randomizeHeight = Random.Range(4f, 8f);
+            CalculateNewHeight(newBranchContainer);
+            newBranchContainer.branchSense = ChooseBranchSense();
+            
             infoPool.ivyContainer.AddBranch(newBranchContainer);
-            infoPool.ivyContainer.branches[0]
-                .AddBranchPoint(firstPoint, firstGrabVector, true, newBranchContainer.branchNumber);
-            infoPool.ivyContainer.branches[0].growDirection =
-                Quaternion.AngleAxis(Random.value * 360f, infoPool.ivyContainer.ivyGO.transform.up) *
-                infoPool.ivyContainer.ivyGO.transform.forward;
-            infoPool.ivyContainer.firstVertexVector = infoPool.ivyContainer.branches[0].growDirection;
-            infoPool.ivyContainer.branches[0].randomizeHeight = Random.Range(4f, 8f);
-            CalculateNewHeight(infoPool.ivyContainer.branches[0]);
-            infoPool.ivyContainer.branches[0].branchSense = ChooseBranchSense();
-            rng = Random.state;
         }
 
         //Este método es para calcular la altura del próximo punto
         private void CalculateNewHeight(BranchContainer branch)
         {
-            branch.heightVar = (Mathf.Sin(branch.heightParameter * infoPool.ivyParameters.DTSFrequency - 45f) + 1f) /
-                               2f;
-
+            branch.heightVar = (Mathf.Sin(branch.heightParameter * infoPool.ivyParameters.DTSFrequency - 45f) + 1f) / 2f;
+            
             branch.newHeight = Mathf.Lerp(infoPool.ivyParameters.minDistanceToSurface,
                 infoPool.ivyParameters.maxDistanceToSurface, branch.heightVar);
             branch.newHeight +=
@@ -70,10 +76,8 @@ namespace TeamCrescendo.ProceduralIvy
 
             for (var b = 0; b < infoPool.ivyContainer.branches.Count; b++)
             {
-                //aumentamos el parámetro en el que basamos la altura. podría hacerse al final de la iteración, pero como no sabes dónde va a terminar, mejor ponerlo al principio
                 infoPool.ivyContainer.branches[b].heightParameter += infoPool.ivyParameters.stepSize;
                 CalculateNewPoint(infoPool.ivyContainer.branches[b]);
-//				Refine (infoPool.ivyContainer.branches [b]);
             }
 
             rng = Random.state;
@@ -234,23 +238,6 @@ namespace TeamCrescendo.ProceduralIvy
             }
         }
 
-
-        /*public void AddDrawingPoint(BranchContainer branch, Vector3 point, Vector3 normal, Vector3 paintDir)
-        {
-            //Vector3 dir = branch.branchPoints[branch.branchPoints.Count - 1].point - branch.branchPoints[branch.branchPoints.Count - 2].point;
-            //dir = dir.normalized;
-
-            branch.AddBranchPoint(point + normal * branch.currentHeight, -normal);
-
-
-            branch.totalLenght += infoPool.ivyParameters.stepSize;
-
-            branch.GetLastBranchPoint().length = branch.totalLenght;
-            branch.lenghts.Add(branch.totalLenght);
-
-            AddLeave(branch);
-        }*/
-
         //Añadimos punto y todo lo que ello conlleva. Está la posibilidad de spawnear una rama
         public void AddPoint(BranchContainer branch, Vector3 point, Vector3 normal)
         {
@@ -296,13 +283,6 @@ namespace TeamCrescendo.ProceduralIvy
             if (branch.branchPoints.Count % (infoPool.ivyParameters.leaveEvery +
                                              Random.Range(0, infoPool.ivyParameters.randomLeaveEvery)) == 0)
             {
-                /*BORRAR*/
-                //branch.branchPoints[branch.branchPoints.Count - 1].AddCurrentPointAsLeafPoint();
-                //branch.branchPoints[branch.branchPoints.Count - 1].AddLPLength(branch.totalLenght);
-                //branch.branchPoints[branch.branchPoints.Count - 1].AddLPForward(branch.growDirection);
-                //branch.branchPoints[branch.branchPoints.Count - 1].AddLPUpward(-branch.grabVectors[branch.grabVectors.Count - 1]);
-
-
                 var probabilities = new float[infoPool.ivyParameters.leavesPrefabs.Length];
                 var chosenLeave = 0;
                 var max = 0f;
@@ -316,10 +296,6 @@ namespace TeamCrescendo.ProceduralIvy
                         chosenLeave = i;
                     }
 
-                /*BORRAR*/
-                //branch.branchPoints[branch.branchPoints.Count - 1].AddLPType(chosenLeave);
-
-
                 var initSegment = branch.branchPoints[branch.branchPoints.Count - 2];
                 var endSegment = branch.branchPoints[branch.branchPoints.Count - 1];
                 var leafPoint = Vector3.Lerp(initSegment.point, endSegment.point, 0.5f);
@@ -329,33 +305,20 @@ namespace TeamCrescendo.ProceduralIvy
             }
         }
 
-        public void DeleteLastBranch()
-        {
-            infoPool.ivyContainer.branches.RemoveAt(infoPool.ivyContainer.branches.Count - 1);
-        }
-
         //Todo lo necesario para añadir una rama
         public void AddBranch(BranchContainer branch, BranchPoint originBranchPoint, Vector3 point, Vector3 normal)
         {
             var newBranchContainer = CreateInstance<BranchContainer>();
-            newBranchContainer.Init();
 
             newBranchContainer.AddBranchPoint(point, -normal);
 
-
-            //newBranchContainer.grabVectors.Add (-normal);
             newBranchContainer.growDirection = Vector3.Normalize(Vector3.ProjectOnPlane(branch.growDirection, normal));
             newBranchContainer.randomizeHeight = Random.Range(4f, 8f);
             newBranchContainer.currentHeight = branch.currentHeight;
             newBranchContainer.heightParameter = branch.heightParameter;
             newBranchContainer.branchSense = ChooseBranchSense();
             newBranchContainer.originPointOfThisBranch = originBranchPoint;
-            //newBranchContainer.branchNumber = infoPool.ivyContainer.branches.Count;
-
-            //Undo.RegisterCompleteObjectUndo(infoPool.ivyContainer, "Create new branch");
-            //EditorUtility.SetDirty(infoPool.ivyContainer);
-
-            //infoPool.ivyContainer.branches.Add(newBranchContainer);
+            
             infoPool.ivyContainer.AddBranch(newBranchContainer);
 
             originBranchPoint.InitBranchInThisPoint(newBranchContainer.branchNumber);
@@ -419,68 +382,6 @@ namespace TeamCrescendo.ProceduralIvy
             Vector3 newSurfaceNormal)
         {
             branch.growDirection = Vector3.Normalize(Vector3.ProjectOnPlane(-oldSurfaceNormal, newSurfaceNormal));
-        }
-
-        //Algoritmo de refinamiento Se va ejecutando sobre la marcha, buscando angulos demasiado poco pronunciados y refinándolos o puntos demasiado juntos y eliminando puntos para evitar nudos
-        private void Refine(BranchContainer branch)
-        {
-            if (branch.branchPoints.Count > 3)
-            {
-                if (Vector3.Distance(branch.branchPoints[branch.branchPoints.Count - 2].point,
-                        branch.branchPoints[branch.branchPoints.Count - 3].point) <
-                    infoPool.ivyParameters.stepSize * 0.7f ||
-                    Vector3.Distance(branch.branchPoints[branch.branchPoints.Count - 2].point,
-                        branch.branchPoints[branch.branchPoints.Count - 1].point) <
-                    infoPool.ivyParameters.stepSize * 0.7f)
-                    branch.RemoveBranchPoint(branch.branchPoints.Count - 2);
-                //branch.grabVectors.RemoveAt (branch.branchPoints.Count - 2);
-                if (Vector3.Angle(
-                        branch.branchPoints[branch.branchPoints.Count - 1].point -
-                        branch.branchPoints[branch.branchPoints.Count - 2].point,
-                        branch.branchPoints[branch.branchPoints.Count - 2].point -
-                        branch.branchPoints[branch.branchPoints.Count - 3].point) > 25f)
-                {
-                    var last = branch.branchPoints[branch.branchPoints.Count - 1].point -
-                               branch.branchPoints[branch.branchPoints.Count - 2].point;
-                    var preLast = branch.branchPoints[branch.branchPoints.Count - 3].point -
-                                  branch.branchPoints[branch.branchPoints.Count - 2].point;
-
-                    //BranchPoint branchPoint01 = branch.branchPoints[branch.branchPoints.Count - 2];
-                    branch.InsertBranchPoint(branch.branchPoints[branch.branchPoints.Count - 2].point + preLast / 2f,
-                        branch.branchPoints[branch.branchPoints.Count - 2].grabVector,
-                        branch.branchPoints.Count - 2);
-
-                    //branch.grabVectors.Insert(branch.grabVectors.Count - 2, ,branch.grabVectors[branch.grabVectors.Count-2]);
-
-                    branch.InsertBranchPoint(branch.branchPoints[branch.branchPoints.Count - 2].point + last / 2f,
-                        branch.branchPoints[branch.branchPoints.Count - 2].grabVector,
-                        branch.branchPoints.Count - 1);
-
-                    //branch.grabVectors.Insert(branch.grabVectors.Count - 1, branch.grabVectors[branch.grabVectors.Count-2]);
-
-
-                    branch.RemoveBranchPoint(branch.branchPoints.Count - 3);
-                    //branch.grabVectors.RemoveAt (branch.branchPoints.Count - 3);
-                }
-            }
-        }
-
-        //Algoritmo de optimización, este se ejectua desde la interfaz. Hace parecido al refine, pero en este caso no añade puntos, solo quita
-        public void Optimize()
-        {
-            foreach (var branch in infoPool.ivyContainer.branches)
-                for (var i = 1; i < branch.branchPoints.Count - 2; i++)
-                {
-                    if (Vector3.Distance(branch.branchPoints[i - 1].point, branch.branchPoints[i].point) <
-                        infoPool.ivyParameters.stepSize * 0.7f)
-                        branch.RemoveBranchPoint(i);
-                    //branch.grabVectors.RemoveAt (i);
-                    if (Vector3.Angle(branch.branchPoints[i - 1].point - branch.branchPoints[i].point,
-                            branch.branchPoints[i].point - branch.branchPoints[i + 1].point) <
-                        infoPool.ivyParameters.optAngleBias)
-                        branch.RemoveBranchPoint(i);
-                    //branch.grabVectors.RemoveAt (i);
-                }
         }
     }
 }

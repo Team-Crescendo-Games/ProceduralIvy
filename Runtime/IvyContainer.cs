@@ -11,21 +11,35 @@ namespace TeamCrescendo.ProceduralIvy
     [PreferBinarySerialization]
     public class IvyContainer : ScriptableObject
     {
-        public int lastNumberAssigned;
-        public GameObject ivyGO;
         public List<BranchContainer> branches;
         public Vector3 firstVertexVector;
 
         private IvyContainer()
         {
             branches = new List<BranchContainer>();
-            lastNumberAssigned = 0;
         }
 
         public void Clear()
         {
-            lastNumberAssigned = 0;
+            foreach (var branch in branches)
+                DeleteBranchAsset(branch);
+
             branches.Clear();
+        }
+        
+        private void DeleteBranchAsset(BranchContainer branch)
+        {
+#if UNITY_EDITOR
+            Undo.DestroyObjectImmediate(branch);
+#else
+            Destroy(branch); 
+#endif
+        }
+        
+        private void RefreshBranchIndexing()
+        {
+            for (var i = 0; i < branches.Count; i++)
+                branches[i].branchNumber = i;
         }
 
         public void RemoveBranch(BranchContainer branchToDelete)
@@ -33,24 +47,13 @@ namespace TeamCrescendo.ProceduralIvy
             if (branchToDelete.originPointOfThisBranch != null)
                 branchToDelete.originPointOfThisBranch.branchContainer.ReleasePoint(branchToDelete
                     .originPointOfThisBranch.index);
+            
             branches.Remove(branchToDelete);
+            DeleteBranchAsset(branchToDelete);
+            RefreshBranchIndexing();
         }
 
-        public BranchContainer GetBranchContainerByBranchNumber(int branchNumber)
-        {
-            BranchContainer res = null;
-
-            for (var i = 0; i < branches.Count; i++)
-            {
-                if (branches[i].branchNumber == branchNumber)
-                {
-                    res = branches[i];
-                    break;
-                }
-            }
-
-            return res;
-        }
+        public BranchContainer GetBranchContainerByBranchNumber(int branchNumber) => branches.Find(b => b.branchNumber == branchNumber);
 
         public BranchPoint[] GetNearestSegmentSSBelowDistance(Vector2 pointSS, float distanceThreshold)
         {
@@ -119,10 +122,10 @@ namespace TeamCrescendo.ProceduralIvy
 
         public void AddBranch(BranchContainer newBranchContainer)
         {
-            newBranchContainer.branchNumber = lastNumberAssigned;
-
-            lastNumberAssigned++;
+            newBranchContainer.name = "BranchContainer";
+            AssetDatabase.AddObjectToAsset(newBranchContainer, this);
             branches.Add(newBranchContainer);
+            RefreshBranchIndexing();
         }
 
         public BranchPoint GetNearestPointAllBranchesSSFrom(Vector2 pointSS)
@@ -130,14 +133,16 @@ namespace TeamCrescendo.ProceduralIvy
             BranchPoint res = null;
             var minDistance = float.MaxValue;
 
-            for (var i = 0; i < branches.Count; i++)
-            for (var j = 0; j < branches[i].branchPoints.Count; j++)
+            foreach (var branch in branches)
             {
-                var newSqrDst = (branches[i].branchPoints[j].pointSS - pointSS).sqrMagnitude;
-                if (newSqrDst <= minDistance)
+                foreach (var branchPoint in branch.branchPoints)
                 {
-                    res = branches[i].branchPoints[j];
-                    minDistance = newSqrDst;
+                    var newSqrDst = (branchPoint.pointSS - pointSS).sqrMagnitude;
+                    if (newSqrDst <= minDistance)
+                    {
+                        res = branchPoint;
+                        minDistance = newSqrDst;
+                    }
                 }
             }
 
@@ -145,11 +150,6 @@ namespace TeamCrescendo.ProceduralIvy
         }
 
 #if UNITY_EDITOR
-        public void RecordCreated()
-        {
-            Undo.RegisterCreatedObjectUndo(ivyGO, "Ivy created");
-        }
-
         public void RecordUndo()
         {
             var undoName = "Ivy modification";

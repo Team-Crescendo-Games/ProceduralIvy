@@ -11,6 +11,7 @@ namespace TeamCrescendo.ProceduralIvy
     public class EditorMeshBuilder : ScriptableObject
     {
         public InfoPool infoPool;
+        private Transform ivyRootTransform;
 
         //The final mesh of the ivy as a whole
         public Mesh ivyMesh;
@@ -37,60 +38,62 @@ namespace TeamCrescendo.ProceduralIvy
         public List<List<int>> typesByMat;
 
         //Here leaf structures are initialized before starting to generate the ivy and geometry
-        public void InitLeavesData()
+        public void InitLeavesData(Transform rootTransform, MeshRenderer mr)
         {
-            GameObject go = infoPool.ivyContainer.ivyGO;
-            MeshRenderer mr = go.GetComponent<MeshRenderer>();
-            
-            if (go)
+            if (rootTransform == null || mr == null)
             {
-                typesByMat = new List<List<int>>();
-                leavesMaterials = new List<Material>();
-
-                if (infoPool.ivyParameters.generateLeaves)
-                {
-                    //Check for repeated materials within prefabs
-                    for (var i = 0; i < infoPool.ivyParameters.leavesPrefabs.Length; i++)
-                    {
-                        var materialExists = false;
-                        for (var m = 0; m < leavesMaterials.Count; m++)
-                        {
-                            if (leavesMaterials[m] == infoPool.ivyParameters.leavesPrefabs[i]
-                                    .GetComponent<MeshRenderer>().sharedMaterial)
-                            {
-                                typesByMat[m].Add(i);
-                                materialExists = true;
-                            }
-                        }
-
-                        if (!materialExists)
-                        {
-                            leavesMaterials.Add(infoPool.ivyParameters.leavesPrefabs[i]
-                                .GetComponent<MeshRenderer>().sharedMaterial);
-                            typesByMat.Add(new List<int>());
-                            typesByMat[^1].Add(i);
-                        }
-                    }
-
-                    //Assign materials to the mesh renderer once collected from prefabs
-                    var materials = new Material[leavesMaterials.Count + 1];
-                    for (var i = 0; i < materials.Length; i++)
-                    {
-                        if (i == 0)
-                            materials[i] = mr.sharedMaterial;
-                        else
-                            materials[i] = leavesMaterials[i - 1];
-                    }
-
-                    mr.sharedMaterials = materials;
-                }
-                else
-                {
-                    mr.sharedMaterials = new [] { infoPool.ivyParameters.branchesMaterial };
-                }
-
-                leavesDataInitialized = true;
+                Debug.LogWarning("Invalid root transform or mesh renderer: " + rootTransform + " " + mr);
+                return;
             }
+
+            ivyRootTransform = rootTransform;
+            
+            typesByMat = new List<List<int>>();
+            leavesMaterials = new List<Material>();
+
+            if (infoPool.ivyParameters.generateLeaves)
+            {
+                //Check for repeated materials within prefabs
+                for (var i = 0; i < infoPool.ivyParameters.leavesPrefabs.Length; i++)
+                {
+                    var materialExists = false;
+                    for (var m = 0; m < leavesMaterials.Count; m++)
+                    {
+                        if (leavesMaterials[m] == infoPool.ivyParameters.leavesPrefabs[i]
+                                .GetComponent<MeshRenderer>().sharedMaterial)
+                        {
+                            typesByMat[m].Add(i);
+                            materialExists = true;
+                        }
+                    }
+
+                    if (!materialExists)
+                    {
+                        leavesMaterials.Add(infoPool.ivyParameters.leavesPrefabs[i]
+                            .GetComponent<MeshRenderer>().sharedMaterial);
+                        typesByMat.Add(new List<int>());
+                        typesByMat[^1].Add(i);
+                    }
+                }
+
+                //Assign materials to the mesh renderer once collected from prefabs
+                var materials = new Material[leavesMaterials.Count + 1];
+                for (var i = 0; i < materials.Length; i++)
+                {
+                    if (i == 0)
+                        materials[i] = mr.sharedMaterial;
+                    else
+                        materials[i] = leavesMaterials[i - 1];
+                }
+
+                mr.sharedMaterials = materials;
+            }
+            else
+            {
+                mr.sharedMaterials = new [] { infoPool.ivyParameters.branchesMaterial };
+            }
+
+            leavesDataInitialized = true;
         }
         
         public void InitializeMeshBuilder()
@@ -236,19 +239,19 @@ namespace TeamCrescendo.ProceduralIvy
                             uvs[vertCount] = chosenLeaveMesh.uv[v];
                             vColor[vertCount] = chosenLeaveMesh.colors[v];
 
-                            normals[vertCount] = Quaternion.Inverse(infoPool.ivyContainer.ivyGO.transform.rotation) *
+                            normals[vertCount] = Quaternion.Inverse(ivyRootTransform.rotation) *
                                                  normals[vertCount];
-                            verts[vertCount] -= infoPool.ivyContainer.ivyGO.transform.position;
-                            verts[vertCount] = Quaternion.Inverse(infoPool.ivyContainer.ivyGO.transform.rotation) *
+                            verts[vertCount] -= ivyRootTransform.position;
+                            verts[vertCount] = Quaternion.Inverse(ivyRootTransform.rotation) *
                                                verts[vertCount];
 
                             var vertexData = new RTVertexData(verts[vertCount], normals[vertCount], uvs[vertCount],
                                 Vector2.zero, vColor[vertCount]);
                             currentLeaf.verticesLeaves.Add(vertexData);
 
-                            currentLeaf.leafCenter = currentLeaf.point - infoPool.ivyContainer.ivyGO.transform.position;
+                            currentLeaf.leafCenter = currentLeaf.point - ivyRootTransform.position;
                             currentLeaf.leafCenter =
-                                Quaternion.Inverse(infoPool.ivyContainer.ivyGO.transform.rotation) *
+                                Quaternion.Inverse(ivyRootTransform.rotation) *
                                 currentLeaf.leafCenter;
 
                             vertCount++;
@@ -287,8 +290,8 @@ namespace TeamCrescendo.ProceduralIvy
                             branchPoint.verticesLoop = new List<RTVertexData>();
 
                             var centerVertexPosition =
-                                branchPoint.point - infoPool.ivyContainer.ivyGO.transform.position;
-                            centerVertexPosition = Quaternion.Inverse(infoPool.ivyContainer.ivyGO.transform.rotation) *
+                                branchPoint.point - ivyRootTransform.position;
+                            centerVertexPosition = Quaternion.Inverse(ivyRootTransform.rotation) *
                                                    centerVertexPosition;
                             var radius = CalculateRadius(branchPoint.length,
                                 infoPool.ivyContainer.branches[b].totalLenght);
@@ -326,12 +329,11 @@ namespace TeamCrescendo.ProceduralIvy
 
                                         verts[vertCount] = direction * radius * tipInfluence +
                                                            infoPool.ivyContainer.branches[b].branchPoints[p].point;
-                                        verts[vertCount] -= infoPool.ivyContainer.ivyGO.transform.position;
+                                        verts[vertCount] -= ivyRootTransform.position;
                                         verts[vertCount] =
-                                            Quaternion.Inverse(infoPool.ivyContainer.ivyGO.transform.rotation) *
+                                            Quaternion.Inverse(ivyRootTransform.rotation) *
                                             verts[vertCount];
-
-
+                                        
                                         uvs[vertCount] =
                                             new Vector2(
                                                 branchPoint.length * infoPool.ivyParameters.uvScale.y +
@@ -339,11 +341,8 @@ namespace TeamCrescendo.ProceduralIvy
                                                 1f / infoPool.ivyParameters.sides * v *
                                                 infoPool.ivyParameters.uvScale.x + infoPool.ivyParameters.uvOffset.x);
 
-                                        normals[vertCount] =
-                                            Quaternion.Inverse(infoPool.ivyContainer.ivyGO.transform.rotation) *
-                                            normals[vertCount];
-
-
+                                        normals[vertCount] = Quaternion.Inverse(ivyRootTransform.rotation) * normals[vertCount];
+                                        
                                         var vertexData = new RTVertexData(vertexForRuntime, normals[vertCount],
                                             uvs[vertCount], Vector2.zero, vColor[vertCount]);
                                         branchPoint.verticesLoop.Add(vertexData);
@@ -361,12 +360,10 @@ namespace TeamCrescendo.ProceduralIvy
                                 {
                                     verts[vertCount] = infoPool.ivyContainer.branches[b].branchPoints[p].point;
                                     //Local space correction
-                                    verts[vertCount] -= infoPool.ivyContainer.ivyGO.transform.position;
+                                    verts[vertCount] -= ivyRootTransform.position;
                                     verts[vertCount] =
-                                        Quaternion.Inverse(infoPool.ivyContainer.ivyGO.transform.rotation) *
+                                        Quaternion.Inverse(ivyRootTransform.rotation) *
                                         verts[vertCount];
-                                    //verts[vertCount] = centerVertexPosition;
-
 
                                     //Exception for normals in the case of half geometry and only 1 side
                                     if (infoPool.ivyParameters.halfgeom && infoPool.ivyParameters.sides == 1)
@@ -382,22 +379,18 @@ namespace TeamCrescendo.ProceduralIvy
                                         0.5f * infoPool.ivyParameters.uvScale.x + infoPool.ivyParameters.uvOffset.x);
 
                                     normals[vertCount] =
-                                        Quaternion.Inverse(infoPool.ivyContainer.ivyGO.transform.rotation) *
+                                        Quaternion.Inverse(ivyRootTransform.rotation) *
                                         normals[vertCount];
 
-
                                     var vertexForRuntime = centerVertexPosition;
-
 
                                     var vertexData = new RTVertexData(vertexForRuntime, normals[vertCount],
                                         uvs[vertCount], Vector2.zero, vColor[vertCount]);
                                     branchPoint.verticesLoop.Add(vertexData);
 
-
                                     //Update these counters to know where we were writing in the array for the next pass
                                     vertCount++;
                                     lastVertCount++;
-
 
                                     //And after placing the last vertex, triangulate
                                     TriangulateBranch(b, ref triBranchesCount, vertCount, lastVertCount);
@@ -409,7 +402,6 @@ namespace TeamCrescendo.ProceduralIvy
                     //Write the index where we stopped into the dictionary to later transform UVs of each element according to its real dimension
                     var fromTo = new int[2] { firstVertex, vertCount - 1 };
                     branchesLeavesIndices.Add(branchesLeavesIndices.Count, fromTo);
-
 
                     if (infoPool.ivyParameters.generateLeaves)
                         //infoPool.ivyContainer.branches[b].ClearRuntimeVerticesLeaves();
@@ -439,7 +431,7 @@ namespace TeamCrescendo.ProceduralIvy
             //Define variables for the first point of the first branch
             if (b == 0 && p == 0)
             {
-                axis = infoPool.ivyContainer.ivyGO.transform.up;
+                axis = ivyRootTransform.up;
                 //Exception for half geometry, so the arc aligns well with the ground
                 if (!infoPool.ivyParameters.halfgeom)
                     firstVector = infoPool.ivyContainer.firstVertexVector;

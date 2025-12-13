@@ -15,7 +15,7 @@ namespace TeamCrescendo.ProceduralIvy
             if (toolPaintingAllowed)
             {
                 DrawBrush(currentEvent, brushSize);
-                if (overBranch != null)
+                if (cursorSelectedBranch != null)
                 {
                     Handles.BeginGUI();
 
@@ -52,12 +52,12 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void AddLeaf(LeafInfo leafInfo)
         {
-            var branchPoint = overBranch.GetNearestPointFrom(mousePoint);
+            var branchPoint = cursorSelectedBranch.GetNearestPointFrom(mousePoint);
 
             var nextLeaf = GetNextLeaf(leafInfo);
-            var leafIndex = overBranch.leaves.IndexOf(nextLeaf);
+            var leafIndex = cursorSelectedBranch.leaves.IndexOf(nextLeaf);
             lastLeafPoint =
-                overBranch.AddRandomLeaf(leafInfo.pointWS, overSegment[0], overSegment[1], leafIndex, infoPool);
+                cursorSelectedBranch.AddRandomLeaf(leafInfo.pointWS, overSegment[0], overSegment[1], leafIndex, infoPool);
 
             RefreshMesh(true, true);
         }
@@ -92,18 +92,18 @@ namespace TeamCrescendo.ProceduralIvy
 
             var length = overSegment[0].length + Vector3.Distance(leafInfo.pointWS, overSegment[0].point);
 
-            for (var i = 0; i < overBranch.leaves.Count; i++)
+            for (var i = 0; i < cursorSelectedBranch.leaves.Count; i++)
                 if (res == null)
                 {
-                    res = overBranch.leaves[i];
+                    res = cursorSelectedBranch.leaves[i];
                 }
-                else if (overBranch.leaves[i].lpLength < length)
+                else if (cursorSelectedBranch.leaves[i].lpLength < length)
                 {
-                    res = overBranch.leaves[i];
+                    res = cursorSelectedBranch.leaves[i];
                 }
                 else
                 {
-                    res = overBranch.leaves[i];
+                    res = cursorSelectedBranch.leaves[i];
                     break;
                 }
 

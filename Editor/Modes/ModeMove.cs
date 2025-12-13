@@ -40,7 +40,7 @@ namespace TeamCrescendo.ProceduralIvy
 
                 //Si tenemos algún overbranch y no estamos moviendo ningún punto limpiamos las listas de los puntos que encontramos en la iteración anterior al alcance del brush, y llenamos 
                 //estas mismas listas con los puntos para este nuevo fotograma, además pintamos los puntos al alcance del brush
-                if (overBranch != null && !moving)
+                if (cursorSelectedBranch != null && !moving)
                 {
                     overPoints.Clear();
                     overPointsIndex.Clear();
@@ -50,13 +50,13 @@ namespace TeamCrescendo.ProceduralIvy
                     overPointsLeavesInfluences.Clear();
                     leavesInInfluences.Clear();
 
-                    for (var p = 0; p < overBranch.branchPoints.Count; p++)
+                    for (var p = 0; p < cursorSelectedBranch.branchPoints.Count; p++)
                     {
-                        var currenBranchPoint = overBranch.branchPoints[p];
+                        var currenBranchPoint = cursorSelectedBranch.branchPoints[p];
                         if (Vector2.Distance(currentEvent.mousePosition, currenBranchPoint.pointSS) < brushSize / 2f)
                         {
                             overPointsIndex.Add(p);
-                            overPoints.Add(overBranch.branchPoints[p].point);
+                            overPoints.Add(cursorSelectedBranch.branchPoints[p].point);
                             overPointsInfluences.Add(brushCurve.Evaluate(1f -
                                                                          Vector2.Distance(currenBranchPoint.pointSS,
                                                                              currentEvent.mousePosition) / brushSize *
@@ -79,7 +79,7 @@ namespace TeamCrescendo.ProceduralIvy
             if (!forbiddenRect.Contains(currentEvent.mousePosition) && !currentEvent.alt && currentEvent.button == 0)
             {
                 //después, si hacemos clic con el ratón....
-                if (currentEvent.type == EventType.MouseDown && overBranch != null)
+                if (currentEvent.type == EventType.MouseDown && cursorSelectedBranch != null)
                 {
                     //Refrescamos 
                     RefreshBrushDistance();
@@ -93,7 +93,7 @@ namespace TeamCrescendo.ProceduralIvy
                 }
 
                 //al arrastrar calculamos el delta actualizando el worldspace del target y aplicamos el delta transformado en relación a la distancia al overpoint a los vértices guardados como afectados
-                if (currentEvent.type == EventType.MouseDrag && overBranch != null)
+                if (currentEvent.type == EventType.MouseDrag && cursorSelectedBranch != null)
                 {
                     mouseTargetWS = brushWS;
                     var delta = mouseTargetWS - mouseOriginWS;
@@ -101,12 +101,12 @@ namespace TeamCrescendo.ProceduralIvy
                     leavesInInfluences.Clear();
                     for (var i = 0; i < overPointsIndex.Count; i++)
                     {
-                        overBranch.GetLeavesInSegment(overBranch.branchPoints[overPointsIndex[i]], leavesInInfluences);
-                        overBranch.branchPoints[overPointsIndex[i]]
+                        cursorSelectedBranch.GetLeavesInSegment(cursorSelectedBranch.branchPoints[overPointsIndex[i]], leavesInInfluences);
+                        cursorSelectedBranch.branchPoints[overPointsIndex[i]]
                             .Move(overPoints[i] + delta * overPointsInfluences[i]);
                     }
 
-                    overBranch.RepositionLeaves(leavesInInfluences, true);
+                    cursorSelectedBranch.RepositionLeaves(leavesInInfluences, true);
 
                     RefreshMesh(true, true);
                 }
@@ -119,11 +119,11 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void DrawVectors()
         {
-            if (overBranch != null)
+            if (cursorSelectedBranch != null)
             {
                 leavesForDebug.Clear();
                 for (var i = 0; i < overPointsIndex.Count; i++)
-                    overBranch.GetLeavesInSegment(overBranch.branchPoints[overPointsIndex[i]], leavesForDebug);
+                    cursorSelectedBranch.GetLeavesInSegment(cursorSelectedBranch.branchPoints[overPointsIndex[i]], leavesForDebug);
             }
         }
 

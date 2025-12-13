@@ -10,19 +10,15 @@ namespace TeamCrescendo.ProceduralIvy
 
         public void UpdateMode(Event currentEvent, Rect forbiddenRect, float brushSize)
         {
-            //Empezamos la gui para pintar los puntos en screen space
             Handles.BeginGUI();
-            //Con este método guardamos en un array predeclarado todos los puntos de la enredadera en screen space
             GetBranchesPointsSS();
-            //Y con este seleccionamos la rama y el punto mas cercanos al ratón en screen space
             SelectBranchPointSS(currentEvent.mousePosition, brushSize);
 
-            if (overBranch != null && overPoint != null)
-                if (overPoint.index >= 1 && overPoint.index <= overBranch.branchPoints.Count - 2 &&
-                    !overPoint.newBranch)
+            if (cursorSelectedBranch != null && cursorSelectedPoint != null)
+                if (cursorSelectedPoint.index >= 1 && cursorSelectedPoint.index <= cursorSelectedBranch.branchPoints.Count - 2 &&
+                    !cursorSelectedPoint.newBranch)
                 {
-                    if (toolPaintingAllowed) DrawPoint(overPoint, Color.red);
-
+                    if (toolPaintingAllowed) DrawPoint(cursorSelectedPoint, Color.red);
 
                     //después, si hacemos clic con el ratón removemos el punto seleccionado de la rama
                     if (currentEvent.type == EventType.MouseDown && !currentEvent.alt && currentEvent.button == 0)
@@ -48,7 +44,7 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void ProceedToRemove()
         {
-            overBranch.RemoveBranchPoint(overPoint.index);
+            cursorSelectedBranch.RemoveBranchPoint(cursorSelectedPoint.index);
         }
 
         private void DrawPoint(BranchPoint pointToDraw, Color color)

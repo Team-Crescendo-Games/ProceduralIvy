@@ -18,19 +18,19 @@ namespace TeamCrescendo.ProceduralIvy
             //Y con este seleccionamos la rama y el punto mas cercanos al ratón en screen space
             SelectBranchPointSS(currentEvent.mousePosition, brushSize);
 
-            if (overBranch != null && overPoint != null)
+            if (cursorSelectedBranch != null && cursorSelectedPoint != null)
             {
                 if (toolPaintingAllowed)
                 {
                     pointsToRemove = new List<BranchPoint>();
                     branchesToRemove = new List<BranchContainer>();
 
-                    var initIndex = overPoint.index;
+                    var initIndex = cursorSelectedPoint.index;
                     initIndex = Mathf.Clamp(initIndex, 2, int.MaxValue);
 
-                    var endIndex = overBranch.branchPoints.Count - initIndex;
+                    var endIndex = cursorSelectedBranch.branchPoints.Count - initIndex;
 
-                    pointsToRemove = overBranch.branchPoints.GetRange(initIndex, endIndex);
+                    pointsToRemove = cursorSelectedBranch.branchPoints.GetRange(initIndex, endIndex);
                     DrawPoints(pointsToRemove, Color.red);
                     CheckOrphanBranches(pointsToRemove);
                 }
@@ -51,7 +51,7 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void ProceedToRemove()
         {
-            overBranch.RemoveRange(pointsToRemove[0].index, pointsToRemove.Count);
+            cursorSelectedBranch.RemoveRange(pointsToRemove[0].index, pointsToRemove.Count);
 
             for (var i = 0; i < branchesToRemove.Count; i++) infoPool.ivyContainer.RemoveBranch(branchesToRemove[i]);
         }
@@ -59,7 +59,7 @@ namespace TeamCrescendo.ProceduralIvy
         private void CheckOrphanBranches(List<BranchPoint> pointsToCheck)
         {
             for (var i = 0; i < pointsToCheck.Count; i++)
-                if (pointsToCheck[i].newBranch && pointsToCheck[i].newBranchNumber != overBranch.branchNumber)
+                if (pointsToCheck[i].newBranch && pointsToCheck[i].newBranchNumber != cursorSelectedBranch.branchNumber)
                 {
                     var orphanBranch =
                         infoPool.ivyContainer.GetBranchContainerByBranchNumber(pointsToCheck[i].newBranchNumber);

@@ -8,13 +8,14 @@ namespace TeamCrescendo.ProceduralIvy
     {
         public override void OnInspectorGUI()
         {
-            base.OnInspectorGUI();
+            using (new EditorGUI.DisabledGroupScope(true))
+                base.OnInspectorGUI();
+            
             var ivyInfo = (IvyInfo)target;
 
             if (GUILayout.Button("Edit in Real Ivy Editor"))
             {
-                ProceduralIvyWindow.Init();
-                ProceduralIvyWindow.Instance.ModifyIvy(ivyInfo);
+                ProceduralIvyEditorWindow.Init();
             }
 
             if (ivyInfo.infoPool != null)

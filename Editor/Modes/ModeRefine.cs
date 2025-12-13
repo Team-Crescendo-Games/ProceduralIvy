@@ -9,38 +9,34 @@ namespace TeamCrescendo.ProceduralIvy
 
         public void UpdateMode(Event currentEvent, Rect forbiddenRect, float brushSize)
         {
-            //Empezamos la gui para pintar los puntos en screen space
             Handles.BeginGUI();
-            //Con este método guardamos en un array predeclarado todos los puntos de la enredadera en screen space
             GetBranchesPointsSS();
-            //Y con este seleccionamos la rama y el punto mas cercanos al ratón en screen space
             SelectBranchPointSS(currentEvent.mousePosition, brushSize);
 
-            if (overBranch != null)
+            if (cursorSelectedBranch != null)
             {
-                if (overPoint == null)
+                if (cursorSelectedPoint == null)
                 {
                     mousePointWS = GetMousePointOverBranch(currentEvent, brushSize);
                 }
                 else
                 {
-                    mousePointWS = overPoint.point;
+                    mousePointWS = cursorSelectedPoint.point;
 
-                    if (overPoint.index != overBranch.branchPoints.Count - 1)
+                    if (cursorSelectedPoint.index != cursorSelectedBranch.branchPoints.Count - 1)
                     {
-                        Vector3 newPoint;
-                        newPoint = Vector3.Lerp(overPoint.point, overPoint.GetNextPoint().point, 0.5f);
+                        Vector3 newPoint = Vector3.Lerp(cursorSelectedPoint.point, cursorSelectedPoint.GetNextPoint().point, 0.5f);
 
-                        if (overPoint.index != 0 && overPoint.index < overBranch.branchPoints.Count - 3)
+                        if (cursorSelectedPoint.index != 0 && cursorSelectedPoint.index < cursorSelectedBranch.branchPoints.Count - 3)
                         {
                             var currentSegmentMagnitude =
-                                Vector3.Magnitude(overPoint.GetNextPoint().point - overPoint.point);
+                                Vector3.Magnitude(cursorSelectedPoint.GetNextPoint().point - cursorSelectedPoint.point);
                             var previousSegment =
-                                Vector3.Normalize(overPoint.point - overPoint.GetPreviousPoint().point) *
+                                Vector3.Normalize(cursorSelectedPoint.point - cursorSelectedPoint.GetPreviousPoint().point) *
                                 currentSegmentMagnitude;
                             var nextSegment =
-                                Vector3.Normalize(overBranch.branchPoints[overPoint.index + 1].point -
-                                                  overBranch.branchPoints[overPoint.index + 2].point) *
+                                Vector3.Normalize(cursorSelectedBranch.branchPoints[cursorSelectedPoint.index + 1].point -
+                                                  cursorSelectedBranch.branchPoints[cursorSelectedPoint.index + 2].point) *
                                 currentSegmentMagnitude;
                             var delta = Vector3.Lerp(previousSegment, nextSegment, 0.5f);
                             newPoint = newPoint + delta * 0.2f;
@@ -54,11 +50,11 @@ namespace TeamCrescendo.ProceduralIvy
                         if (currentEvent.type == EventType.MouseDown && !currentEvent.alt && currentEvent.button == 0)
                         {
                             SaveIvy();
-                            var newGrabVector = Vector3.Lerp(overPoint.grabVector,
-                                overPoint.GetNextPoint().grabVector, 0.5f);
+                            var newGrabVector = Vector3.Lerp(cursorSelectedPoint.grabVector,
+                                cursorSelectedPoint.GetNextPoint().grabVector, 0.5f);
 
-                            overBranch.InsertBranchPoint(newPoint, newGrabVector, overPoint.index + 1);
-                            overBranch.RepositionLeavesAfterAdd02(overBranch.branchPoints[overPoint.index + 1]);
+                            cursorSelectedBranch.InsertBranchPoint(newPoint, newGrabVector, cursorSelectedPoint.index + 1);
+                            cursorSelectedBranch.RepositionLeavesAfterAdd02(cursorSelectedBranch.branchPoints[cursorSelectedPoint.index + 1]);
                             RefreshMesh(true, true);
                         }
                     }

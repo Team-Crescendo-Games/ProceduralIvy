@@ -31,6 +31,11 @@ namespace TeamCrescendo.ProceduralIvy
 
         public Dictionary<int, List<LeafPoint>> dictRTLeavesByInitSegment;
 
+        public BranchContainer()
+        {
+            Init(0,0);
+        }
+
         public int GetNumLeaves()
         {
             return leaves.Count;
@@ -61,11 +66,6 @@ namespace TeamCrescendo.ProceduralIvy
         {
             branchPoints = new List<BranchPoint>(branchPointsSize * 2);
             leaves = new List<LeafPoint>(numLeaves * 2);
-        }
-
-        public void Init()
-        {
-            Init(0, 0);
         }
 
         public void PrepareRTLeavesDict()

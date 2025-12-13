@@ -30,20 +30,20 @@ namespace TeamCrescendo.ProceduralIvy
             //estas mismas listas con los puntos para este nuevo fotograma, además pintamos los puntos al alcance del brush
 
             Handles.BeginGUI();
-            if (overBranch != null)
+            if (cursorSelectedBranch != null)
             {
                 overPoints.Clear();
                 overPointsIndex.Clear();
                 overPointsInfluences.Clear();
                 overPointsLeavesInfluences.Clear();
 
-                for (var p = 0; p < overBranch.branchPoints.Count; p++)
+                for (var p = 0; p < cursorSelectedBranch.branchPoints.Count; p++)
                 {
-                    var currenBranchPoint = overBranch.branchPoints[p];
+                    var currenBranchPoint = cursorSelectedBranch.branchPoints[p];
                     if (Vector2.Distance(currentEvent.mousePosition, currenBranchPoint.pointSS) < brushSize / 2f)
                     {
                         overPointsIndex.Add(p);
-                        overPoints.Add(overBranch.branchPoints[p].point);
+                        overPoints.Add(cursorSelectedBranch.branchPoints[p].point);
                         overPointsInfluences.Add(brushCurve.Evaluate(1f -
                                                                      Vector2.Distance(currenBranchPoint.pointSS,
                                                                          currentEvent.mousePosition) / brushSize * 2f));
@@ -62,7 +62,7 @@ namespace TeamCrescendo.ProceduralIvy
                     currentEvent.button == 0)
                 {
                     //después, si hacemos clic con el ratón....
-                    if (currentEvent.type == EventType.MouseDown && overBranch != null)
+                    if (currentEvent.type == EventType.MouseDown && cursorSelectedBranch != null)
                     {
                         SaveIvy();
                         smoothing = true;
@@ -73,22 +73,22 @@ namespace TeamCrescendo.ProceduralIvy
                     {
                         for (var i = 0; i < overPointsIndex.Count; i++)
                             //Si no estamos ni ante el primer punto de la rama ni el último
-                            if (overPointsIndex[i] != 0 && overPointsIndex[i] != overBranch.branchPoints.Count - 1)
+                            if (overPointsIndex[i] != 0 && overPointsIndex[i] != cursorSelectedBranch.branchPoints.Count - 1)
                             {
                                 //A base de lerps calculamos el punto intermedio y le aplicamos la intensidad correspondiente según la curva
                                 Vector3 newPoint1, newPoint2, newPoint;
-                                newPoint1 = Vector3.Lerp(overBranch.branchPoints[overPointsIndex[i]].point,
-                                    overBranch.branchPoints[overPointsIndex[i] - 1].point, 0.1f);
-                                newPoint2 = Vector3.Lerp(overBranch.branchPoints[overPointsIndex[i]].point,
-                                    overBranch.branchPoints[overPointsIndex[i] + 1].point, 0.1f);
+                                newPoint1 = Vector3.Lerp(cursorSelectedBranch.branchPoints[overPointsIndex[i]].point,
+                                    cursorSelectedBranch.branchPoints[overPointsIndex[i] - 1].point, 0.1f);
+                                newPoint2 = Vector3.Lerp(cursorSelectedBranch.branchPoints[overPointsIndex[i]].point,
+                                    cursorSelectedBranch.branchPoints[overPointsIndex[i] + 1].point, 0.1f);
                                 newPoint = Vector3.Lerp(overPoints[i], Vector3.Lerp(newPoint1, newPoint2, 0.5f),
                                     smoothInsensity * overPointsInfluences[i]);
 
-                                overBranch.branchPoints[overPointsIndex[i]].point = newPoint;
+                                cursorSelectedBranch.branchPoints[overPointsIndex[i]].point = newPoint;
                             }
 
 
-                        overBranch.RepositionLeaves(true);
+                        cursorSelectedBranch.RepositionLeaves(true);
 
                         RefreshMesh(true, true);
                     }

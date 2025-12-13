@@ -10,14 +10,9 @@ namespace TeamCrescendo.ProceduralIvy
     {
         public IvyContainer ivyContainer;
         public IvyParameters ivyParameters;
-        
-        public MeshFilter GetMeshFilter() => ivyContainer.ivyGO.GetComponent<MeshFilter>();
-        public MeshRenderer GetMeshRenderer() => ivyContainer.ivyGO.GetComponent<MeshRenderer>();
-        
 #if UNITY_EDITOR
         public EditorMeshBuilder meshBuilder;
         public EditorIvyGrowth growth;
-#endif
         
         public struct IvyMemoryStats
         {
@@ -92,6 +87,7 @@ namespace TeamCrescendo.ProceduralIvy
             stats.memoryKB = totalBytes / 1024f;
             return stats;
         }
+#endif
     }
 
     [Serializable]

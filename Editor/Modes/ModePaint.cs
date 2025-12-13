@@ -1,5 +1,6 @@
 ﻿using UnityEditor;
 using UnityEngine;
+using UnityEngine.Assertions;
 
 namespace TeamCrescendo.ProceduralIvy
 {
@@ -17,23 +18,23 @@ namespace TeamCrescendo.ProceduralIvy
             if (!painting)
             {
                 SelectBranchPointSS(currentEvent.mousePosition, brushSize);
-                if (overBranch != null && toolPaintingAllowed)
+                if (cursorSelectedBranch != null && toolPaintingAllowed)
                 {
                     DrawBrush(currentEvent, brushSize);
                     Handles.BeginGUI();
 
                     var pointColor = Color.black;
-                    if (overPoint == null)
+                    if (cursorSelectedPoint == null)
                     {
                         mousePointWS = GetMousePointOverBranch(currentEvent, brushSize);
                         pointColor = Color.green;
                     }
                     else
                     {
-                        mousePointWS = overPoint.point;
+                        mousePointWS = cursorSelectedPoint.point;
                         pointColor = Color.yellow;
 
-                        if (overPoint.index == overBranch.branchPoints.Count - 1) pointColor = Color.cyan;
+                        if (cursorSelectedPoint.index == cursorSelectedBranch.branchPoints.Count - 1) pointColor = Color.cyan;
                     }
 
                     EditorGUI.DrawRect(
@@ -46,39 +47,39 @@ namespace TeamCrescendo.ProceduralIvy
                 SceneView.RepaintAll();
             }
 
-            //si no estamos en el forbiddenrect, el raycast es positivo y no estamos pulsando alt y es el ratón pcipal del ratón
             if (!forbiddenRect.Contains(currentEvent.mousePosition) && !currentEvent.alt && currentEvent.button == 0)
             {
-                //después, si hacemos clic con el ratón....
                 if (currentEvent.type == EventType.MouseDown)
                 {
                     dirDrag = (mousePointWS - lastMousePointWS).normalized;
                     lastMousePointWS = mousePointWS;
 
-                    if (overBranch != null)
+                    bool rayCastHit;
+
+                    if (cursorSelectedBranch != null)
                     {
-                        if (overPoint == null)
+                        if (cursorSelectedPoint == null)
                         {
-                            var nearestPoint = overBranch.GetNearestPointWSFrom(mousePointWS);
+                            var nearestPoint = cursorSelectedBranch.GetNearestPointWSFrom(mousePointWS);
 
                             var newIndex = overSegment[1].index;
 
-                            var nextPoint = overBranch.branchPoints[overSegment[1].index + 1];
+                            var nextPoint = cursorSelectedBranch.branchPoints[overSegment[1].index + 1];
                             var newLength = Mathf.Lerp(overSegment[0].length, nextPoint.length,
                                 normalizedSegmentOffset);
-                            overPoint = overBranch.InsertBranchPoint(mousePointWS, nearestPoint.grabVector, newIndex);
+                            cursorSelectedPoint = cursorSelectedBranch.InsertBranchPoint(mousePointWS, nearestPoint.grabVector, newIndex);
 
                             RefreshMesh(true, true);
                         }
 
-                        RayCastSceneView(brushDistance + infoPool.ivyParameters.maxDistanceToSurface * 1.5f);
+                        rayCastHit = RayCastSceneView(brushDistance + infoPool.ivyParameters.maxDistanceToSurface * 1.5f);
                     }
                     else
                     {
-                        RayCastSceneView(2000f);
+                        rayCastHit = RayCastSceneView(2000f);
                     }
 
-                    if (!rayCast)
+                    if (!rayCastHit)
                     {
                         RefreshBrushDistance();
                         RefreshBrushWS(currentEvent);
@@ -86,55 +87,47 @@ namespace TeamCrescendo.ProceduralIvy
                         mouseNormal = -SceneView.currentDrawingSceneView.camera.transform.forward;
                     }
 
-                    if (overBranch == null) 
-                        infoPool = ProceduralIvyWindow.Instance.CreateIvyDataObject();
-
-                    //iniciamos la ivy (solo lo hace si la ivy aún no está creada
-                    var newIvy = StartIvy(mousePoint + mouseNormal * infoPool.ivyParameters.minDistanceToSurface,
-                        -mouseNormal);
-
-                    //y si la ivy ya estaba creada...
-                    if (!newIvy)
+                    var needToCreateNewIvy = infoPool == null 
+                                             || infoPool.ivyContainer.branches.Count == 0
+                                             || cursorSelectedBranch == null;
+                    
+                    if (needToCreateNewIvy)
                     {
-                        //en caso de que no estuviera sobre ningún punto, crea una nueva rama 
-                        if (overBranch == null)
+                        float minDist = infoPool ? infoPool.ivyParameters.minDistanceToSurface : 0.1f;
+                        Vector3 originPoint = mousePoint + mouseNormal * minDist;
+                        Vector3 originNormal = -mouseNormal;
+                        ProceduralIvyEditorWindow.Instance.CreateNewIvyGameObject(originPoint, originNormal);
+                        ProceduralIvyEditorWindow.Instance.StartGrowthIvy(originPoint, originNormal);
+                        infoPool = ProceduralIvyEditorWindow.Instance.CurrentIvyInfo.infoPool;
+                        Assert.IsNotNull(infoPool);
+                    }
+
+                    if (!needToCreateNewIvy)
+                    {
+                        Assert.IsNotNull(cursorSelectedBranch);
+                        Assert.IsNotNull(cursorSelectedPoint);
+                        
+                        if (cursorSelectedPoint.index != cursorSelectedBranch.branchPoints.Count - 1)
                         {
-                            infoPool.growth.AddBranch(infoPool.ivyContainer.branches[0], overPoint, mousePoint,
-                                mouseNormal);
-                            overBranch = infoPool.ivyContainer.branches[infoPool.ivyContainer.branches.Count - 1];
-                            overPoint = overBranch.branchPoints[0];
-                            painting = true;
-                        }
-                        //En caso de que estuviera sobre un punto que no es el último de la rama, añade también otra rama, pero el punto inicial es dicho punto, en vezde la posición del ratón
-                        else if (overPoint.index != overBranch.branchPoints.Count - 1)
-                        {
-                            infoPool.growth.AddBranch(overBranch, overPoint, overPoint.point, mouseNormal);
-                            overBranch = infoPool.ivyContainer.branches[infoPool.ivyContainer.branches.Count - 1];
-                            overPoint = overBranch.branchPoints[0];
-                            painting = true;
-                        }
-                        //En caso de que estuviera en el último punto de una rama, simplemenete poniendo a true la variable painting, ya sigue pintando la rama en cuestión
-                        else
-                        {
-                            painting = true;
+                            infoPool.growth.AddBranch(cursorSelectedBranch, cursorSelectedPoint, cursorSelectedPoint.point, mouseNormal);
+                            cursorSelectedBranch = infoPool.ivyContainer.branches[^1];
+                            cursorSelectedPoint = cursorSelectedBranch.branchPoints[0];
                         }
                     }
-                    //Si acabamos de crear la ivy, pues no hay mucho que hacer en este caso
                     else
                     {
-                        overBranch = infoPool.ivyContainer.branches[0];
-                        overPoint = overBranch.branchPoints[0];
-                        painting = true;
+                        cursorSelectedBranch = infoPool.ivyContainer.branches[0];
+                        cursorSelectedPoint = cursorSelectedBranch.branchPoints[0];
                     }
-
+                    
+                    painting = true;
                     RefreshMesh(true, true);
-                    SaveIvy(!newIvy);
+                    SaveIvy(!needToCreateNewIvy);
                 }
                 //Si arrastramos el ratón, checkeamos el painting (se explica en su propio método.
                 else if (currentEvent.type == EventType.MouseDrag)
                 {
-                    RayCastSceneView(brushDistance + infoPool.ivyParameters.maxDistanceToSurface * 1.5f);
-                    if (!rayCast)
+                    if (!RayCastSceneView(brushDistance + infoPool.ivyParameters.maxDistanceToSurface * 1.5f))
                     {
                         RefreshBrushDistance();
                         RefreshBrushWS(currentEvent);
@@ -168,7 +161,7 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void CheckPainting()
         {
-            if (overPoint != null && Vector3.Distance(mousePoint, overPoint.point) > infoPool.ivyParameters.stepSize)
+            if (cursorSelectedPoint != null && Vector3.Distance(mousePoint, cursorSelectedPoint.point) > infoPool.ivyParameters.stepSize)
             {
                 Random.state = infoPool.growth.rng;
                 ProcessPoints();
@@ -178,40 +171,38 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void ProcessPoints()
         {
-            overBranch.currentHeight = 0.001f;
+            cursorSelectedBranch.currentHeight = 0.001f;
 
-            var distance = Vector3.Distance(mousePoint, overPoint.point);
+            var distance = Vector3.Distance(mousePoint, cursorSelectedPoint.point);
 
             var numPoints = Mathf.CeilToInt(distance / infoPool.ivyParameters.stepSize);
-            var newGrowDirection = (mousePoint - overPoint.point).normalized;
+            var newGrowDirection = (mousePoint - cursorSelectedPoint.point).normalized;
 
-            var srcPoint = overPoint.point;
+            var srcPoint = cursorSelectedPoint.point;
 
             if (dirDrag == Vector3.zero) dirDrag = Vector3.forward;
 
             for (var i = 1; i < numPoints; i++)
             {
                 var intermediatePoint = srcPoint + i * infoPool.ivyParameters.stepSize * newGrowDirection;
-                infoPool.growth.AddPoint(overBranch, intermediatePoint, mouseNormal);
-                overPoint = overPoint.GetNextPoint();
+                infoPool.growth.AddPoint(cursorSelectedBranch, intermediatePoint, mouseNormal);
+                cursorSelectedPoint = cursorSelectedPoint.GetNextPoint();
             }
 
-            overBranch.growDirection = newGrowDirection;
+            cursorSelectedBranch.growDirection = newGrowDirection;
             infoPool.growth.rng = Random.state;
         }
 
         private bool StartIvy(Vector3 firstPoint, Vector3 firstGrabVector)
         {
-            var needToCreateNewIvy = infoPool == null || infoPool.ivyContainer.branches.Count == 0 ||
-                                     infoPool.ivyContainer.ivyGO == null;
+            var needToCreateNewIvy = infoPool == null || infoPool.ivyContainer.branches.Count == 0;
 
             if (needToCreateNewIvy)
             {
-                ProceduralIvyWindow.Instance.CreateIvyGO(firstPoint, firstGrabVector);
-                mf = ProceduralIvyWindow.Instance.infoPool.GetMeshFilter();
-                infoPool.growth.Initialize(firstPoint, firstGrabVector);
-                infoPool.meshBuilder.InitLeavesData();
-                infoPool.meshBuilder.InitializeMeshBuilder();
+                ProceduralIvyEditorWindow.Instance.CreateNewIvyGameObject(firstPoint, firstGrabVector);
+                ProceduralIvyEditorWindow.Instance.StartGrowthIvy(firstPoint, firstGrabVector);
+                infoPool = ProceduralIvyEditorWindow.Instance.CurrentIvyInfo.infoPool;
+                Assert.IsNotNull(infoPool);
             }
 
             return needToCreateNewIvy;

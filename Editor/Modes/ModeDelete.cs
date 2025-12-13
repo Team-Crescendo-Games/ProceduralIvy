@@ -20,12 +20,12 @@ namespace TeamCrescendo.ProceduralIvy
             {
                 SelectBranchPointSS(currentEvent.mousePosition, brushSize);
 
-                if (overBranch != null && overBranch.branchNumber > 0)
+                if (cursorSelectedBranch != null && cursorSelectedBranch.branchNumber > 0)
                 {
                     branchesToRemove = new List<BranchContainer>();
-                    branchesToRemove.Add(overBranch);
-                    CheckOrphanBranches(overBranch.branchPoints);
-                    DrawPoints(overBranch.branchPoints, Color.red);
+                    branchesToRemove.Add(cursorSelectedBranch);
+                    CheckOrphanBranches(cursorSelectedBranch.branchPoints);
+                    DrawPoints(cursorSelectedBranch.branchPoints, Color.red);
 
 
                     DrawOriginBranch();
@@ -50,7 +50,7 @@ namespace TeamCrescendo.ProceduralIvy
         private void CheckOrphanBranches(List<BranchPoint> pointsToCheck)
         {
             for (var i = 0; i < pointsToCheck.Count; i++)
-                if (pointsToCheck[i].newBranch && pointsToCheck[i].newBranchNumber != overBranch.branchNumber)
+                if (pointsToCheck[i].newBranch && pointsToCheck[i].newBranchNumber != cursorSelectedBranch.branchNumber)
                 {
                     var orphanBranch =
                         infoPool.ivyContainer.GetBranchContainerByBranchNumber(pointsToCheck[i].newBranchNumber);
@@ -71,9 +71,9 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void DrawOriginBranch()
         {
-            if (overBranch.originPointOfThisBranch != null)
+            if (cursorSelectedBranch.originPointOfThisBranch != null)
                 EditorGUI.DrawRect(
-                    new Rect(overBranch.originPointOfThisBranch.pointSS - Vector2.one * 2f, Vector2.one * 4f),
+                    new Rect(cursorSelectedBranch.originPointOfThisBranch.pointSS - Vector2.one * 2f, Vector2.one * 4f),
                     Color.blue);
         }
     }

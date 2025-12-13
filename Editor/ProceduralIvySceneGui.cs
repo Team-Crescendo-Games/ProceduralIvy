@@ -2,12 +2,13 @@
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Assertions;
 
 namespace TeamCrescendo.ProceduralIvy
 {
     public class ProceduralIvySceneGui
     {
-        private enum ToolMode
+        public enum ToolMode
         {
             None,
             Paint,
@@ -20,49 +21,37 @@ namespace TeamCrescendo.ProceduralIvy
             Shave,
             AddLeave
         }
-        
-        private Texture2D modePaintTex,
-            modeMoveTex,
-            modeSmoothTex,
-            modeRefineTex,
-            modeOptimizeTex,
-            modeCutTex,
-            modeDeleteTex,
-            modeShaveTex,
-            modeAddLeavesTex,
-            downArrowTex,
-            upArrowTex;
 
-        private GUISkin windowSkin;
+        // Public properties for the Overlay to bind to
+        public float BrushSize { get; set; } = 100f;
+        public AnimationCurve BrushCurve { get; set; } = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
+        public ToolMode CurrentToolMode => toolMode;
 
-        private Dictionary<int, List<BranchContainer>> branchesUndos;
-        private AnimationCurve brushCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
-
-        private float brushSize = 100f;
-        private int controlID;
-
-        private Event current;
-
+        private ToolMode toolMode = ToolMode.None;
         private AMode currentMode;
-
-        private Rect forbiddenRect;
-        private float highlightX;
-        private ModeAddLeaves modeAddLeaves;
+        
+        // Mode Instances
+        private ModePaint modePaint;
+        private ModeMove modeMove;
+        private ModeSmooth modeSmooth;
+        private ModeRefine modeRefine;
+        private ModeOptimize modeOptimize;
         private ModeCut modeCut;
         private ModeDelete modeDelete;
-        private string modeLabel = "None";
-        private ModeMove modeMove;
-        private ModeOptimize modeOptimize;
-        private ModePaint modePaint;
-        private ModeRefine modeRefine;
         private ModeShave modeShave;
-        private ModeSmooth modeSmooth;
+        private ModeAddLeaves modeAddLeaves;
+
+        private Event current;
+        private int controlID;
+        
         private Vector3 mousePoint, mouseNormal;
         private bool rayCast;
         private readonly float smoothIntensity = 1f;
-        private Rect toggleVisibilityButton;
-        private ToolMode toolMode = ToolMode.None;
-        private bool toolsShown = true;
+
+        // "ForbiddenRect" is now effectively zero because the Overlay consumes clicks automatically.
+        // We keep the rect parameter in UpdateMode signatures for compatibility, 
+        // but pass an empty rect.
+        private Rect _dummyRect = new Rect(0,0,0,0);
 
         public ProceduralIvySceneGui()
         {
@@ -75,413 +64,113 @@ namespace TeamCrescendo.ProceduralIvy
             modeDelete = new ModeDelete();
             modeShave = new ModeShave();
             modeAddLeaves = new ModeAddLeaves();
-            
-            var res = ProceduralIvyResources.Instance;
-            if (res == null) return;
 
-            windowSkin = res.windowSkin;
-
-            // Map the textures from the resource file
-            modePaintTex = res.paintTool;
-            modeMoveTex = res.moveTool;
-            modeSmoothTex = res.smoothTool;
-            modeRefineTex = res.refineTool;
-            modeOptimizeTex = res.optimizeTool;
-            modeCutTex = res.cutTool;
-            modeDeleteTex = res.deleteTool;
-            modeShaveTex = res.shaveTool;
-            modeAddLeavesTex = res.addLeavesTool;
-    
-            downArrowTex = res.arrowDown;
-            upArrowTex = res.arrowUp;
-
-            FillGUIContent();
-
-            ProceduralIvyWindow.OnIvyGoCreated += OnIvyGoCreated;
+            ProceduralIvyEditorWindow.OnIvyInfoChanged += OnIvyInfoChanged;
         }
 
-        private void FillGUIContent()
+        // Public method for Overlay to switch modes
+        public void SetToolMode(ToolMode newMode)
         {
-            EditorConstants.TOOL_PAINT_GUICONTENT = new GUIContent(modePaintTex, "Paint tool");
-            EditorConstants.TOOL_MOVE_GUICONTENT = new GUIContent(modeMoveTex, "Move tool");
-            EditorConstants.TOOL_SMOOTH_GUICONTENT = new GUIContent(modeSmoothTex, "Smooth tool");
-            EditorConstants.TOOL_REFINE_GUICONTENT = new GUIContent(modeRefineTex, "Refine tool");
-            EditorConstants.TOOL_OPTIMIZE_GUICONTENT = new GUIContent(modeOptimizeTex, "Optimize tool");
-            EditorConstants.TOOL_CUT_GUICONTENT = new GUIContent(modeCutTex, "Cut tool");
-            EditorConstants.TOOL_DELETE_GUICONTENT = new GUIContent(modeDeleteTex, "Delete tool");
-            EditorConstants.TOOL_SHAVE_GUICONTENT = new GUIContent(modeShaveTex, "Shave tool");
-            EditorConstants.TOOL_ADDLEAVE_GUICONTENT = new GUIContent(modeAddLeavesTex, "Add leave tool");
-            EditorConstants.TOOL_TOGGLEPANEL_GUICONTENT = new GUIContent(downArrowTex, "Hide panel");
+            if (ProceduralIvyEditorWindow.Instance == null)
+            {
+                Debug.LogWarning("No Procedural Ivy Editor Window instance.");
+                return;
+            }
+
+            // Toggle off if clicking the same mode
+            if (toolMode == newMode)
+            {
+                toolMode = ToolMode.None;
+                currentMode = null;
+                Tools.current = Tool.Move; // Restore Unity default tool
+                return;
+            }
+
+            toolMode = newMode;
+            Tools.current = Tool.None; // Disable Unity transform tools
+
+            switch (toolMode)
+            {
+                case ToolMode.None: currentMode = null; break;
+                case ToolMode.Paint: currentMode = modePaint; break;
+                case ToolMode.Move: currentMode = modeMove; break;
+                case ToolMode.Smooth: currentMode = modeSmooth; break;
+                case ToolMode.Refine: currentMode = modeRefine; break;
+                case ToolMode.Optimize: currentMode = modeOptimize; break;
+                case ToolMode.Cut: currentMode = modeCut; break;
+                case ToolMode.Delete: currentMode = modeDelete; break;
+                case ToolMode.Shave: currentMode = modeShave; break;
+                case ToolMode.AddLeave: currentMode = modeAddLeaves; break;
+            }
+
+            IvyInfo info = ProceduralIvyEditorWindow.Instance.CurrentIvyInfo;
+            InfoPool pool = info?.infoPool;
+            MeshFilter meshFilter = info?.GetComponent<MeshFilter>();
+            currentMode?.Init(pool, meshFilter);
+            
+            SceneView.RepaintAll();
         }
 
         public void OnSceneGUI(SceneView sceneView)
         {
+            Assert.IsNotNull(ProceduralIvyEditorWindow.Instance);
+            Assert.IsFalse(ProceduralIvyEditorWindow.Instance.IsPlacingSeed);
+            
             current = Event.current;
             controlID = GUIUtility.GetControlID(FocusType.Passive);
 
-            if (currentMode != null) currentMode.Update(current, forbiddenRect);
-            
+            currentMode?.Update(current, _dummyRect);
+
             switch (toolMode)
             {
-                case ToolMode.None:
-                {
-                    ModeNone();
-                    break;
-                }
                 case ToolMode.Paint:
-                {
-                    modePaint.UpdateMode(current, forbiddenRect, brushSize);
+                    modePaint.UpdateMode(current, _dummyRect, BrushSize);
                     break;
-                }
                 case ToolMode.Move:
-                {
-                    modeMove.UpdateMode(current, forbiddenRect, brushSize, brushCurve);
+                    modeMove.UpdateMode(current, _dummyRect, BrushSize, BrushCurve);
                     break;
-                }
                 case ToolMode.Smooth:
-                {
-                    modeSmooth.UpdateMode(current, forbiddenRect, brushSize, brushCurve, smoothIntensity);
+                    modeSmooth.UpdateMode(current, _dummyRect, BrushSize, BrushCurve, smoothIntensity);
                     break;
-                }
                 case ToolMode.Refine:
-                {
-                    modeRefine.UpdateMode(current, forbiddenRect, brushSize);
+                    modeRefine.UpdateMode(current, _dummyRect, BrushSize);
                     break;
-                }
                 case ToolMode.Optimize:
-                {
-                    modeOptimize.UpdateMode(current, forbiddenRect, brushSize);
+                    modeOptimize.UpdateMode(current, _dummyRect, BrushSize);
                     break;
-                }
                 case ToolMode.Cut:
-                {
-                    modeCut.UpdateMode(current, forbiddenRect, brushSize);
+                    modeCut.UpdateMode(current, _dummyRect, BrushSize);
                     break;
-                }
                 case ToolMode.Delete:
-                {
-                    modeDelete.UpdateMode(current, forbiddenRect, brushSize);
+                    modeDelete.UpdateMode(current, _dummyRect, BrushSize);
                     break;
-                }
                 case ToolMode.Shave:
-                {
-                    modeShave.UpdateMode(current, forbiddenRect, brushSize);
+                    modeShave.UpdateMode(current, _dummyRect, BrushSize);
                     break;
-                }
                 case ToolMode.AddLeave:
-                {
-                    modeAddLeaves.UpdateMode(current, forbiddenRect, brushSize);
+                    modeAddLeaves.UpdateMode(current, _dummyRect, BrushSize);
                     break;
+            }
+
+            if (toolMode != ToolMode.None)
+            {
+                if (current.type == EventType.Layout)
+                {
+                    HandleUtility.AddDefaultControl(controlID);
                 }
             }
-
-            if (ProceduralIvyWindow.Instance.placingSeed)
-            {
-                Handles.color = new Color(0.2f, 1f, 0.3f);
-                Handles.DrawSolidDisc(mousePoint, mouseNormal, 0.1f);
-                Handles.DrawLine(mousePoint, mousePoint + mouseNormal * 0.2f);
-                if (current.type == EventType.MouseDown)
-                    if (current.button == 0)
-                        if (!current.control && !current.shift && !current.alt)
-                            if (rayCast)
-                            {
-                                ProceduralIvyWindow.Instance.CreateIvyDataObject();
-                                ProceduralIvyWindow.Instance.CreateIvyGO(mousePoint, mouseNormal);
-                                ProceduralIvyWindow.Instance.placingSeed = false;
-                            }
-
-                if (current.type == EventType.MouseMove) RayCastSceneView();
-
-                SceneView.RepaintAll();
-            }
-
-            TakeControl();
-
-            DrawGUI(sceneView);
         }
 
         public void Cleanup()
         {
-            ProceduralIvyWindow.OnIvyGoCreated -= OnIvyGoCreated;
+            ProceduralIvyEditorWindow.OnIvyInfoChanged -= OnIvyInfoChanged;
         }
 
-        private void OnTogglePanel()
+        private void OnIvyInfoChanged(IvyInfo info)
         {
-            toolsShown = !toolsShown;
-            if (toolsShown)
-                EditorConstants.TOOL_TOGGLEPANEL_GUICONTENT = new GUIContent(downArrowTex, "Hide panel");
-            else
-                EditorConstants.TOOL_TOGGLEPANEL_GUICONTENT = new GUIContent(upArrowTex, "Show panel");
-        }
-
-        private void DrawGUI(SceneView sceneView)
-        {
-            forbiddenRect = new Rect(sceneView.position.width / 2f - 200f, sceneView.position.height - 116f, 418f, 98f);
-            toggleVisibilityButton = new Rect(sceneView.position.width / 2f + 218f, sceneView.position.height - 42f,
-                24f, 24f);
-
-            Handles.BeginGUI();
-
-            if (GUI.Button(toggleVisibilityButton, EditorConstants.TOOL_TOGGLEPANEL_GUICONTENT,
-                    windowSkin.GetStyle("sceneviewbutton"))) OnTogglePanel();
-
-            if (toolsShown)
-            {
-                EditorGUI.DrawRect(
-                    new Rect(sceneView.position.width / 2f - 202f, sceneView.position.height - 118f, 422f, 100f),
-                    new Color(0.1f, 0.1f, 0.1f));
-
-                GUILayout.BeginArea(forbiddenRect);
-
-                EditorGUI.DrawRect(new Rect(0f, 0f, 418f, 98f), new Color(0.45f, 0.45f, 0.45f));
-
-                GUI.Label(new Rect(4f, 4f, 104f, 20f), "Tool:", windowSkin.label);
-                GUI.Label(new Rect(4f, 24f, 104f, 24f), modeLabel, windowSkin.GetStyle("sceneviewselected"));
-
-                GUI.Label(new Rect(118f, 4f, 140f, 20f), "Radius:", windowSkin.label);
-                brushSize = GUI.HorizontalSlider(new Rect(118f, 31f, 140f, 24f), brushSize, 0f, 2000f);
-
-                GUI.Label(new Rect(274f, 4f, 140f, 20f), "Curve:", windowSkin.label);
-                brushCurve = EditorGUI.CurveField(new Rect(274f, 24f, 140f, 24f), brushCurve);
-
-                var XSpace = 14f;
-
-                if (toolMode != ToolMode.None)
-                    EditorGUI.DrawRect(new Rect(highlightX, 54f, 40f, 40f), new Color(0.4f, 0.8f, 0f, 1));
-
-                if (GUI.Button(new Rect(XSpace, 56f, 36f, 36f), EditorConstants.TOOL_PAINT_GUICONTENT,
-                        windowSkin.GetStyle("sceneviewbutton")))
-                {
-                    if (toolMode == ToolMode.Paint)
-                        ToModeNone();
-                    else
-                        ToModePaint();
-                }
-
-                XSpace += 44f;
-                if (GUI.Button(new Rect(XSpace, 56f, 36f, 36f), EditorConstants.TOOL_MOVE_GUICONTENT,
-                        windowSkin.GetStyle("sceneviewbutton")))
-                {
-                    if (toolMode == ToolMode.Move)
-                        ToModeNone();
-                    else
-                        ToModeMove();
-                }
-
-                XSpace += 44f;
-                if (GUI.Button(new Rect(XSpace, 56f, 36f, 36f), EditorConstants.TOOL_SMOOTH_GUICONTENT,
-                        windowSkin.GetStyle("sceneviewbutton")))
-                {
-                    if (toolMode == ToolMode.Smooth)
-                        ToModeNone();
-                    else
-                        ToModeSmooth();
-                }
-
-                XSpace += 44f;
-                if (GUI.Button(new Rect(XSpace, 56f, 36f, 36f), EditorConstants.TOOL_REFINE_GUICONTENT,
-                        windowSkin.GetStyle("sceneviewbutton")))
-                {
-                    if (toolMode == ToolMode.Refine)
-                        ToModeNone();
-                    else
-                        ToModeRefine();
-                }
-
-                XSpace += 44f;
-                if (GUI.Button(new Rect(XSpace, 56f, 36f, 36f), EditorConstants.TOOL_OPTIMIZE_GUICONTENT,
-                        windowSkin.GetStyle("sceneviewbutton")))
-                {
-                    if (toolMode == ToolMode.Optimize)
-                        ToModeNone();
-                    else
-                        ToModeOptimize();
-                }
-
-                XSpace += 44f;
-                if (GUI.Button(new Rect(XSpace, 56f, 36f, 36f), EditorConstants.TOOL_CUT_GUICONTENT,
-                        windowSkin.GetStyle("sceneviewbutton")))
-                {
-                    if (toolMode == ToolMode.Cut)
-                        ToModeNone();
-                    else
-                        ToModeCut();
-                }
-
-                XSpace += 44f;
-                if (GUI.Button(new Rect(XSpace, 56f, 36f, 36f), EditorConstants.TOOL_ADDLEAVE_GUICONTENT,
-                        windowSkin.GetStyle("sceneviewbutton")))
-                {
-                    if (toolMode == ToolMode.AddLeave)
-                        ToModeNone();
-                    else
-                        ToModeAddLeave();
-                }
-
-                XSpace += 44f;
-                if (GUI.Button(new Rect(XSpace, 56f, 36f, 36f), EditorConstants.TOOL_SHAVE_GUICONTENT,
-                        windowSkin.GetStyle("sceneviewbutton")))
-                {
-                    if (toolMode == ToolMode.Shave)
-                        ToModeNone();
-                    else
-                        ToModeShave();
-                }
-
-                XSpace += 44f;
-                if (GUI.Button(new Rect(XSpace, 56f, 36f, 36f), EditorConstants.TOOL_DELETE_GUICONTENT,
-                        windowSkin.GetStyle("sceneviewbutton")))
-                {
-                    if (toolMode == ToolMode.Delete)
-                        ToModeNone();
-                    else
-                        ToModeDelete();
-                }
-
-                if (toolMode != ToolMode.None && ProceduralIvyWindow.Instance != null)
-                    currentMode.Init(ProceduralIvyWindow.Instance.infoPool, ProceduralIvyWindow.Instance.infoPool.GetMeshFilter());
-
-                GUILayout.EndArea();
-            }
-
-            Handles.EndGUI();
-        }
-
-        private void OnIvyGoCreated()
-        {
-            if (toolMode != ToolMode.None && ProceduralIvyWindow.Instance != null)
-                currentMode.Init(ProceduralIvyWindow.Instance.infoPool, ProceduralIvyWindow.Instance.infoPool.GetMeshFilter());
-        }
-
-        private void ModeNone()
-        {
-        }
-
-        private void ToModeNone()
-        {
-            toolMode = ToolMode.None;
-            modeLabel = "None";
-        }
-
-        private void ToModePaint()
-        {
-            Tools.current = Tool.None;
-            toolMode = ToolMode.Paint;
-            modeLabel = "Paint";
-            highlightX = 12f;
-
-            currentMode = modePaint;
-        }
-
-        private void ToModeMove()
-        {
-            Tools.current = Tool.None;
-            toolMode = ToolMode.Move;
-            modeLabel = "Move";
-            highlightX = 56f;
-
-            currentMode = modeMove;
-        }
-
-        private void ToModeSmooth()
-        {
-            Tools.current = Tool.None;
-            toolMode = ToolMode.Smooth;
-            modeLabel = "Smooth";
-            highlightX = 100f;
-
-            currentMode = modeSmooth;
-        }
-
-        private void ToModeRefine()
-        {
-            Tools.current = Tool.None;
-            toolMode = ToolMode.Refine;
-            modeLabel = "Refine";
-            highlightX = 144f;
-
-            currentMode = modeRefine;
-        }
-
-        private void ToModeOptimize()
-        {
-            Tools.current = Tool.None;
-            toolMode = ToolMode.Optimize;
-            modeLabel = "Optimize";
-            highlightX = 188f;
-
-            currentMode = modeOptimize;
-        }
-
-        private void ToModeCut()
-        {
-            Tools.current = Tool.None;
-            toolMode = ToolMode.Cut;
-            modeLabel = "Cut";
-            highlightX = 232f;
-
-            currentMode = modeCut;
-        }
-
-        private void ToModeAddLeave()
-        {
-            Tools.current = Tool.None;
-            toolMode = ToolMode.AddLeave;
-            modeLabel = "Add Leave";
-            highlightX = 276f;
-
-            currentMode = modeAddLeaves;
-        }
-
-        private void ToModeShave()
-        {
-            Tools.current = Tool.None;
-            toolMode = ToolMode.Shave;
-            modeLabel = "Shave";
-            highlightX = 320f;
-
-            currentMode = modeShave;
-        }
-
-        private void ToModeDelete()
-        {
-            Tools.current = Tool.None;
-            toolMode = ToolMode.Delete;
-            modeLabel = "Remove";
-            highlightX = 364f;
-
-            currentMode = modeDelete;
-        }
-
-        //If in tool mode, control belongs to realivypro
-        private void TakeControl()
-        {
-            if (toolMode != ToolMode.None || ProceduralIvyWindow.Instance.placingSeed ||
-                forbiddenRect.Contains(Event.current.mousePosition))
-                switch (current.type)
-                {
-                    case EventType.Layout:
-                        HandleUtility.AddDefaultControl(controlID);
-                        break;
-                }
-        }
-
-        private void RayCastSceneView()
-        {
-            var mouseScreenPos = Event.current.mousePosition;
-            var ray = HandleUtility.GUIPointToWorldRay(mouseScreenPos);
-            RaycastHit RC;
-            if (Physics.Raycast(ray, out RC, 2000f, ProceduralIvyWindow.Instance.infoPool.ivyParameters.layerMask.value))
-            {
-                mousePoint = RC.point;
-                mouseNormal = RC.normal;
-
-                rayCast = true;
-            }
-            else
-            {
-                rayCast = false;
-            }
+            if (info == null) return;
+            if (toolMode != ToolMode.None && currentMode != null && ProceduralIvyEditorWindow.Instance != null)
+                currentMode.Init(info.infoPool, info.GetComponent<MeshFilter>());
         }
     }
 }

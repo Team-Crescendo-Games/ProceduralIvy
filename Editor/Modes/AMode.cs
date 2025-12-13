@@ -16,15 +16,14 @@ namespace TeamCrescendo.ProceduralIvy
 
         protected float normalizedSegmentOffset;
 
-        protected BranchContainer overBranch;
+        protected BranchContainer cursorSelectedBranch;
         protected List<LeafPoint> overLeaves = new();
-        protected BranchPoint overPoint;
+        protected BranchPoint cursorSelectedPoint;
         protected BranchPoint[] overSegment;
         protected bool pressingMidleButton;
         protected bool pressingMouseButton;
         protected bool pressingRightButton;
 
-        protected bool rayCast;
         protected bool toolPaintingAllowed;
 
         public void Init(InfoPool infoPool, MeshFilter mf)
@@ -33,58 +32,52 @@ namespace TeamCrescendo.ProceduralIvy
             this.mf = mf;
         }
 
-        public virtual void Update(Event currentEvent, Rect forbiddenRect)
+        public void Update(Event currentEvent, Rect forbiddenRect)
         {
             ProcessEvent(currentEvent, forbiddenRect);
         }
 
-        public void GetBranchesPointsSS()
+        protected void GetBranchesPointsSS()
         {
-            //Iteramos las ramas
-            for (var i = 0; i < infoPool.ivyContainer.branches.Count; i++)
+            if (infoPool == null) return;
+            foreach (var currentBranch in infoPool.ivyContainer.branches)
             {
-                var currentBranch = infoPool.ivyContainer.branches[i];
-                //Iteramos los puntos de las ramas, calculamos su screen space y lo almacenamos en el propio punto
-                for (var j = 0; j < currentBranch.branchPoints.Count; j++)
-                {
-                    var currentBranchPoint = currentBranch.branchPoints[j];
-                    currentBranchPoint.CalculatePointSS();
-                }
+                foreach (var point in currentBranch.branchPoints)
+                    point.CalculatePointSS();
 
-                if (currentBranch.originPointOfThisBranch != null)
-                    currentBranch.originPointOfThisBranch.CalculatePointSS();
+                currentBranch.originPointOfThisBranch?.CalculatePointSS();
             }
         }
 
-        public void SelectLeavesSS(Vector2 mousePosition, float brushSize)
+        protected void SelectLeavesSS(Vector2 mousePosition, float brushSize)
         {
-            var minDistance = brushSize;
-
-            if (overBranch != null)
+            if (cursorSelectedBranch != null)
             {
                 overLeaves.Clear();
-                for (var i = 0; i < overBranch.leaves.Count; i++)
+                for (var i = 0; i < cursorSelectedBranch.leaves.Count; i++)
                 {
-                    overBranch.leaves[i].CalculatePointSS();
+                    cursorSelectedBranch.leaves[i].CalculatePointSS();
 
-                    if ((overBranch.leaves[i].pointSS - mousePosition).magnitude < brushSize * 0.1f)
-                        overLeaves.Add(overBranch.leaves[i]);
+                    if ((cursorSelectedBranch.leaves[i].pointSS - mousePosition).magnitude < brushSize * 0.1f)
+                        overLeaves.Add(cursorSelectedBranch.leaves[i]);
                 }
             }
         }
 
-        public void SelectBranchPointSS(Vector2 mousePosition, float brushSize)
+        protected void SelectBranchPointSS(Vector2 mousePosition, float brushSize)
         {
+            if (infoPool == null) return;
+            
             var minDistance = brushSize;
-            overBranch = null;
-            overPoint = null;
+            cursorSelectedBranch = null;
+            cursorSelectedPoint = null;
 
             var nearestSegment = infoPool.ivyContainer.GetNearestSegmentSSBelowDistance(mousePosition, minDistance);
 
             if (nearestSegment != null)
             {
-                overBranch = nearestSegment[0].branchContainer;
-                overPoint = GetNearestBranchPointBySegment(mousePosition, nearestSegment, brushSize * 0.5f);
+                cursorSelectedBranch = nearestSegment[0].branchContainer;
+                cursorSelectedPoint = GetNearestBranchPointBySegment(mousePosition, nearestSegment, brushSize * 0.5f);
                 overSegment = nearestSegment;
             }
         }
@@ -114,22 +107,19 @@ namespace TeamCrescendo.ProceduralIvy
                 -cam.transform.forward, 0.00065f * brushSize);
         }
 
-        protected void RayCastSceneView(float distance)
+        protected bool RayCastSceneView(float distance)
         {
             var mouseScreenPos = Event.current.mousePosition;
             var ray = HandleUtility.GUIPointToWorldRay(mouseScreenPos);
-            RaycastHit RC;
-            if (Physics.Raycast(ray, out RC, distance, infoPool.ivyParameters.layerMask.value))
+            LayerMask mask = infoPool ? infoPool.ivyParameters.layerMask : ~0;
+            if (Physics.Raycast(ray, out RaycastHit hit, distance, mask))
             {
                 SceneView.lastActiveSceneView.Repaint();
-                mousePoint = RC.point;
-                mouseNormal = RC.normal;
-                rayCast = true;
+                mousePoint = hit.point;
+                mouseNormal = hit.normal;
+                return true;
             }
-            else
-            {
-                rayCast = false;
-            }
+            return false;
         }
 
         protected void RefreshBrushWS(Event currentEvent)
@@ -161,8 +151,8 @@ namespace TeamCrescendo.ProceduralIvy
         protected void RefreshBrushDistance()
         {
             var cam = SceneView.currentDrawingSceneView.camera;
-            if (overBranch != null && overPoint != null)
-                brushDistance = Vector3.Distance(cam.transform.position, overPoint.point);
+            if (cursorSelectedBranch != null && cursorSelectedPoint != null)
+                brushDistance = Vector3.Distance(cam.transform.position, cursorSelectedPoint.point);
             else
                 brushDistance = 5f;
         }

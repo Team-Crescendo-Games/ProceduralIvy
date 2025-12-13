@@ -16,7 +16,7 @@ namespace TeamCrescendo.ProceduralIvy
                 DrawBrush(currentEvent, brushSize);
 
                 Handles.BeginGUI();
-                if (overBranch != null)
+                if (cursorSelectedBranch != null)
                 {
                     SelectLeavesSS(currentEvent.mousePosition, brushSize);
 
@@ -25,18 +25,18 @@ namespace TeamCrescendo.ProceduralIvy
                         DrawOverLeaves();
 
                         //después, si hacemos clic con el ratón....
-                        if (currentEvent.type == EventType.MouseDown && overBranch != null)
+                        if (currentEvent.type == EventType.MouseDown && cursorSelectedBranch != null)
                         {
                             SaveIvy();
 
-                            overBranch.RemoveLeaves(overLeaves);
+                            cursorSelectedBranch.RemoveLeaves(overLeaves);
                             RefreshMesh(true, true);
                         }
 
                         //al arrastrar calculamos el delta actualizando el worldspace del target y aplicamos el delta transformado en relación a la distancia al overpoint a los vértices guardados como afectados
                         if (currentEvent.type == EventType.MouseDrag)
                         {
-                            overBranch.RemoveLeaves(overLeaves);
+                            cursorSelectedBranch.RemoveLeaves(overLeaves);
                             RefreshMesh(true, true);
                         }
                     }

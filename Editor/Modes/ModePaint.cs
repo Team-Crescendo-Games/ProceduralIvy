@@ -109,7 +109,7 @@ namespace TeamCrescendo.ProceduralIvy
                         
                         if (cursorSelectedPoint.index != cursorSelectedBranch.branchPoints.Count - 1)
                         {
-                            infoPool.growth.AddBranch(cursorSelectedBranch, cursorSelectedPoint, cursorSelectedPoint.point, mouseNormal);
+                            GetGrowthController().AddBranch(cursorSelectedBranch, cursorSelectedPoint, cursorSelectedPoint.point, mouseNormal);
                             cursorSelectedBranch = infoPool.ivyContainer.branches[^1];
                             cursorSelectedPoint = cursorSelectedBranch.branchPoints[0];
                         }
@@ -163,9 +163,7 @@ namespace TeamCrescendo.ProceduralIvy
         {
             if (cursorSelectedPoint != null && Vector3.Distance(mousePoint, cursorSelectedPoint.point) > infoPool.ivyParameters.stepSize)
             {
-                Random.state = infoPool.growth.rng;
                 ProcessPoints();
-                infoPool.growth.rng = Random.state;
             }
         }
 
@@ -185,12 +183,11 @@ namespace TeamCrescendo.ProceduralIvy
             for (var i = 1; i < numPoints; i++)
             {
                 var intermediatePoint = srcPoint + i * infoPool.ivyParameters.stepSize * newGrowDirection;
-                infoPool.growth.AddPoint(cursorSelectedBranch, intermediatePoint, mouseNormal);
+                GetGrowthController().AddPoint(cursorSelectedBranch, intermediatePoint, mouseNormal);
                 cursorSelectedPoint = cursorSelectedPoint.GetNextPoint();
             }
 
             cursorSelectedBranch.growDirection = newGrowDirection;
-            infoPool.growth.rng = Random.state;
         }
 
         private bool StartIvy(Vector3 firstPoint, Vector3 firstGrabVector)

@@ -5,26 +5,26 @@ using UnityEngine.Serialization;
 
 namespace TeamCrescendo.ProceduralIvy
 {
-    [PreferBinarySerialization]
-    public class EditorIvyGrowth : ScriptableObject
+    public class EditorIvyGrowth
     {
-        public InfoPool infoPool;
-        private bool growing;
+        public readonly InfoPool infoPool;
         
-        public Random.State rng;
+        private bool growing;
+        private Random.State rng;
 
         public bool IsGrowing() => growing;
         public void SetGrowing(bool value) => growing = value;
         public void ToggleGrowing() => growing = !growing;
 
-        public void Initialize(Transform rootTransform, Vector3 firstPoint, Vector3 firstGrabVector)
+        public EditorIvyGrowth(InfoPool infoPool, Transform rootTransform, Vector3 firstPoint, Vector3 firstGrabVector)
         {
+            this.infoPool = infoPool;
             Assert.IsTrue(infoPool.ivyContainer.branches.Count == 0, "Cannot initialize Ivy with existing branches");
             
             Random.InitState(infoPool.ivyParameters.randomSeed);
             rng = Random.state;
 
-            var newBranchContainer = CreateInstance<BranchContainer>();
+            var newBranchContainer = ScriptableObject.CreateInstance<BranchContainer>();
             
             newBranchContainer.currentHeight = infoPool.ivyParameters.minDistanceToSurface;
             
@@ -36,6 +36,8 @@ namespace TeamCrescendo.ProceduralIvy
             newBranchContainer.branchSense = ChooseBranchSense();
             
             infoPool.ivyContainer.AddBranch(newBranchContainer);
+            
+            Debug.Log($"Initialized new branch: {newBranchContainer.branchNumber}");
         }
 
         //Este método es para calcular la altura del próximo punto
@@ -56,13 +58,7 @@ namespace TeamCrescendo.ProceduralIvy
             branch.currentHeight = branch.newHeight;
         }
 
-        //Un random penco
-        private int ChooseBranchSense()
-        {
-            if (Random.value < 0.5f)
-                return -1;
-            return 1;
-        }
+        private int ChooseBranchSense() => Random.value < 0.5f ? -1 : 1;
 
         //todo parte del calculatenewpoint, a partir de ahí se entrama todo
         public void Step()
@@ -303,7 +299,7 @@ namespace TeamCrescendo.ProceduralIvy
         //Todo lo necesario para añadir una rama
         public void AddBranch(BranchContainer branch, BranchPoint originBranchPoint, Vector3 point, Vector3 normal)
         {
-            var newBranchContainer = CreateInstance<BranchContainer>();
+            var newBranchContainer = ScriptableObject.CreateInstance<BranchContainer>();
 
             newBranchContainer.AddBranchPoint(point, -normal);
 

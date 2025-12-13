@@ -102,6 +102,12 @@ namespace TeamCrescendo.ProceduralIvy
         private Material previewMaterial;
         private Vector2 meshPreviewDrag = new (180, 0);
         
+        // controls growing a single instance of ivy in the editor 
+        public EditorIvyGrowth GrowthController { get; private set; }
+        
+        // mesh builder for a single instance of ivy in the editor
+        public EditorMeshBuilder MeshBuilder { get; private set; }
+        
         #region Init
 
         [MenuItem("Tools/Team Crescendo/Procedural Ivy 2")]
@@ -316,6 +322,9 @@ namespace TeamCrescendo.ProceduralIvy
 
             SceneGuiController.Cleanup();
             SceneGuiController = null;
+
+            MeshBuilder = null;
+            GrowthController = null;
             
             Undo.undoRedoPerformed -= OnUndoPerformed;
             Selection.selectionChanged -= OnSelectionChanged;
@@ -463,16 +472,21 @@ namespace TeamCrescendo.ProceduralIvy
                 });
             }
 
-            // setup growth button
             if (GrowthToggle != null)
             {
                 GrowthToggle.RegisterValueChangedCallback(evt =>
                 {
                     if (CurrentIvyInfo == null) return;
+        
+                    // Treat null controller as "not growing" (we lazy init in StartGrowthIvy)
+                    bool wasGrowing = GrowthController != null && GrowthController.IsGrowing();
+                    bool isTargetGrowing = evt.newValue;
+
+                    Debug.Log($"Is growing? {wasGrowing} -> {isTargetGrowing}");
                     
-                    bool wasGrowing = CurrentIvyInfo.infoPool.growth.IsGrowing();
-                    CurrentIvyInfo.infoPool.growth.SetGrowing(evt.newValue);
-                    if (CurrentIvyInfo.infoPool.growth.IsGrowing())
+                    if (GrowthController != null) GrowthController.SetGrowing(isTargetGrowing);
+
+                    if (isTargetGrowing)
                     {
                         GrowthToggle.AddToClassList("toggle-btn-active");
                         GrowthToggle.text = "Growing!";
@@ -484,19 +498,19 @@ namespace TeamCrescendo.ProceduralIvy
                     }
 
                     // logic for start growth
-                    if (!wasGrowing && CurrentIvyInfo.infoPool.growth.IsGrowing())
+                    if (!wasGrowing && isTargetGrowing)
                     {
-                        bool success = StartGrowthIvy(CurrentIvyInfo.transform.position,
+                        bool success = StartGrowthIvy(CurrentIvyInfo.transform.position, 
                             -CurrentIvyInfo.transform.up);
-                        if (!success) CurrentIvyInfo.infoPool.growth.SetGrowing(false);
+
+                        if (GrowthController != null)
+                            GrowthController.SetGrowing(success);
                     }
                     
                     // logic for stop growth: set scene dirty
-                    if (wasGrowing && !CurrentIvyInfo.infoPool.growth.IsGrowing())
-                    {
+                    if (wasGrowing && !isTargetGrowing)
                         EditorSceneManager.MarkSceneDirty(CurrentIvyInfo.gameObject.scene);
-                    }
-                    
+        
                     SceneView.RepaintAll();
                 });
             }
@@ -583,7 +597,7 @@ namespace TeamCrescendo.ProceduralIvy
             ContentGeneralSub.SetEnabled(hasCurrentObj);
             PresetActions.SetEnabled(hasCurrentObj);
             
-            bool notGrowingAndNotInPlantingSeedMode = hasCurrentObj && !CurrentIvyInfo.infoPool.growth.IsGrowing() && !IsPlacingSeed;
+            bool notGrowingAndNotInPlantingSeedMode = hasCurrentObj && (GrowthController != null && !GrowthController.IsGrowing()) && !IsPlacingSeed;
             ResetBtn.SetEnabled(notGrowingAndNotInPlantingSeedMode);
             RandomizeBtn.SetEnabled(notGrowingAndNotInPlantingSeedMode);
             OptimizeBtn.SetEnabled(notGrowingAndNotInPlantingSeedMode);
@@ -597,7 +611,6 @@ namespace TeamCrescendo.ProceduralIvy
         {
             if (IsPlacingSeed)
             {
-
                 HandleUtility.AddDefaultControl(GUIUtility.GetControlID(FocusType.Passive));
 
                 Event e = Event.current;
@@ -675,23 +688,12 @@ namespace TeamCrescendo.ProceduralIvy
             AssetDatabase.AddObjectToAsset(infoPool.ivyContainer, infoPool);
 
             infoPool.ivyParameters = ivyParameters;
-
-            // embed EditorIvyGrowth
-            infoPool.growth = CreateInstance<EditorIvyGrowth>();
-            infoPool.growth.name = "Growth";
-            infoPool.growth.infoPool = infoPool;
-            AssetDatabase.AddObjectToAsset(infoPool.growth, infoPool);
-
-            // embed EditorMeshBuilder
-            infoPool.meshBuilder = CreateInstance<EditorMeshBuilder>();
-            infoPool.meshBuilder.name = "MeshBuilder";
-            infoPool.meshBuilder.infoPool = infoPool;
-            AssetDatabase.AddObjectToAsset(infoPool.meshBuilder, infoPool);
-
-            // embed Mesh
-            infoPool.meshBuilder.ivyMesh = new Mesh();
-            infoPool.meshBuilder.ivyMesh.name = "IvyMesh";
-            AssetDatabase.AddObjectToAsset(infoPool.meshBuilder.ivyMesh, infoPool);
+            
+            var ivyMesh = new Mesh();
+            ivyMesh.name = "IvyMesh";
+            
+            infoPool.mesh = ivyMesh;
+            AssetDatabase.AddObjectToAsset(ivyMesh, infoPool);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -709,17 +711,14 @@ namespace TeamCrescendo.ProceduralIvy
                 Quaternion.LookRotation(normal));
             newIvy.transform.RotateAround(newIvy.transform.position, newIvy.transform.right, 90f);
             
-            infoPool.growth.SetGrowing(false);
-            
             var mr = newIvy.AddComponent<MeshRenderer>();
             mr.sharedMaterials = new [] {infoPool.ivyParameters.branchesMaterial};
 
-            newIvy.AddComponent<MeshFilter>();
-
             CurrentIvyInfo = newIvy.AddComponent<IvyInfo>();
             CurrentIvyInfo.infoPool = infoPool;
-
-            infoPool.meshBuilder.InitializeLeafMaterials(CurrentIvyInfo.transform, CurrentIvyInfo.GetComponent<MeshRenderer>());
+            
+            var mf = newIvy.AddComponent<MeshFilter>();
+            mf.sharedMesh = infoPool.mesh;
             
             // could also use undo
             EditorSceneManager.MarkSceneDirty(newIvy.scene);
@@ -739,21 +738,17 @@ namespace TeamCrescendo.ProceduralIvy
             CurrentIvyInfo.infoPool.ivyParameters.randomSeed = newSeed;
             Random.InitState(newSeed);
             
-            CurrentIvyInfo.infoPool.meshBuilder.InitializeLeafMaterials(CurrentIvyInfo.transform, CurrentIvyInfo.GetComponent<MeshRenderer>());
-            
-            RefreshMesh();
+            RebuildMesh();
         }
 
         private void OnResetClicked()
         {
             Assert.IsNotNull(CurrentIvyInfo);
             
-            CurrentIvyInfo.infoPool.growth.SetGrowing(false);
+            if (GrowthController != null) GrowthController.SetGrowing(false);
             CurrentIvyInfo.infoPool.ivyContainer.Clear();
             
-            CurrentIvyInfo.infoPool.meshBuilder.InitializeLeafMaterials(CurrentIvyInfo.transform, CurrentIvyInfo.GetComponent<MeshRenderer>());
-            
-            RefreshMesh();
+            RebuildMesh();
         }
 
         private void PromptDeleteIvyData(InfoPool infoPool)
@@ -831,7 +826,7 @@ namespace TeamCrescendo.ProceduralIvy
                 }
             }
             
-            RefreshMesh();
+            RebuildMesh();
             
             GetMeshInfo(mf.sharedMesh, out int vertsAfter, out long trisAfter);
             
@@ -913,13 +908,19 @@ namespace TeamCrescendo.ProceduralIvy
         {
             if (CurrentIvyInfo != null 
                 && CurrentIvyInfo.infoPool != null
-                && CurrentIvyInfo.infoPool.growth != null 
-                && CurrentIvyInfo.infoPool.growth.IsGrowing())
+                && GrowthController != null 
+                && GrowthController.IsGrowing())
             {
-                if (!CurrentIvyInfo.infoPool.meshBuilder.IsVertexLimitReached(CurrentIvyInfo.infoPool.ivyParameters))
+                bool isVertexLimitReached = MeshBuilder == null 
+                    ? false 
+                    : MeshBuilder.IsVertexLimitReached(CurrentIvyInfo.infoPool.ivyParameters);
+                
+                Debug.Log($"Is vertex limit reached? {isVertexLimitReached}");
+                
+                if (!isVertexLimitReached)
                 {
-                    CurrentIvyInfo.infoPool.growth.Step();
-                    RefreshMesh();
+                    GrowthController.Step();
+                    RebuildMesh();
                 }
                 else
                 {
@@ -927,13 +928,16 @@ namespace TeamCrescendo.ProceduralIvy
                         Debug.LogWarning("Vertices limit reached at " + Constants.VERTEX_LIMIT_32 + ".", CurrentIvyInfo.gameObject);
                     else
                         Debug.LogWarning("Vertices limit reached at " + Constants.VERTEX_LIMIT_16 + ".", CurrentIvyInfo.gameObject);
-                    CurrentIvyInfo.infoPool.growth.SetGrowing(false);
+                    GrowthController.SetGrowing(false);
                 }
             }
         }
         
+        // lazily initializes the growth controller
         public bool StartGrowthIvy(Vector3 firstPoint, Vector3 firstGrabVector)
         {
+            Debug.Log("Start growth ivy");
+            
             if (CurrentIvyInfo == null || rootVisualElement == null)
             {
                 Debug.LogWarning("No Ivy Info or Root Visual Element");
@@ -942,13 +946,14 @@ namespace TeamCrescendo.ProceduralIvy
 
             if (CurrentIvyInfo.infoPool.ivyContainer.branches.Count == 0)
             {
-                CurrentIvyInfo.infoPool.growth.Initialize(CurrentIvyInfo.transform, firstPoint, firstGrabVector);
-                CurrentIvyInfo.infoPool.meshBuilder.InitializeLeafMaterials(CurrentIvyInfo.transform, CurrentIvyInfo.GetComponent<MeshRenderer>());
-                CurrentIvyInfo.infoPool.meshBuilder.InitializeMeshBuilder();
+                // instantiate new growth object
+                GrowthController = new EditorIvyGrowth(CurrentIvyInfo.infoPool, CurrentIvyInfo.transform, firstPoint, firstGrabVector);
                 return true;
             }
             
-            EditorGUILayout.HelpBox("Ivy already has branches. Should reset and grow again!", MessageType.Warning);
+            const string warningMessage = "Ivy already has branches. Should reset and grow again!";
+            EditorGUILayout.HelpBox(warningMessage, MessageType.Warning);
+            Debug.LogWarning(warningMessage);
             return false;
         }
 
@@ -1005,8 +1010,9 @@ namespace TeamCrescendo.ProceduralIvy
         // used for saving as a prefab or scene
         private GameObject CloneAndStrip()
         {
-            if (CurrentIvyInfo.infoPool.ivyParameters.generateLightmapUVs) 
-                CurrentIvyInfo.infoPool.meshBuilder.GenerateLMUVs();
+            Assert.IsNotNull(MeshBuilder);
+            if (CurrentIvyInfo.infoPool.ivyParameters.generateLightmapUVs)
+                MeshBuilder.GenerateLMUVs();
             
             // need to cache since CurrentIvyInfo will be destroyed
             InfoPool oldInfo = CurrentIvyInfo.infoPool;
@@ -1227,7 +1233,7 @@ namespace TeamCrescendo.ProceduralIvy
                 if (HeaderLabel != null) HeaderLabel.text = $"Editing object: {ivy.name}";
                 if (InfoPoolObjectField != null) InfoPoolObjectField.value = CurrentIvyInfo.infoPool;
                 
-                UpdatePreviewMesh(CurrentIvyInfo.infoPool.meshBuilder.ivyMesh);
+                UpdatePreviewMesh(MeshBuilder?.GetIvyMesh());
                 
                 RenderAllInspectors(CurrentIvyInfo.infoPool.ivyContainer);
             }
@@ -1241,6 +1247,10 @@ namespace TeamCrescendo.ProceduralIvy
                 if (InfoPoolObjectField != null) InfoPoolObjectField.value = null;
                 
                 UpdatePreviewMesh(null);
+
+                // invalidate the controllers
+                GrowthController = null;
+                MeshBuilder = null;
             }
         }
 
@@ -1248,27 +1258,28 @@ namespace TeamCrescendo.ProceduralIvy
 
         #region Mesh Helpers
 
-        private void RefreshMesh()
+        public void RebuildMesh()
         {
-            if (CurrentIvyInfo != null)
-            {
-                CurrentIvyInfo.infoPool.meshBuilder.InitializeLeafMaterials(CurrentIvyInfo.transform, CurrentIvyInfo.GetComponent<MeshRenderer>());
-                CurrentIvyInfo.infoPool.meshBuilder.BuildGeometry();
+            if (CurrentIvyInfo == null) return;
+            
+            MeshBuilder = new EditorMeshBuilder(CurrentIvyInfo.infoPool.mesh, CurrentIvyInfo.infoPool,
+                CurrentIvyInfo.transform, CurrentIvyInfo.GetComponent<MeshRenderer>());
+            MeshBuilder.PrepareMeshBuilder();
+            MeshBuilder.BuildGeometry();
 
-                if (!CurrentIvyInfo.TryGetComponent<MeshRenderer>(out var mr)) 
-                    throw new InvalidOperationException("No MeshRenderer found on IvyInfo");
-                var newMaterials = mr.sharedMaterials;
-                newMaterials[0] = CurrentIvyInfo.infoPool.ivyParameters.branchesMaterial;
-                mr.sharedMaterials = newMaterials;
+            // if (!CurrentIvyInfo.TryGetComponent<MeshRenderer>(out var mr)) 
+            //     throw new InvalidOperationException("No MeshRenderer found on IvyInfo");
+            // var newMaterials = mr.sharedMaterials;
+            // newMaterials[0] = CurrentIvyInfo.infoPool.ivyParameters.branchesMaterial;
+            // mr.sharedMaterials = newMaterials;
 
-                if (!CurrentIvyInfo.TryGetComponent<MeshFilter>(out var mf)) 
-                    throw new InvalidOperationException("No MeshFilter found on IvyInfo");
-                Mesh newMesh = CurrentIvyInfo.infoPool.meshBuilder.ivyMesh;
-                mf.mesh = newMesh;
-
-                // do not call mf.mesh, will leak!
-                UpdatePreviewMesh(newMesh);
-            }
+            if (!CurrentIvyInfo.TryGetComponent<MeshFilter>(out var mf)) 
+                throw new InvalidOperationException("No MeshFilter found on IvyInfo");
+            Mesh newMesh = MeshBuilder.GetIvyMesh();
+            mf.mesh = newMesh;
+            
+            // do not call mf.mesh, will leak!
+            UpdatePreviewMesh(newMesh);
         }
 
         #endregion

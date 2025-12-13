@@ -10,10 +10,9 @@ namespace TeamCrescendo.ProceduralIvy
     {
         public IvyContainer ivyContainer;
         public IvyParameters ivyParameters;
-#if UNITY_EDITOR
-        public EditorMeshBuilder meshBuilder;
-        public EditorIvyGrowth growth;
+        public Mesh mesh;
         
+#if UNITY_EDITOR
         public struct IvyMemoryStats
         {
             public int branchCount;

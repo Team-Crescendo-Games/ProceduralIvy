@@ -9,18 +9,20 @@ using UnityEditor;
 
 namespace TeamCrescendo.ProceduralIvy
 {
-    public class EditorMeshBuilder : ScriptableObject
+    public class EditorMeshBuilder
     {
-        public InfoPool infoPool;
-        [NonSerialized] private Transform ivyRootTransform;
+        public readonly InfoPool infoPool;
+        private Transform ivyRootTransform;
 
         //The final mesh of the ivy as a whole
-        public Mesh ivyMesh;
-        [NonSerialized] private Vector3[] verts;
-        [NonSerialized] private Vector3[] normals;
-        [NonSerialized] private int[] trisBranches;
-        [NonSerialized] private Vector2[] uvs;
-        [NonSerialized] private Color[] vColor;
+        private readonly Mesh ivyMesh;
+        public Mesh GetIvyMesh() => ivyMesh;
+        
+        private Vector3[] verts;
+        private Vector3[] normals;
+        private int[] trisBranches;
+        private Vector2[] uvs;
+        private Color[] vColor;
         
         //Angle for the generation of each ring
         private float angle;
@@ -30,32 +32,21 @@ namespace TeamCrescendo.ProceduralIvy
 
         // leaf triangles, divided by material of each leaf type to make submeshes.
         private List<List<int>> trisLeaves;
-
         // leaf types correspond to each material
-        public List<Material> leavesMaterials;
-        private bool initializedMaterials;
+        private readonly List<Material> leavesMaterials;
         // leaf types correspond to each material
-        private List<List<int>> typesByMat;
-        
-        public bool IsVertexLimitReached(IvyParameters ivyParams)
-        {
-            var numVertices = verts.Length + ivyParams.sides + 1;
-            int limit = ivyParams.buffer32Bits 
-                ? Constants.VERTEX_LIMIT_32 
-                : Constants.VERTEX_LIMIT_16;
-            return numVertices >= limit;
-        }
+        private readonly List<List<int>> typesByMat;
 
-        public void InitializeLeafMaterials(Transform rootTransform, MeshRenderer mr)
+        public EditorMeshBuilder(Mesh ivyMesh, InfoPool infoPool, Transform rootTransform, MeshRenderer mr)
         {
-            if (rootTransform == null || mr == null)
-            {
-                Debug.LogWarning("Invalid root transform or mesh renderer: " + rootTransform + " " + mr);
-                return;
-            }
+            if (infoPool == null || rootTransform == null || mr == null)
+                throw new ArgumentNullException();
+
+            this.infoPool = infoPool;
+            this.ivyMesh = ivyMesh;
 
             ivyRootTransform = rootTransform;
-            
+
             typesByMat = new List<List<int>>();
             leavesMaterials = new List<Material>();
 
@@ -98,13 +89,13 @@ namespace TeamCrescendo.ProceduralIvy
             }
             else
             {
-                mr.sharedMaterials = new [] { infoPool.ivyParameters.branchesMaterial };
+                mr.sharedMaterials = new[] { infoPool.ivyParameters.branchesMaterial };
             }
-
-            initializedMaterials = true;
         }
-        
-        public void InitializeMeshBuilder()
+
+        // initializes the mesh builder with new vertex counts
+        // needed since branches are updated by the growth controller and we have to allocate more space
+        public void PrepareMeshBuilder()
         {
             //Reset leaf triangles in each iteration
             trisLeaves = new List<List<int>>();
@@ -115,8 +106,8 @@ namespace TeamCrescendo.ProceduralIvy
             ivyMesh.Clear();
             if (infoPool.ivyParameters.buffer32Bits) 
                 ivyMesh.indexFormat = IndexFormat.UInt32;
-            ivyMesh.name = "Ivy Mesh";
             ivyMesh.subMeshCount = leavesMaterials.Count + 1;
+            
             //And also the dictionary used in lightmap UV creation
             branchesLeavesIndices.Clear();
 
@@ -164,6 +155,15 @@ namespace TeamCrescendo.ProceduralIvy
                 angle = Mathf.Rad2Deg * 2 * Mathf.PI / infoPool.ivyParameters.sides;
             else
                 angle = Mathf.Rad2Deg * 2 * Mathf.PI / infoPool.ivyParameters.sides / 2;
+        }
+        
+        public bool IsVertexLimitReached(IvyParameters ivyParams)
+        {
+            var numVertices = verts.Length + ivyParams.sides + 1;
+            int limit = ivyParams.buffer32Bits 
+                ? Constants.VERTEX_LIMIT_32 
+                : Constants.VERTEX_LIMIT_16;
+            return numVertices >= limit;
         }
 
         //Here leaves are built, this method is called branch by branch
@@ -272,13 +272,6 @@ namespace TeamCrescendo.ProceduralIvy
 
         public void BuildGeometry()
         {
-            if (!initializedMaterials)
-            {
-                Debug.LogError("Leaves data not initialized");
-                return;
-            }
-
-            InitializeMeshBuilder();
             //These counters track where we are calculating vertices and triangles, since we calculate everything in one go, not branch by branch
             var vertCount = 0;
             var triBranchesCount = 0;
@@ -315,7 +308,6 @@ namespace TeamCrescendo.ProceduralIvy
 
                             branchPoint.firstVector = vectors[0];
                             branchPoint.axis = vectors[1];
-
 
                             for (var v = 0; v < infoPool.ivyParameters.sides + 1; v++)
                                 if (infoPool.ivyParameters.generateBranches)
@@ -413,7 +405,6 @@ namespace TeamCrescendo.ProceduralIvy
                 branchesLeavesIndices.Add(branchesLeavesIndices.Count, fromTo);
 
                 if (infoPool.ivyParameters.generateLeaves)
-                    //infoPool.ivyContainer.branches[b].ClearRuntimeVerticesLeaves();
                     BuildLeaves(b, ref vertCount);
             }
 
@@ -522,11 +513,9 @@ namespace TeamCrescendo.ProceduralIvy
             }
         }
 
-#if UNITY_EDITOR
         public void GenerateLMUVs()
         {
             if (ivyMesh) Unwrapping.GenerateSecondaryUVSet(ivyMesh);
         }
-#endif
     }
 }

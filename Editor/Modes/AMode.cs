@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Assertions;
 
 namespace TeamCrescendo.ProceduralIvy
 {
@@ -165,8 +166,7 @@ namespace TeamCrescendo.ProceduralIvy
                     for (var i = 0; i < infoPool.ivyContainer.branches.Count; i++)
                         infoPool.ivyContainer.branches[i].RepositionLeaves(updatePositionLeaves);
 
-                infoPool.meshBuilder.BuildGeometry();
-                mf.mesh = infoPool.meshBuilder.ivyMesh;
+                ProceduralIvyEditorWindow.Instance.RebuildMesh();
             }
         }
 
@@ -208,6 +208,23 @@ namespace TeamCrescendo.ProceduralIvy
                                mousePositionInForbiddenRect;
 
             toolPaintingAllowed = !stopPainting;
+        }
+        
+        // gets the current global growth controller
+        // and asserts that it's growing the same ivy as the current infoPool
+        protected EditorIvyGrowth GetGrowthController()
+        {
+            EditorIvyGrowth growthController = ProceduralIvyEditorWindow.Instance.GrowthController;
+            Assert.IsNotNull(growthController);
+            Assert.IsTrue(growthController.infoPool == infoPool, "Should be growing the ivy on the same object!");
+            return growthController;
+        }
+
+        protected EditorMeshBuilder GetMeshBuilder()
+        {
+            Assert.IsNotNull(ProceduralIvyEditorWindow.Instance.MeshBuilder);
+            Assert.IsTrue(ProceduralIvyEditorWindow.Instance.MeshBuilder.infoPool == infoPool, "Should be building the mesh for the same ivy!");
+            return ProceduralIvyEditorWindow.Instance.MeshBuilder;
         }
     }
 }

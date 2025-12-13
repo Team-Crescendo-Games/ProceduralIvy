@@ -36,32 +36,6 @@ namespace TeamCrescendo.ProceduralIvy
             Init(0,0);
         }
 
-        public int GetNumLeaves()
-        {
-            return leaves.Count;
-        }
-
-        public void SetValues(Vector3 growDirection, float randomizeHeight,
-            float currentHeight, float heightParameter, int branchSense, BranchPoint originPointOfThisBranch)
-        {
-            branchPoints = new List<BranchPoint>(1000);
-            this.growDirection = growDirection;
-            leaves = new List<LeafPoint>(1000);
-            totalLenght = 0f;
-            fallIteration = 0f;
-            falling = false;
-            rotationOnFallIteration = Quaternion.identity;
-            this.branchSense = branchSense;
-            this.heightParameter = heightParameter;
-            this.randomizeHeight = randomizeHeight;
-            heightVar = 0f;
-            this.currentHeight = currentHeight;
-            deltaHeight = 0f;
-            newHeight = 0f;
-            this.originPointOfThisBranch = originPointOfThisBranch;
-            branchNumber = -1;
-        }
-
         public void Init(int branchPointsSize, int numLeaves)
         {
             branchPoints = new List<BranchPoint>(branchPointsSize * 2);
@@ -140,8 +114,10 @@ namespace TeamCrescendo.ProceduralIvy
         public void GetLeavesInSegment(BranchPoint initSegment, List<LeafPoint> res)
         {
             for (var i = 0; i < leaves.Count; i++)
+            {
                 if (leaves[i].initSegmentIdx == initSegment.index)
                     res.Add(leaves[i]);
+            }
         }
 
         public List<LeafPoint> GetLeavesInSegment(BranchPoint initSegment)

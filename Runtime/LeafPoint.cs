@@ -27,8 +27,6 @@ namespace TeamCrescendo.ProceduralIvy
         public float displacementFromInitSegment;
 
         public Quaternion leafRotation;
-        public float currentScale;
-        public float dstScale;
 
         public Vector3 leafCenter;
         public List<RTVertexData> verticesLeaves;

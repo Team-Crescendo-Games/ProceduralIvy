@@ -209,16 +209,13 @@ namespace TeamCrescendo.ProceduralIvy
                                     infoPool.ivyParameters.randomRotation.z), forward) * quat;
                         quat = currentLeaf.forwarRot * quat;
 
-                        //Here the scale, which is simple, including tip influence
                         var scale = Random.Range(infoPool.ivyParameters.minScale, infoPool.ivyParameters.maxScale);
-                        currentLeaf.leafScale = scale;
-
                         scale *= Mathf.InverseLerp(infoPool.ivyContainer.branches[b].totalLenght,
                             infoPool.ivyContainer.branches[b].totalLenght - infoPool.ivyParameters.tipInfluence,
                             currentLeaf.lpLength);
-
+                        
+                        currentLeaf.leafScale = scale;
                         currentLeaf.leafRotation = quat;
-                        currentLeaf.dstScale = scale;
 
                         //Put corresponding triangles into the array corresponding to the material being iterated
                         for (var t = 0; t < chosenLeaveMesh.triangles.Length; t++)

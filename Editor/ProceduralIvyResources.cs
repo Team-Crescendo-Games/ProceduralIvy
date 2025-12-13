@@ -6,9 +6,6 @@ namespace TeamCrescendo.ProceduralIvy
     [CreateAssetMenu(fileName = "ProceduralIvyResources", menuName = "Team Crescendo/Procedural Ivy Resources")]
     public class ProceduralIvyResources : ScriptableObject
     {
-        [Header("Styles")]
-        public GUISkin windowSkin;
-
         [Header("Tool Icons")]
         public Texture2D paintTool;
         public Texture2D moveTool;
@@ -19,18 +16,6 @@ namespace TeamCrescendo.ProceduralIvy
         public Texture2D deleteTool;
         public Texture2D shaveTool;
         public Texture2D addLeavesTool;
-
-        [Header("UI Icons")]
-        public Texture2D arrowDown;
-        public Texture2D arrowUp;
-        public Texture2D materialIcon;
-        public Texture2D leafIcon;
-        public Texture2D presetIcon;
-        public Texture2D infoIcon;
-        public Texture2D labelIcon;
-        
-        [Header("Defaults")]
-        public IvyPreset defaultPreset;
 
         // Singleton-like access for Editor use
         private static ProceduralIvyResources _instance;

@@ -65,11 +65,6 @@ namespace TeamCrescendo.ProceduralIvy
             // create a default parameter set
         }
 
-        public IvyParameters(IvyParametersGUI paramsGuiCopy)
-        {
-            DeepCopy(paramsGuiCopy);
-        }
-
         public IvyParameters(IvyParameters paramsCopy)
         {
             DeepCopy(paramsCopy);
@@ -84,61 +79,6 @@ namespace TeamCrescendo.ProceduralIvy
         {
             if (ivyPreset == null) return;
             DeepCopy(ivyPreset.ivyParameters);
-        }
-
-        public void DeepCopy(IvyParametersGUI copyFrom)
-        {
-            if (copyFrom == null) return;
-            
-            stepSize = copyFrom.stepSize;
-            branchProbability = copyFrom.branchProvability;
-            maxBranches = copyFrom.maxBranchs;
-            layerMask = copyFrom.layerMask;
-            minDistanceToSurface = copyFrom.minDistanceToSurface;
-            maxDistanceToSurface = copyFrom.maxDistanceToSurface;
-            DTSFrequency = copyFrom.DTSFrequency;
-            DTSRandomness = copyFrom.DTSRandomness;
-            directionFrequency = copyFrom.directionFrequency;
-            directionAmplitude = copyFrom.directionAmplitude;
-            directionRandomness = copyFrom.directionRandomness;
-            gravity = new Vector3(copyFrom.gravityX, copyFrom.gravityY, copyFrom.gravityZ);
-            grabProvabilityOnFall = copyFrom.grabProvabilityOnFall;
-            stiffness = copyFrom.stiffness;
-            optAngleBias = copyFrom.optAngleBias;
-            leaveEvery = copyFrom.leaveEvery;
-            randomLeaveEvery = copyFrom.randomLeaveEvery;
-
-            buffer32Bits = copyFrom.buffer32Bits;
-            halfgeom = copyFrom.halfgeom;
-            sides = copyFrom.sides;
-            minRadius = copyFrom.minRadius;
-            maxRadius = copyFrom.maxRadius;
-            radiusVarFreq = copyFrom.radiusVarFreq;
-            radiusVarOffset = copyFrom.radiusVarOffset;
-            tipInfluence = copyFrom.tipInfluence;
-            uvScale = new Vector2(copyFrom.uvScaleX, copyFrom.uvScaleY);
-            uvOffset = new Vector2(copyFrom.uvOffsetX, copyFrom.uvOffsetY);
-            minScale = copyFrom.minScale;
-            maxScale = copyFrom.maxScale;
-            globalOrientation = copyFrom.globalOrientation;
-            globalRotation = new Vector3(copyFrom.globalRotationX, copyFrom.globalRotationY, copyFrom.globalRotationZ);
-            rotation = new Vector3(copyFrom.rotationX, copyFrom.rotationY, copyFrom.rotationZ);
-            randomRotation = new Vector3(copyFrom.randomRotationX, copyFrom.randomRotationY, copyFrom.randomRotationZ);
-            offset = new Vector3(copyFrom.offsetX, copyFrom.offsetY, copyFrom.offsetZ);
-            LMUVPadding = copyFrom.LMUVPadding;
-
-            generateBranches = copyFrom.generateBranches;
-            generateLeaves = copyFrom.generateLeaves;
-            generateLightmapUVs = copyFrom.generateLightmapUVs;
-
-            branchesMaterial = copyFrom.branchesMaterial;
-
-
-            leavesPrefabs = new GameObject[copyFrom.leavesPrefabs.Count];
-            for (var i = 0; i < copyFrom.leavesPrefabs.Count; i++) leavesPrefabs[i] = copyFrom.leavesPrefabs[i];
-
-            leavesProb = new float[copyFrom.leavesProb.Count];
-            for (var i = 0; i < copyFrom.leavesProb.Count; i++) leavesProb[i] = copyFrom.leavesProb[i];
         }
 
         public void DeepCopy(IvyParameters copyFrom)

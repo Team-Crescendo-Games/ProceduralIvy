@@ -17,7 +17,6 @@ Procedural Ivy is a Unity package that allows you to generate realistic ivy and 
   - Move points
   - Optimize mesh
   - Paint mode
-  - Refine growth
   - Shave branches
   - Smooth curves
 - **Preset System** - Save and load ivy configurations

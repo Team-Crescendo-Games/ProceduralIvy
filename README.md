@@ -80,18 +80,6 @@ IvyController ivy = GetComponent<IvyController>();
 ivy.StartGrowth();
 ```
 
-## Package Structure
-
-```
-ProceduralIvy/
-├── Editor/          # Editor tools and windows
-├── Runtime/         # Core runtime systems
-│   ├── Baked/       # Baked mesh support
-│   └── Procedural/  # Runtime procedural generation
-├── Sample/          # Example scenes and prefabs
-└── GuiSkins/        # Editor UI assets
-```
-
 ## Requirements
 
 - Unity 6000.0 or later

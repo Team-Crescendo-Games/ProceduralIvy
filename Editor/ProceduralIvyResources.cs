@@ -1,5 +1,6 @@
 ﻿#if UNITY_EDITOR
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace TeamCrescendo.ProceduralIvy
 {
@@ -10,8 +11,7 @@ namespace TeamCrescendo.ProceduralIvy
         public Texture2D paintTool;
         public Texture2D moveTool;
         public Texture2D smoothTool;
-        public Texture2D refineTool;
-        public Texture2D optimizeTool;
+        public Texture2D pruneTool;
         public Texture2D cutTool;
         public Texture2D deleteTool;
         public Texture2D shaveTool;

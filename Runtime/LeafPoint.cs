@@ -12,7 +12,6 @@ namespace TeamCrescendo.ProceduralIvy
     public class LeafPoint
     {
         public Vector3 point;
-        public Vector2 pointSS;
         public float lpLength;
 
         public Vector3 left;
@@ -63,19 +62,7 @@ namespace TeamCrescendo.ProceduralIvy
             left = Vector3.Cross(lpForward, lpUpward).normalized;
         }
         
-#if UNITY_EDITOR
-        public void CalculatePointSS()
-        {
-            pointSS = HandleUtility.WorldToGUIPoint(point);
-        }
-#endif
-
-        public void DrawVectors()
-        {
-            Debug.DrawLine(point, point + lpForward * 0.25f, Color.red, 5f);
-            Debug.DrawLine(point, point + lpUpward * 0.25f, Color.blue, 5f);
-            Debug.DrawLine(point, point + left * 0.25f, Color.green, 5f);
-        }
+        public Vector2 GetScreenspacePosition() => HandleUtility.WorldToGUIPoint(point);
 
         public float GetLengthFactor(BranchContainer branchContainer, float correctionFactor)
         {

@@ -70,7 +70,7 @@ namespace TeamCrescendo.ProceduralIvy
                     var a = branches[i].branchPoints[j - 1];
                     var b = branches[i].branchPoints[j];
 
-                    var d = DistanceBetweenPointAndSegmentSS(pointSS, a.pointSS, b.pointSS);
+                    var d = DistanceBetweenPointAndSegmentSS(pointSS, a.GetScreenspacePosition(), b.GetScreenspacePosition());
 
                     if (d <= minDistance)
                     {
@@ -127,36 +127,5 @@ namespace TeamCrescendo.ProceduralIvy
             branches.Add(newBranchContainer);
             RefreshBranchIndexing();
         }
-
-        public BranchPoint GetNearestPointAllBranchesSSFrom(Vector2 pointSS)
-        {
-            BranchPoint res = null;
-            var minDistance = float.MaxValue;
-
-            foreach (var branch in branches)
-            {
-                foreach (var branchPoint in branch.branchPoints)
-                {
-                    var newSqrDst = (branchPoint.pointSS - pointSS).sqrMagnitude;
-                    if (newSqrDst <= minDistance)
-                    {
-                        res = branchPoint;
-                        minDistance = newSqrDst;
-                    }
-                }
-            }
-
-            return res;
-        }
-
-#if UNITY_EDITOR
-        public void RecordUndo()
-        {
-            var undoName = "Ivy modification";
-            Undo.RegisterCompleteObjectUndo(this, undoName);
-            for (var i = 0; i < branches.Count; i++)
-                Undo.RegisterCompleteObjectUndo(branches[i], undoName);
-        }
-#endif
     }
 }

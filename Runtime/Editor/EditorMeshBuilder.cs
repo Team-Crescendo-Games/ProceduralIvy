@@ -49,6 +49,13 @@ namespace TeamCrescendo.ProceduralIvy
             if (infoPool == null || root == null || mr == null || targetMesh == null)
                 throw new ArgumentNullException();
 
+            if (infoPool.ivyContainer.branches.Count == 0)
+            {
+                Debug.LogWarning("No branches found. Building into a null mesh.");
+                targetMesh.Clear();
+                return false;
+            }
+
             CachePrefabData(infoPool);
 
             InitializeMaterialsAndBuckets(infoPool, mr);

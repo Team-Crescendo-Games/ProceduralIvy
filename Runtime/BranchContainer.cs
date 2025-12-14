@@ -79,12 +79,7 @@ namespace TeamCrescendo.ProceduralIvy
             branchPoints.Add(branchPoint);
         }
 
-        public void AddBranchPoint(Vector3 point, Vector3 grabVector)
-        {
-            AddBranchPoint(point, grabVector, false, -1);
-        }
-
-        public void AddBranchPoint(Vector3 point, Vector3 grabVector, bool isNewBranch, int newBranchIndex)
+        public void AddBranchPoint(Vector3 point, Vector3 grabVector, bool isNewBranch=false, int newBranchIndex=-1)
         {
             var newBranchPoint = new BranchPoint(point, grabVector,
                 branchPoints.Count, isNewBranch, newBranchIndex, totalLenght, this);
@@ -135,9 +130,9 @@ namespace TeamCrescendo.ProceduralIvy
             var forward = initSegment.initialGrowDir;
 
             var lpLength = initSegment.length + Vector3.Distance(pointWS, initSegment.point);
-            var res = InsertLeaf(pointWS, lpLength, forward,
-                -initSegment.grabVector, chosenLeave, leafIndex,
-                initSegment, endSegment);
+            var res = AddLeaf(pointWS, lpLength, forward,
+                -initSegment.grabVector, chosenLeave,
+                initSegment, endSegment, leafIndex);
 
             return res;
         }
@@ -229,7 +224,7 @@ namespace TeamCrescendo.ProceduralIvy
             branchPoints.RemoveRange(index, count);
 
             // We delete the last leaf as a safety precaution in case it ran out of segments.
-            if (leaves[^1].endSegmentIdx >= branchPoints.Count)
+            if (leaves.Count > 0 && leaves[^1].endSegmentIdx >= branchPoints.Count)
                 leaves.RemoveAt(leaves.Count - 1);
         }
 
@@ -269,131 +264,35 @@ namespace TeamCrescendo.ProceduralIvy
             return res;
         }
 
-        public Vector3[] GetSegmentPoints(Vector3 worldPoint)
-        {
-            var res = new Vector3[2];
-
-            var initSegment = Vector3.zero;
-            var endSegment = Vector3.zero;
-
-            var nearestPoint = GetNearestPointFrom(worldPoint);
-            var nextPoint = nearestPoint.GetNextPoint();
-            var previousPoint = nearestPoint.GetPreviousPoint();
-
-            if (nextPoint != null && previousPoint != null)
-            {
-                var distanceToNextPoint = (worldPoint - nextPoint.point).magnitude;
-                var distanceToPreviousPoint = (worldPoint - previousPoint.point).magnitude;
-
-                if (distanceToNextPoint <= distanceToPreviousPoint)
-                {
-                    initSegment = nearestPoint.point;
-                    endSegment = nextPoint.point;
-                }
-                else
-                {
-                    initSegment = previousPoint.point;
-                    endSegment = nearestPoint.point;
-                }
-            }
-
-            res[0] = initSegment;
-            res[1] = endSegment;
-
-            return res;
-        }
-
         public BranchPoint GetLastBranchPoint() => branchPoints[^1];
 
         public void AddLeaf(LeafPoint leafPoint) => leaves.Add(leafPoint);
 
-        public LeafPoint AddLeaf(Vector3 leafPoint, float lpLength, Vector3 lpForward, Vector3 lpUpward,
-            int chosenLeave, BranchPoint initSegment, BranchPoint endSegment)
+        // Appends a leaf at the given index or at the end if index is invalid.
+        public LeafPoint AddLeaf(Vector3 position, float length, Vector3 forward, Vector3 upward,
+            int prefabIndex, BranchPoint startSegment, BranchPoint endSegment, int atIndex = -1)
         {
-            var newLeaf = new LeafPoint(leafPoint, lpLength, lpForward, lpUpward, chosenLeave, initSegment, endSegment);
-            leaves.Add(newLeaf);
+            var newLeaf = new LeafPoint(position, length, forward, upward, prefabIndex, startSegment, endSegment);
+
+            // If index is valid, insert there. Otherwise, append to the end.
+            if (atIndex >= 0 && atIndex <= leaves.Count)
+                leaves.Insert(atIndex, newLeaf);
+            else
+                leaves.Add(newLeaf);
+
             return newLeaf;
         }
 
-        public LeafPoint InsertLeaf(Vector3 leafPoint, float lpLength, Vector3 lpForward, Vector3 lpUpward,
-            int chosenLeave, int leafIndex, BranchPoint initSegment, BranchPoint endSegment)
+        public void RemoveLeaves(List<LeafPoint> leavesToRemove)
         {
-            var newLeaf = new LeafPoint(leafPoint, lpLength, lpForward, lpUpward, chosenLeave, initSegment, endSegment);
-
-            var clampedLeafIndex = Mathf.Clamp(leafIndex, 0, int.MaxValue);
-
-            leaves.Insert(clampedLeafIndex, newLeaf);
-            return newLeaf;
-        }
-
-        public void RemoveLeaves(List<LeafPoint> leaves)
-        {
-            for (var i = 0; i < leaves.Count; i++)
-                this.leaves.Remove(leaves[i]);
-        }
-
-        public void DrawLeavesVectors(List<BranchPoint> branchPointsToFilter)
-        {
-            for (var i = 0; i < leaves.Count; i++)
-                leaves[i].DrawVectors();
-        }
-
-        public void GetInitIdxEndIdxLeaves(int initIdxBranchPoint, float stepSize, out int initIdxLeaves,
-            out int endIdxLeaves)
-        {
-            var initIdxFound = false;
-            var endIdxFound = false;
-
-            initIdxLeaves = -1;
-            endIdxLeaves = -1;
-
-            for (var i = 0; i < leaves.Count; i++)
-            {
-                if (!initIdxFound && leaves[i].lpLength > initIdxBranchPoint * stepSize)
-                {
-                    initIdxFound = true;
-                    initIdxLeaves = i;
-                }
-
-                if (!endIdxFound && leaves[i].lpLength >= totalLenght)
-                {
-                    endIdxFound = true;
-                    endIdxLeaves = i;
-                    break;
-                }
-            }
+            var set = new HashSet<LeafPoint>(leavesToRemove);
+            leaves.RemoveAll(x => set.Contains(x));
         }
 
         public void ReleasePoint(int indexPoint)
         {
             if (indexPoint < branchPoints.Count)
                 branchPoints[indexPoint].ReleasePoint();
-        }
-
-        public void GetInitIdxEndIdxLeaves(int initIdxBranchPoint, int endIdxBranchPoint, float stepSize,
-            out int initIdxLeaves, out int endIdxLeaves)
-        {
-            var initIdxFound = false;
-            var endIdxFound = false;
-
-            initIdxLeaves = -1;
-            endIdxLeaves = -1;
-
-            for (var i = 0; i < leaves.Count; i++)
-            {
-                if (!initIdxFound && leaves[i].lpLength >= initIdxBranchPoint * stepSize)
-                {
-                    initIdxFound = true;
-                    initIdxLeaves = i;
-                }
-
-                if (!endIdxFound && leaves[i].lpLength >= endIdxBranchPoint * stepSize)
-                {
-                    endIdxFound = true;
-                    endIdxLeaves = i - 1;
-                    break;
-                }
-            }
         }
 
 #if UNITY_EDITOR

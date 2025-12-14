@@ -104,9 +104,6 @@ namespace TeamCrescendo.ProceduralIvy
         private Material previewMaterial;
         private Vector2 meshPreviewDrag = new (180, 0);
         
-        // controls growing a single instance of ivy in the editor 
-        public EditorIvyGrowth GrowthController { get; private set; }
-
         // mesh building control
         [SerializeField] private float buildInterval = 0.05f;
         private bool requestedMeshRebuild = false;
@@ -328,8 +325,6 @@ namespace TeamCrescendo.ProceduralIvy
             SceneGuiController.Cleanup();
             SceneGuiController = null;
 
-            GrowthController = null;
-            
             Undo.undoRedoPerformed -= OnUndoPerformed;
             Selection.selectionChanged -= OnSelectionChanged;
             SceneView.duringSceneGui -= OnSceneGUI;
@@ -483,13 +478,10 @@ namespace TeamCrescendo.ProceduralIvy
                 {
                     if (CurrentIvyInfo == null) return;
         
-                    // Treat null controller as "not growing" (we lazy init in StartGrowthIvy)
-                    bool wasGrowing = GrowthController != null && GrowthController.IsGrowing();
-                    bool isTargetGrowing = evt.newValue;
-
-                    if (GrowthController != null) GrowthController.SetGrowing(isTargetGrowing);
-
-                    if (isTargetGrowing)
+                    bool wasGrowing = EditorIvyGrowth.IsGrowing();
+                    bool shouldBeGrowing = evt.newValue;
+                    
+                    if (shouldBeGrowing)
                     {
                         GrowthToggle.AddToClassList("toggle-btn-active");
                         GrowthToggle.text = "Growing!";
@@ -501,19 +493,19 @@ namespace TeamCrescendo.ProceduralIvy
                     }
 
                     // logic for start growth
-                    if (!wasGrowing && isTargetGrowing)
+                    if (!wasGrowing && shouldBeGrowing)
                     {
                         bool success = StartGrowthIvy(CurrentIvyInfo.transform.position, 
                             -CurrentIvyInfo.transform.up);
-
-                        if (GrowthController != null)
-                            GrowthController.SetGrowing(success);
+                        EditorIvyGrowth.SetGrowing(success);
                     }
                     
-                    // logic for stop growth: set scene dirty
-                    if (wasGrowing && !isTargetGrowing)
+                    if (wasGrowing && !shouldBeGrowing)
+                    {
                         MarkSceneDirty(CurrentIvyInfo.gameObject.scene);
-        
+                        EditorIvyGrowth.SetGrowing(false);
+                    }
+
                     SceneView.RepaintAll();
                 });
             }
@@ -606,7 +598,7 @@ namespace TeamCrescendo.ProceduralIvy
             ContentGeneralSub.SetEnabled(hasCurrentObj);
             PresetActions.SetEnabled(hasCurrentObj);
             
-            bool notGrowingAndNotInPlantingSeedMode = hasCurrentObj && (GrowthController != null && !GrowthController.IsGrowing()) && !IsPlacingSeed;
+            bool notGrowingAndNotInPlantingSeedMode = hasCurrentObj && !EditorIvyGrowth.IsGrowing() && !IsPlacingSeed;
             ResetBtn.SetEnabled(notGrowingAndNotInPlantingSeedMode);
             RandomizeBtn.SetEnabled(notGrowingAndNotInPlantingSeedMode);
             OptimizeBtn.SetEnabled(notGrowingAndNotInPlantingSeedMode);
@@ -643,10 +635,6 @@ namespace TeamCrescendo.ProceduralIvy
                     if (e.type == EventType.MouseDown && e.button == 0)
                     {
                         CreateNewIvyGameObject(hit.point, hit.normal);
-
-                        // use the newly created ivy info
-                        Assert.IsNotNull(CurrentIvyInfo);
-                        Selection.activeGameObject = CurrentIvyInfo.gameObject;
 
                         // after create, immediately exit place seed mode
                         PlaceSeedToggle.value = false;
@@ -733,6 +721,8 @@ namespace TeamCrescendo.ProceduralIvy
             if (!EditorApplication.isPlaying)
                 MarkSceneDirty(newIvy.scene);
             
+            Selection.activeGameObject = CurrentIvyInfo.gameObject;
+            
             ShowNotification(new GUIContent($"Ivy ({infoPool.name}) Generated Successfully!"));
         }
 
@@ -743,6 +733,8 @@ namespace TeamCrescendo.ProceduralIvy
         private void OnRandomizeClicked()
         {
             Assert.IsNotNull(CurrentIvyInfo);
+            
+            GrowthToggle.value = false;
             
             var newSeed = Environment.TickCount;
             CurrentIvyInfo.infoPool.ivyParameters.randomSeed = newSeed;
@@ -755,7 +747,7 @@ namespace TeamCrescendo.ProceduralIvy
         {
             Assert.IsNotNull(CurrentIvyInfo);
             
-            if (GrowthController != null) GrowthController.SetGrowing(false);
+            GrowthToggle.value = false;
             CurrentIvyInfo.infoPool.ivyContainer.Clear();
             
             RebuildMesh(true);
@@ -790,6 +782,8 @@ namespace TeamCrescendo.ProceduralIvy
             if (!confirm) return;
             
             Assert.IsNotNull(CurrentIvyInfo);
+            
+            GrowthToggle.value = false;
             
             Scene scene = CurrentIvyInfo.gameObject.scene;
             
@@ -918,10 +912,9 @@ namespace TeamCrescendo.ProceduralIvy
         {
             if (CurrentIvyInfo != null 
                 && CurrentIvyInfo.infoPool != null
-                && GrowthController != null 
-                && GrowthController.IsGrowing())
+                && EditorIvyGrowth.IsGrowing())
             {
-                GrowthController.Step();
+                EditorIvyGrowth.Step(CurrentIvyInfo.infoPool);
                 RebuildMesh();
             }
         }
@@ -934,18 +927,12 @@ namespace TeamCrescendo.ProceduralIvy
                 Debug.LogWarning("No Ivy Info or Root Visual Element");
                 return false;
             }
-
-            if (CurrentIvyInfo.infoPool.ivyContainer.branches.Count == 0)
-            {
-                // instantiate new growth object
-                GrowthController = new EditorIvyGrowth(CurrentIvyInfo.infoPool, CurrentIvyInfo.transform, firstPoint, firstGrabVector);
-                return true;
-            }
             
-            const string warningMessage = "Ivy already has branches. Should reset and grow again!";
-            EditorGUILayout.HelpBox(warningMessage, MessageType.Warning);
-            Debug.LogWarning(warningMessage);
-            return false;
+            // if no existing branches, start growth, else we will grow from existing branch
+            if (CurrentIvyInfo.infoPool.ivyContainer.branches.Count == 0)
+                EditorIvyGrowth.StartGrowthBranch(CurrentIvyInfo.infoPool, CurrentIvyInfo.transform, firstPoint, firstGrabVector);
+            
+            return true;
         }
 
         #endregion
@@ -1196,8 +1183,8 @@ namespace TeamCrescendo.ProceduralIvy
             if (CurrentIvyInfo == null || rootVisualElement == null) return;
             
             Repaint();
-            serializedInfoPool.Update();
-            rootVisualElement.Bind(serializedInfoPool);
+
+            OnSelectionChanged();
         }
 
         private void OnSelectionChanged()
@@ -1235,9 +1222,6 @@ namespace TeamCrescendo.ProceduralIvy
                 if (InfoPoolObjectField != null) InfoPoolObjectField.value = null;
                 
                 UpdatePreviewMesh(null);
-
-                // invalidate the controllers
-                GrowthController = null;
             }
         }
 

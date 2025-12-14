@@ -1,130 +1,162 @@
-﻿using System.Collections.Generic;
-using UnityEditor;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Assertions;
-using UnityEngine.Serialization;
+using Random = UnityEngine.Random;
 
 namespace TeamCrescendo.ProceduralIvy
 {
-    public class EditorIvyGrowth
+    public static class EditorIvyGrowth
     {
-        public readonly InfoPool infoPool;
-        
-        private bool growing;
-        private Random.State rng;
+        private static bool growing;
+        private static Random.State rng;
+        private static InfoPool lastUsedInfoPool;
 
-        public bool IsGrowing() => growing;
-        public void SetGrowing(bool value) => growing = value;
-        public void ToggleGrowing() => growing = !growing;
+        public static bool IsGrowing() => growing;
+        public static void SetGrowing(bool value) => growing = value;
 
-        public EditorIvyGrowth(InfoPool infoPool, Transform rootTransform, Vector3 firstPoint, Vector3 firstGrabVector)
+        private static void TryContextSwitch(InfoPool infoPool)
         {
-            this.infoPool = infoPool;
-            Assert.IsTrue(infoPool.ivyContainer.branches.Count == 0, "Cannot initialize Ivy with existing branches");
+            if (lastUsedInfoPool == infoPool) return;
             
             Random.InitState(infoPool.ivyParameters.randomSeed);
             rng = Random.state;
 
+            lastUsedInfoPool = infoPool;
+        }
+
+        public static void StartGrowthBranch(InfoPool infoPool, Transform rootTransform, Vector3 firstPoint,
+            Vector3 firstGrabVector)
+        {
+            Assert.IsTrue(infoPool.ivyContainer.branches.Count == 0, "This ivy already has existing branches!");
+
+            TryContextSwitch(infoPool);
+
             var newBranchContainer = ScriptableObject.CreateInstance<BranchContainer>();
-            
-            newBranchContainer.currentHeight = infoPool.ivyParameters.minDistanceToSurface;
-            
             newBranchContainer.AddBranchPoint(firstPoint, firstGrabVector, true, newBranchContainer.branchNumber);
+            newBranchContainer.currentHeight = infoPool.ivyParameters.minDistanceToSurface;
             newBranchContainer.growDirection = Quaternion.AngleAxis(Random.value * 360f, rootTransform.up) * rootTransform.forward;
             infoPool.ivyContainer.firstVertexVector = newBranchContainer.growDirection;
             newBranchContainer.randomizeHeight = Random.Range(4f, 8f);
-            CalculateNewHeight(newBranchContainer);
+            CalculateNewHeight(infoPool, newBranchContainer);
             newBranchContainer.branchSense = ChooseBranchSense();
-            
+
             infoPool.ivyContainer.AddBranch(newBranchContainer);
-            
-            Debug.Log($"Initialized new branch: {newBranchContainer.branchNumber}");
+
+            Debug.Log($"Initialized new Editor Growth context: {newBranchContainer.branchNumber}. {infoPool}");
         }
-        
-        public void Step()
+
+        public static void Step(InfoPool infoPool)
         {
-            Random.state = rng;
+            TryContextSwitch(infoPool);
             
+            if (infoPool.ivyContainer.branches.Count == 0)
+                throw new InvalidOperationException("No branches found. Must SetContext to initialize the growth context!");
+            
+            if (!IsGrowing())
+                throw new InvalidOperationException("Ivy is not currently growing.");
+            
+            Random.state = rng;
+
             // prevent collection modified on add branch
             List<BranchContainer> branchesToEnumerate = new(infoPool.ivyContainer.branches);
-            
+
             foreach (var branch in branchesToEnumerate)
             {
                 branch.heightParameter += infoPool.ivyParameters.stepSize;
-                
+
                 // If the branch is not falling (it is clinging to a surface),
                 // we calculate the new height for the next point and check for a wall ahead.
                 // If it is falling, we calculate the next point of the drop.
                 if (branch.falling)
                 {
-                    CheckFall(branch);
+                    CheckFall(infoPool, branch);
                 }
                 else
                 {
-                    CalculateNewHeight(branch);
-                    CheckWall(branch);
+                    CalculateNewHeight(infoPool, branch);
+                    CheckWall(infoPool, branch);
                 }
             }
 
             rng = Random.state;
         }
-
-        //Este método es para calcular la altura del próximo punto
-        private void CalculateNewHeight(BranchContainer branch)
+        
+        // add a branch from an existing `baseBranch` starting from `originBranchPoint`
+        public static void AddBranch(InfoPool infoPool, BranchContainer baseBranch, BranchPoint originBranchPoint, Vector3 normal)
         {
-            branch.heightVar = (Mathf.Sin(branch.heightParameter * infoPool.ivyParameters.DTSFrequency - 45f) + 1f) / 2f;
-            
-            branch.newHeight = Mathf.Lerp(infoPool.ivyParameters.minDistanceToSurface,
-                infoPool.ivyParameters.maxDistanceToSurface, branch.heightVar);
-            branch.newHeight +=
-                (Mathf.Sin(branch.heightParameter * infoPool.ivyParameters.DTSFrequency * branch.randomizeHeight) + 1) /
-                2f * infoPool.ivyParameters.maxDistanceToSurface / 4f * infoPool.ivyParameters.DTSRandomness;
+            var newBranchContainer = ScriptableObject.CreateInstance<BranchContainer>();
 
-            branch.newHeight = Mathf.Clamp(branch.newHeight, infoPool.ivyParameters.minDistanceToSurface,
-                infoPool.ivyParameters.maxDistanceToSurface);
+            newBranchContainer.AddBranchPoint(originBranchPoint.point, -normal);
+
+            newBranchContainer.growDirection = Vector3.Normalize(Vector3.ProjectOnPlane(baseBranch.growDirection, normal));
+            newBranchContainer.randomizeHeight = Random.Range(4f, 8f);
+            newBranchContainer.currentHeight = baseBranch.currentHeight;
+            newBranchContainer.heightParameter = baseBranch.heightParameter;
+            newBranchContainer.branchSense = ChooseBranchSense();
+            newBranchContainer.originPointOfThisBranch = originBranchPoint;
+
+            infoPool.ivyContainer.AddBranch(newBranchContainer);
+
+            originBranchPoint.InitBranchInThisPoint(newBranchContainer.branchNumber);
+        }
+
+        // Calculates the distance (height) of the branch from the surface geometry.
+        // It oscillates between min/max distance using a sine wave to create natural
+        // volume, preventing the ivy from looking flat or "painted on."
+        private static void CalculateNewHeight(InfoPool infoPool, BranchContainer branch)
+        {
+            var p = infoPool.ivyParameters;
+
+            // normalize sine wave from [-1, 1] to [0, 1] range
+            branch.heightVar = (Mathf.Sin(branch.heightParameter * p.DTSFrequency - 45f) + 1f) / 2f;
+            branch.newHeight = Mathf.Lerp(p.minDistanceToSurface, p.maxDistanceToSurface, branch.heightVar);
+
+            // Adds a second layer of higher-frequency variation based on 'randomizeHeight'
+            // This adds surface roughness so the loop doesn't look like a perfect sine wave
+            var noiseWave = (Mathf.Sin(branch.heightParameter * p.DTSFrequency * branch.randomizeHeight) + 1) / 2f;
+            var noiseAmplitude = p.maxDistanceToSurface / 4f * p.DTSRandomness;
+            branch.newHeight += noiseWave * noiseAmplitude;
+
+            // Ensure we never clip into the wall or float too far away
+            branch.newHeight = Mathf.Clamp(branch.newHeight, p.minDistanceToSurface, p.maxDistanceToSurface);
 
             branch.deltaHeight = branch.currentHeight - branch.newHeight;
             branch.currentHeight = branch.newHeight;
         }
 
-        private int ChooseBranchSense() => Random.value < 0.5f ? -1 : 1;
+        private static int ChooseBranchSense() => Random.value < 0.5f ? -1 : 1;
 
-        //Definimos el punto a checkear y la dirección a él. Tiramos un raycast y si está libre buscamos el suelo. Si por el contrario topamos con un muro, añadimos un punto y calculamos una nueva growdirection
-        private void CheckWall(BranchContainer branch)
+        private static void CheckWall(InfoPool infoPool, BranchContainer branch)
         {
-            var checkPoint = new BranchPoint(
-                branch.GetLastBranchPoint().point + branch.growDirection * infoPool.ivyParameters.stepSize +
-                branch.GetLastBranchPoint().grabVector * branch.deltaHeight,
-                branch.branchPoints.Count,
-                0f,
-                branch);
+            Vector3 potentialPointPosition = branch.GetLastBranchPoint().point +
+                                             branch.growDirection * infoPool.ivyParameters.stepSize +
+                                             branch.GetLastBranchPoint().grabVector * branch.deltaHeight;
 
-            var direction = checkPoint.point - branch.GetLastBranchPoint().point;
+            var direction = potentialPointPosition - branch.GetLastBranchPoint().point;
 
-            var ray = new Ray(branch.branchPoints[branch.branchPoints.Count - 1].point, direction);
-            RaycastHit RC;
-            if (!Physics.Raycast(ray, out RC, infoPool.ivyParameters.stepSize * 1.15f,
+            if (!Physics.Raycast(branch.branchPoints[^1].point, direction, 
+                    out RaycastHit hit, infoPool.ivyParameters.stepSize * 1.15f,
                     infoPool.ivyParameters.layerMask.value))
             {
-                CheckFloor(branch, checkPoint, -branch.GetLastBranchPoint().grabVector);
+                CheckFloor(infoPool, branch, potentialPointPosition, -branch.GetLastBranchPoint().grabVector);
             }
             else
             {
-                NewGrowDirectionAfterWall(branch, -branch.GetLastBranchPoint().grabVector, RC.normal);
-                AddPoint(branch, RC.point, RC.normal);
+                NewGrowDirectionAfterWall(branch, -branch.GetLastBranchPoint().grabVector, hit.normal);
+                AddPoint(infoPool, branch, hit.point, hit.normal);
             }
         }
 
         //Si no encontramos muro en el paso anterior, entonces buscamos si tenemos suelo. tiramos el rayo y si da positivo, añadimos punto, calculamos growdirection y decimos al sistema que no estamos cayendo. Si por el contrario no 
         //hemos encontrado suelo, intenamos agarrarnos al otro lado de la posible esquina.
-        private void CheckFloor(BranchContainer branch, BranchPoint potentialPoint, Vector3 oldSurfaceNormal)
+        private static void CheckFloor(InfoPool infoPool, BranchContainer branch, Vector3 potentialPointPosition, Vector3 oldSurfaceNormal)
         {
-            var ray = new Ray(potentialPoint.point, -oldSurfaceNormal);
-            RaycastHit RC;
-            if (Physics.Raycast(ray, out RC, branch.currentHeight * 2f, infoPool.ivyParameters.layerMask.value))
+            if (Physics.Raycast(potentialPointPosition, -oldSurfaceNormal, 
+                    out RaycastHit hit, branch.currentHeight * 2f, infoPool.ivyParameters.layerMask.value))
             {
-                AddPoint(branch, RC.point, RC.normal);
-                NewGrowDirection(branch);
+                AddPoint(infoPool, branch, hit.point, hit.normal);
+                NewGrowDirection(infoPool, branch);
                 branch.fallIteration = 0f;
                 branch.falling = false;
             }
@@ -132,11 +164,11 @@ namespace TeamCrescendo.ProceduralIvy
             {
                 if (Random.value < infoPool.ivyParameters.grabProvabilityOnFall)
                 {
-                    CheckCorner(branch, potentialPoint, oldSurfaceNormal);
+                    CheckCorner(infoPool, branch, potentialPointPosition, oldSurfaceNormal);
                 }
                 else
                 {
-                    AddFallingPoint(branch);
+                    AddFallingPoint(infoPool, branch);
                     branch.fallIteration += 1f - infoPool.ivyParameters.stiffness;
                     branch.falling = true;
                     branch.currentHeight = 0f;
@@ -146,23 +178,21 @@ namespace TeamCrescendo.ProceduralIvy
         }
 
         //Si hábíamos perdido pie, comprobamos si estamos en una esquina e intentamos seguir por el otro lado de lamisma
-        private void CheckCorner(BranchContainer branch, BranchPoint potentialPoint, Vector3 oldSurfaceNormal)
+        private static void CheckCorner(InfoPool infoPool, BranchContainer branch, Vector3 potentialPointPosition, Vector3 oldSurfaceNormal)
         {
-            var ray = new Ray(
-                potentialPoint.point + branch.branchPoints[branch.branchPoints.Count - 1].grabVector * 2f *
+            var ray = new Ray(potentialPointPosition + branch.branchPoints[^1].grabVector * 2f *
                 branch.currentHeight, -branch.growDirection);
-            RaycastHit RC;
-            if (Physics.Raycast(ray, out RC, infoPool.ivyParameters.stepSize * 1.15f,
+            if (Physics.Raycast(ray, out RaycastHit hit, infoPool.ivyParameters.stepSize * 1.15f,
                     infoPool.ivyParameters.layerMask.value))
             {
-                AddPoint(branch, potentialPoint.point, oldSurfaceNormal);
-                AddPoint(branch, RC.point, RC.normal);
+                AddPoint(infoPool, branch, potentialPointPosition, oldSurfaceNormal);
+                AddPoint(infoPool, branch, hit.point, hit.normal);
 
-                NewGrowDirectionAfterCorner(branch, oldSurfaceNormal, RC.normal);
+                NewGrowDirectionAfterCorner(branch, oldSurfaceNormal, hit.normal);
             }
             else
             {
-                AddFallingPoint(branch);
+                AddFallingPoint(infoPool, branch);
                 branch.fallIteration += 1f - infoPool.ivyParameters.stiffness;
                 branch.falling = true;
                 branch.currentHeight = 0f;
@@ -171,50 +201,46 @@ namespace TeamCrescendo.ProceduralIvy
         }
 
         //Este se usa si estamos en una caída. Está la probabilidad de buscar una superficie donde agarrarnos (checkgrabpoint). Si topamos con una superficie se añade punto y se dice al sistema que no estamos cayendo
-        private void CheckFall(BranchContainer branch)
+        private static void CheckFall(InfoPool infoPool, BranchContainer branch)
         {
-            var ray = new Ray(branch.branchPoints[branch.branchPoints.Count - 1].point, branch.growDirection);
-            RaycastHit RC;
-            if (!Physics.Raycast(ray, out RC, infoPool.ivyParameters.stepSize * 1.15f,
+            var ray = new Ray(branch.branchPoints[^1].point, branch.growDirection);
+            if (!Physics.Raycast(ray, out RaycastHit hit, infoPool.ivyParameters.stepSize * 1.15f,
                     infoPool.ivyParameters.layerMask.value))
             {
                 if (Random.value < infoPool.ivyParameters.grabProvabilityOnFall)
                 {
-                    CheckGrabPoint(branch);
+                    CheckGrabPoint(infoPool, branch);
                 }
                 else
                 {
-                    NewGrowDirectionFalling(branch);
-                    AddFallingPoint(branch);
+                    NewGrowDirectionFalling(infoPool, branch);
+                    AddFallingPoint(infoPool, branch);
                     branch.fallIteration += 1f - infoPool.ivyParameters.stiffness;
                     branch.falling = true;
                 }
             }
             else
             {
-                NewGrowDirectionAfterFall(branch, RC.normal);
-                AddPoint(branch, RC.point, RC.normal);
+                NewGrowDirectionAfterFall(branch, hit.normal);
+                AddPoint(infoPool, branch, hit.point, hit.normal);
                 branch.fallIteration = 0f;
                 branch.falling = false;
             }
         }
 
         //Con esto tiramos rayos alrededor del último punto buscando una superficie donde agarrarnos.
-        private void CheckGrabPoint(BranchContainer branch)
+        private static void CheckGrabPoint(InfoPool infoPool, BranchContainer branch)
         {
             for (var i = 0; i < 6; i++)
             {
                 var angle = Mathf.Rad2Deg * 2 * Mathf.PI / 6 * i;
-                var ray = new Ray(
-                    branch.branchPoints[branch.branchPoints.Count - 1].point +
-                    branch.growDirection * infoPool.ivyParameters.stepSize,
+                var ray = new Ray(branch.branchPoints[^1].point + branch.growDirection * infoPool.ivyParameters.stepSize,
                     Quaternion.AngleAxis(angle, branch.growDirection) * branch.GetLastBranchPoint().grabVector);
-                RaycastHit RC;
-                if (Physics.Raycast(ray, out RC, infoPool.ivyParameters.stepSize * 2f,
+                if (Physics.Raycast(ray, out RaycastHit hit, infoPool.ivyParameters.stepSize * 2f,
                         infoPool.ivyParameters.layerMask.value))
                 {
-                    AddPoint(branch, RC.point, RC.normal);
-                    NewGrowDirectionAfterGrab(branch, RC.normal);
+                    AddPoint(infoPool, branch, hit.point, hit.normal);
+                    NewGrowDirectionAfterGrab(branch, hit.normal);
                     branch.fallIteration = 0f;
                     branch.falling = false;
                     break;
@@ -222,8 +248,8 @@ namespace TeamCrescendo.ProceduralIvy
 
                 if (i == 5)
                 {
-                    AddFallingPoint(branch);
-                    NewGrowDirectionFalling(branch);
+                    AddFallingPoint(infoPool, branch);
+                    NewGrowDirectionFalling(infoPool, branch);
                     branch.fallIteration += 1f - infoPool.ivyParameters.stiffness;
                     branch.falling = true;
                 }
@@ -231,111 +257,101 @@ namespace TeamCrescendo.ProceduralIvy
         }
 
         //Añadimos punto y todo lo que ello conlleva. Está la posibilidad de spawnear una rama
-        public void AddPoint(BranchContainer branch, Vector3 point, Vector3 normal)
+        public static void AddPoint(InfoPool infoPool, BranchContainer branch, Vector3 point, Vector3 normal)
         {
             branch.totalLenght += infoPool.ivyParameters.stepSize;
             branch.heightParameter += infoPool.ivyParameters.stepSize;
 
-
             branch.AddBranchPoint(point + normal * branch.currentHeight, -normal);
 
             //Con este if lo que comprobamos realmente es si estamos en modo procedural o en modo pintado
-            if (growing)
-                if (Random.value < infoPool.ivyParameters.branchProbability &&
-                    infoPool.ivyContainer.branches.Count < infoPool.ivyParameters.maxBranches)
-                    AddBranch(branch, branch.GetLastBranchPoint(),
-                        branch.branchPoints[branch.branchPoints.Count - 1].point, normal);
+            if (growing && Random.value < infoPool.ivyParameters.branchProbability && 
+                infoPool.ivyContainer.branches.Count < infoPool.ivyParameters.maxBranches) 
+                AddBranch(infoPool, branch, branch.GetLastBranchPoint(), normal);
 
-            AddLeave(branch);
+            AddLeaf(infoPool, branch);
         }
 
         //Añadimos punto y todo lo que ello conlleva. Es ligeramente diferente a AddPoint. Está la posibilidad de spawnear una rama
-        private void AddFallingPoint(BranchContainer branch)
+        private static void AddFallingPoint(InfoPool infoPool, BranchContainer branch)
         {
             var grabVector = branch.rotationOnFallIteration * branch.GetLastBranchPoint().grabVector;
 
             branch.totalLenght += infoPool.ivyParameters.stepSize;
-            branch.AddBranchPoint(
-                branch.branchPoints[branch.branchPoints.Count - 1].point +
-                branch.growDirection * infoPool.ivyParameters.stepSize,
+            branch.AddBranchPoint(branch.branchPoints[^1].point + branch.growDirection * infoPool.ivyParameters.stepSize, 
                 grabVector);
-
 
             if (Random.value < infoPool.ivyParameters.branchProbability &&
                 infoPool.ivyContainer.branches.Count < infoPool.ivyParameters.maxBranches)
-                AddBranch(branch, branch.GetLastBranchPoint(), branch.branchPoints[branch.branchPoints.Count - 1].point,
-                    -branch.GetLastBranchPoint().grabVector);
+                AddBranch(infoPool, branch, branch.GetLastBranchPoint(), -branch.GetLastBranchPoint().grabVector);
 
-            AddLeave(branch);
+            AddLeaf(infoPool, branch);
         }
 
-        //Todo lo necesario para añadir una nueva hoja
-        private void AddLeave(BranchContainer branch)
+        // Checks if the branch has reached a growth interval suitable for a new leaf.
+        // If the spacing condition is met, it performs a weighted random selection 
+        // to pick a leaf type and anchors it to the midpoint of the latest segment.
+        private static void AddLeaf(InfoPool infoPool, BranchContainer branch)
         {
-            if (branch.branchPoints.Count % (infoPool.ivyParameters.leaveEvery +
-                                             Random.Range(0, infoPool.ivyParameters.randomLeaveEvery)) == 0)
+            var spacing = infoPool.ivyParameters.leaveEvery + 
+                          Random.Range(0, infoPool.ivyParameters.randomLeaveEvery);
+
+            if (branch.branchPoints.Count % spacing == 0)
             {
-                var probabilities = new float[infoPool.ivyParameters.leavesPrefabs.Length];
-                var chosenLeave = 0;
-                var max = 0f;
-                for (var i = 0; i < probabilities.Length; i++)
-                    probabilities[i] = Random.Range(0f, infoPool.ivyParameters.leavesProb[i]);
+                var chosenLeaf = 0;
+                var maxRoll = -1f;
+                var leafCount = infoPool.ivyParameters.leavesPrefabs.Length;
 
-                for (var i = 0; i < probabilities.Length; i++)
-                    if (probabilities[i] >= max)
+                for (var i = 0; i < leafCount; i++)
+                {
+                    var currentRoll = Random.Range(0f, infoPool.ivyParameters.leavesProb[i]);
+                    if (currentRoll > maxRoll)
                     {
-                        max = probabilities[i];
-                        chosenLeave = i;
+                        maxRoll = currentRoll;
+                        chosenLeaf = i;
                     }
+                }
 
-                var initSegment = branch.branchPoints[branch.branchPoints.Count - 2];
-                var endSegment = branch.branchPoints[branch.branchPoints.Count - 1];
-                var leafPoint = Vector3.Lerp(initSegment.point, endSegment.point, 0.5f);
+                var segmentStart = branch.branchPoints[^2];
+                var segmentEnd = branch.branchPoints[^1];
+                var leafPos = Vector3.Lerp(segmentStart.point, segmentEnd.point, 0.5f);
+                var grabDir = -branch.GetLastBranchPoint().grabVector;
 
-                branch.AddLeaf(leafPoint, branch.totalLenght, branch.growDirection,
-                    -branch.GetLastBranchPoint().grabVector, chosenLeave, initSegment, endSegment);
+                branch.AddLeaf(leafPos, branch.totalLenght, branch.growDirection, 
+                    grabDir, chosenLeaf, segmentStart, segmentEnd);
             }
         }
 
-        //Todo lo necesario para añadir una rama
-        public void AddBranch(BranchContainer branch, BranchPoint originBranchPoint, Vector3 point, Vector3 normal)
+        // Applies sinusoidal noise to the growth direction to simulate organic meandering.
+        // Rotates the growth vector around the surface normal (grabVector) using a 
+        // sine function based on total length. Projects the result back onto the 
+        // plane to ensure the ivy stays attached to the geometry.
+        private static void NewGrowDirection(InfoPool infoPool, BranchContainer branch)
         {
-            var newBranchContainer = ScriptableObject.CreateInstance<BranchContainer>();
+            var p = infoPool.ivyParameters;
+            var grabVector = branch.GetLastBranchPoint().grabVector;
 
-            newBranchContainer.AddBranchPoint(point, -normal);
+            // Jitter the noise
+            var freqRandomness = 1 + Random.Range(-p.directionRandomness, p.directionRandomness);
+            var frequency = branch.branchSense * branch.totalLenght * p.directionFrequency * freqRandomness;
 
-            newBranchContainer.growDirection = Vector3.Normalize(Vector3.ProjectOnPlane(branch.growDirection, normal));
-            newBranchContainer.randomizeHeight = Random.Range(4f, 8f);
-            newBranchContainer.currentHeight = branch.currentHeight;
-            newBranchContainer.heightParameter = branch.heightParameter;
-            newBranchContainer.branchSense = ChooseBranchSense();
-            newBranchContainer.originPointOfThisBranch = originBranchPoint;
-            
-            infoPool.ivyContainer.AddBranch(newBranchContainer);
+            // Rotate the grab vector by sin noise
+            const float noiseStrength = 10f;
+            var amplitudeMod = Mathf.Max(p.directionRandomness, 1f);
+            var angle = Mathf.Sin(frequency) * p.directionAmplitude * p.stepSize * noiseStrength * amplitudeMod;
+            var rotation = Quaternion.AngleAxis(angle, grabVector);
+            var newDir = rotation * branch.growDirection;
 
-            originBranchPoint.InitBranchInThisPoint(newBranchContainer.branchNumber);
+            branch.growDirection = Vector3.ProjectOnPlane(newDir, grabVector).normalized;
         }
 
-        //Cálculos de nuevas growdirection en diferentes casuísticas
-        private void NewGrowDirection(BranchContainer branch)
-        {
-            branch.growDirection = Vector3.Normalize(Vector3.ProjectOnPlane(Quaternion.AngleAxis(
-                    Mathf.Sin(branch.branchSense * branch.totalLenght * infoPool.ivyParameters.directionFrequency *
-                              (1 + Random.Range(-infoPool.ivyParameters.directionRandomness,
-                                  infoPool.ivyParameters.directionRandomness))) *
-                    infoPool.ivyParameters.directionAmplitude * infoPool.ivyParameters.stepSize * 10f *
-                    Mathf.Max(infoPool.ivyParameters.directionRandomness, 1f),
-                    branch.GetLastBranchPoint().grabVector) * branch.growDirection,
-                branch.GetLastBranchPoint().grabVector));
-        }
-
-        private void NewGrowDirectionAfterWall(BranchContainer branch, Vector3 oldSurfaceNormal,
+        private static void NewGrowDirectionAfterWall(BranchContainer branch, Vector3 oldSurfaceNormal,
             Vector3 newSurfaceNormal)
         {
-            branch.growDirection = Vector3.Normalize(Vector3.ProjectOnPlane(oldSurfaceNormal, newSurfaceNormal));
+            branch.growDirection = Vector3.ProjectOnPlane(oldSurfaceNormal, newSurfaceNormal).normalized;
         }
 
-        private void NewGrowDirectionFalling(BranchContainer branch)
+        private static void NewGrowDirectionFalling(InfoPool infoPool, BranchContainer branch)
         {
             var newGrowDirection = Vector3.Lerp(branch.growDirection, infoPool.ivyParameters.gravity,
                 branch.fallIteration / 10f);
@@ -359,21 +375,21 @@ namespace TeamCrescendo.ProceduralIvy
             branch.growDirection = newGrowDirection;
         }
 
-        private void NewGrowDirectionAfterFall(BranchContainer branch, Vector3 newSurfaceNormal)
+        private static void NewGrowDirectionAfterFall(BranchContainer branch, Vector3 newSurfaceNormal)
         {
             branch.growDirection =
-                Vector3.Normalize(Vector3.ProjectOnPlane(-branch.GetLastBranchPoint().grabVector, newSurfaceNormal));
+                Vector3.ProjectOnPlane(-branch.GetLastBranchPoint().grabVector, newSurfaceNormal).normalized;
         }
 
-        private void NewGrowDirectionAfterGrab(BranchContainer branch, Vector3 newSurfaceNormal)
+        private static void NewGrowDirectionAfterGrab(BranchContainer branch, Vector3 newSurfaceNormal)
         {
-            branch.growDirection = Vector3.Normalize(Vector3.ProjectOnPlane(branch.growDirection, newSurfaceNormal));
+            branch.growDirection = Vector3.ProjectOnPlane(branch.growDirection, newSurfaceNormal).normalized;
         }
 
-        private void NewGrowDirectionAfterCorner(BranchContainer branch, Vector3 oldSurfaceNormal,
+        private static void NewGrowDirectionAfterCorner(BranchContainer branch, Vector3 oldSurfaceNormal,
             Vector3 newSurfaceNormal)
         {
-            branch.growDirection = Vector3.Normalize(Vector3.ProjectOnPlane(-oldSurfaceNormal, newSurfaceNormal));
+            branch.growDirection = Vector3.ProjectOnPlane(-oldSurfaceNormal, newSurfaceNormal).normalized;
         }
     }
 }

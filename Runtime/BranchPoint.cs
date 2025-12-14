@@ -12,7 +12,6 @@ namespace TeamCrescendo.ProceduralIvy
     {
         public Vector3 point;
         public Vector3 grabVector;
-        public Vector2 pointSS;
         public float length;
         public Vector3 initialGrowDir;
 
@@ -31,27 +30,26 @@ namespace TeamCrescendo.ProceduralIvy
         public BranchPoint(Vector3 point, Vector3 grabVector, int index, bool newBranch, int newBranchNumber,
             float length, BranchContainer branchContainer)
         {
-            SetValues(point, grabVector, Vector3.zero, branchContainer, index, false, newBranch, newBranchNumber,
+            SetValues(point, grabVector, branchContainer, index, false, newBranch, newBranchNumber,
                 length);
         }
 
         public BranchPoint(Vector3 point, Vector3 grabVector, int index, float length, BranchContainer branchContainer)
         {
-            SetValues(point, grabVector, Vector3.zero, branchContainer, index, false, false, -1, length);
+            SetValues(point, grabVector, branchContainer, index, false, false, -1, length);
         }
 
         public BranchPoint(Vector3 point, int index, float length, BranchContainer branchContainer)
         {
-            SetValues(point, Vector3.zero, Vector3.zero, branchContainer, index, false, false, -1, length);
+            SetValues(point, Vector3.zero, branchContainer, index, false, false, -1, length);
         }
 
-        public void SetValues(Vector3 point, Vector3 grabVector, Vector2 pointSS,
+        public void SetValues(Vector3 point, Vector3 grabVector,
             BranchContainer branchContainer, int index, bool blocked, bool newBranch,
             int newBranchNumber, float length)
         {
             this.point = point;
             this.grabVector = grabVector;
-            this.pointSS = pointSS;
             this.branchContainer = branchContainer;
             this.index = index;
             this.newBranch = newBranch;
@@ -70,12 +68,7 @@ namespace TeamCrescendo.ProceduralIvy
             verticesLoop = new List<RTVertexData>(ivyParameters.sides + 1);
         }
 
-#if UNITY_EDITOR
-        public void CalculatePointSS()
-        {
-            pointSS = HandleUtility.WorldToGUIPoint(point);
-        }
-#endif
+        public Vector2 GetScreenspacePosition() => HandleUtility.WorldToGUIPoint(point);
 
         public BranchPoint GetNextPoint() =>
             index < branchContainer.branchPoints.Count - 1 ? branchContainer.branchPoints[index + 1] : null;

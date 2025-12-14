@@ -112,7 +112,7 @@ namespace TeamCrescendo.ProceduralIvy
                 normal = ivyGOInverseRotation * normal;
 
                 var uv = leafMeshData.uv[v];
-                var vertexColor = leafMeshData.colors[v];
+                var vertexColor = leafMeshData.colors32[v];
 
                 vertices[v] = new RTVertexData(vertex, normal, uv, vertexColor);
             }

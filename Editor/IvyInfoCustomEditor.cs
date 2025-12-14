@@ -24,6 +24,14 @@ namespace TeamCrescendo.ProceduralIvy
             {
                 ProceduralIvyEditorWindow.Init();
             }
+            
+            if (GUILayout.Button("Delete Ivy"))
+            {
+                ProceduralIvyEditorWindow.PromptDeleteIvyData(ivyInfo.infoPool);
+                if (Selection.activeGameObject == ivyInfo.gameObject)
+                    Selection.activeGameObject = null;
+                DestroyImmediate(ivyInfo.gameObject);
+            }
 
             if (ivyInfo.infoPool != null)
             {

@@ -753,7 +753,8 @@ namespace TeamCrescendo.ProceduralIvy
             RebuildMesh(true);
         }
 
-        private void PromptDeleteIvyData(InfoPool infoPool)
+        // deletes the InfoPool asset in the game
+        public static void PromptDeleteIvyData(InfoPool infoPool)
         {
             bool deleteDatablock = EditorUtility.DisplayDialog(
                 $"Delete {infoPool}",
@@ -971,26 +972,32 @@ namespace TeamCrescendo.ProceduralIvy
 
         #region Export
         
-        private static Mesh DeepCopyMesh(Mesh sharedMesh)
-        {
-            return new Mesh
-            {
-                name = sharedMesh.name,
-                vertices = sharedMesh.vertices,
-                triangles = sharedMesh.triangles,
-                uv = sharedMesh.uv,
-                normals = sharedMesh.normals,
-                colors = sharedMesh.colors,
-                tangents = sharedMesh.tangents
-            };
-        }
-
         // instantiate a new mesh and prompt the user to either embed in scene directly or save as asset
-        private static Mesh SaveMeshOperation(Mesh sharedMesh)
+        private static Mesh SaveMeshOperation(Mesh sharedMesh, bool forceSaveAsAsset)
         {
-            Mesh newMesh = DeepCopyMesh(sharedMesh);
+            Mesh newMesh = Instantiate(sharedMesh);
+            newMesh.Optimize();
+            newMesh.UploadMeshData(true);
             
-            bool saveAsAsset = EditorUtility.DisplayDialog(
+            int option = EditorUtility.DisplayDialogComplex(
+                "Select Compression",
+                "Choose the compression level for the new mesh asset.",
+                "High",    // 0
+                "Low",     // 1
+                "Medium"   // 2
+            );
+
+            // Map the return index to the Unity Enum
+            ModelImporterMeshCompression compressionLevel = option switch
+            {
+                0 => ModelImporterMeshCompression.High,
+                1 => ModelImporterMeshCompression.Low,
+                _ => ModelImporterMeshCompression.Medium
+            };
+            
+            MeshUtility.SetMeshCompression(newMesh, compressionLevel); 
+            
+            bool saveAsAsset = forceSaveAsAsset || EditorUtility.DisplayDialog(
                 "Save Mesh as Asset",
                 "Do you want to save the mesh as an asset? Otherwise, it will be embedded in the scene.",
                 "Yes",
@@ -999,7 +1006,7 @@ namespace TeamCrescendo.ProceduralIvy
 
             if (saveAsAsset)
             {
-                string filePath = EditorUtility.SaveFilePanelInProject("Save Mesh as Asset", newMesh.name, "asset", "");
+                string filePath = EditorUtility.SaveFilePanelInProject("Save Mesh as Asset", newMesh.name, "mesh", "");
                 if (!string.IsNullOrEmpty(filePath))
                 {
                     AssetDatabase.CreateAsset(newMesh, filePath);
@@ -1011,14 +1018,12 @@ namespace TeamCrescendo.ProceduralIvy
                     return null;
                 }
             }
-
-            newMesh.name += " (Scene Embed)";
             return newMesh;
         }
         
         // Clone the current IvyInfo object and strip it of any editor components
         // used for saving as a prefab or scene
-        private GameObject CloneAndStrip()
+        private GameObject CloneAndStrip(bool forceSaveAsAsset)
         {
             if (CurrentIvyInfo.infoPool.ivyParameters.generateLightmapUVs)
                 Unwrapping.GenerateSecondaryUVSet(CurrentIvyInfo.GetComponent<MeshFilter>().sharedMesh);
@@ -1027,7 +1032,7 @@ namespace TeamCrescendo.ProceduralIvy
             InfoPool oldInfo = CurrentIvyInfo.infoPool;
             GameObject old = CurrentIvyInfo.gameObject;
             
-            Mesh newMesh = SaveMeshOperation(old.GetComponent<MeshFilter>().sharedMesh);
+            Mesh newMesh = SaveMeshOperation(old.GetComponent<MeshFilter>().sharedMesh, forceSaveAsAsset);
             if (newMesh == null)
             {
                 Debug.LogWarning("Mesh operation failed or canceled. Please follow instructions or try again.");
@@ -1060,7 +1065,7 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void SaveToSceneTask()
         {
-            GameObject go = CloneAndStrip();
+            GameObject go = CloneAndStrip(false);
             if (go != null)
             {
                 Selection.activeGameObject = go;
@@ -1088,7 +1093,8 @@ namespace TeamCrescendo.ProceduralIvy
             var filePath = EditorUtility.SaveFilePanelInProject("Save Ivy as prefab", fileName, "prefab", "");
             if (!string.IsNullOrEmpty(filePath))
             {
-                var go = CloneAndStrip();
+                // has to be saved as an asset otherwise the prefab doesn't know about the mesh
+                var go = CloneAndStrip(true);
                 var prefabSaved = PrefabUtility.SaveAsPrefabAssetAndConnect(go, filePath, InteractionMode.AutomatedAction);
                 EditorGUIUtility.PingObject(prefabSaved);
                 return true;
@@ -1114,8 +1120,9 @@ namespace TeamCrescendo.ProceduralIvy
 
             if (confirmed)
             {
+                Scene scene = CurrentIvyInfo.gameObject.scene;
                 if(SaveAsPrefabTask(CurrentIvyInfo.gameObject.name))
-                    MarkSceneDirty(CurrentIvyInfo.gameObject.scene);
+                    MarkSceneDirty(scene);
             }
         }
 

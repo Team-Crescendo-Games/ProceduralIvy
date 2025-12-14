@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Assertions;
+using UnityEngine.Serialization;
 
 namespace TeamCrescendo.ProceduralIvy
 {
@@ -11,8 +12,7 @@ namespace TeamCrescendo.ProceduralIvy
         public Vector3[] vertices;
         public Vector3[] normals;
         public Vector2[] uv;
-        public Vector2[] uv2;
-        public Color[] colors;
+        public Color32[] colors32;
 
         public int[] triangleIndices;
         public int[][] triangles;
@@ -28,7 +28,7 @@ namespace TeamCrescendo.ProceduralIvy
             vertices = new Vector3[numVertices];
             normals = new Vector3[numVertices];
             uv = new Vector2[numVertices];
-            colors = new Color[numVertices];
+            colors32 = new Color32[numVertices];
 
             triangles = new int[numSubmeshes][];
             for (var i = 0; i < triangles.Length; i++) 
@@ -45,7 +45,7 @@ namespace TeamCrescendo.ProceduralIvy
             vertices = mesh.vertices;
             normals = mesh.normals;
             uv = mesh.uv;
-            colors = mesh.colors;
+            colors32 = mesh.colors32;
             
             triangles = new int[mesh.subMeshCount][];
             for (var i = 0; i < triangles.Length; i++) 
@@ -83,7 +83,7 @@ namespace TeamCrescendo.ProceduralIvy
             vertices[vertexIndex] = vertexValue;
             normals[vertexIndex] = normalValue;
             uv[vertexIndex] = uvValue;
-            colors[vertexIndex] = color;
+            colors32[vertexIndex] = color;
 
             vertexIndex++;
             vertCount++;
@@ -95,7 +95,7 @@ namespace TeamCrescendo.ProceduralIvy
             Array.Resize(ref vertices, newSize);
             Array.Resize(ref normals, newSize);
             Array.Resize(ref uv, newSize);
-            Array.Resize(ref colors, newSize);
+            Array.Resize(ref colors32, newSize);
         }
 
         public int VertexCount() => vertCount;

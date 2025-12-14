@@ -6,7 +6,7 @@ namespace TeamCrescendo.ProceduralIvy
 {
     public class IvyController : MonoBehaviour
     {
-        public enum State
+        private enum State
         {
             GROWTH_NOT_STARTED,
             WAITING_FOR_DELAY,
@@ -15,7 +15,7 @@ namespace TeamCrescendo.ProceduralIvy
             GROWTH_FINISHED
         }
 
-        [FormerlySerializedAs("rtIvy")] public RuntimeIvy runtimeIvy;
+        public RuntimeIvy runtimeIvy;
         public IvyContainer ivyContainer;
         public IvyParameters ivyParameters;
 

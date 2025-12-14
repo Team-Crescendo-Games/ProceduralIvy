@@ -219,7 +219,7 @@ namespace TeamCrescendo.ProceduralIvy
 
                                 buildingMeshData.AddVertex(vertex, currentBranchPoint.verticesLoop[i].normal,
                                     currentBranchPoint.verticesLoop[i].uv,
-                                    currentBranchPoint.verticesLoop[i].color);
+                                    currentBranchPoint.verticesLoop[i].color32);
 
                                 vertCountsPerBranch[b]++;
                                 vertCount++;
@@ -328,7 +328,7 @@ namespace TeamCrescendo.ProceduralIvy
                             tipInfluenceFactor);
 
                         buildingMeshData.AddVertex(vertex, currentLeaf.vertices[v].normal, currentLeaf.vertices[v].uv,
-                            currentLeaf.vertices[v].color);
+                            currentLeaf.vertices[v].color32);
 
                         vertCountLeavesPerBranch[branchIndex]++;
                         vertCountsPerBranch[branchIndex]++;
@@ -356,7 +356,7 @@ namespace TeamCrescendo.ProceduralIvy
                 for (var j = 0; j < rtBranchPoint.verticesLoop.Length; j++)
                 {
                     var vertexData = rtBranchPoint.verticesLoop[j];
-                    processedMeshData.AddVertex(vertexData.vertex, vertexData.normal, vertexData.uv, vertexData.color);
+                    processedMeshData.AddVertex(vertexData.vertex, vertexData.normal, vertexData.uv, vertexData.color32);
                     processedBranchesVerticesIndicesPerBranch[branchIndex].Add(processedMeshData.VertexCount() - 1);
                 }
             }
@@ -409,7 +409,7 @@ namespace TeamCrescendo.ProceduralIvy
                         for (var v = 0; v < currentLeaf.vertices.Length; v++)
                         {
                             var vertexData = currentLeaf.vertices[v];
-                            processedMeshData.AddVertex(vertexData.vertex, vertexData.normal, vertexData.uv, vertexData.color);
+                            processedMeshData.AddVertex(vertexData.vertex, vertexData.normal, vertexData.uv, vertexData.color32);
                             processedVerticesIndicesPerBranch[branchIndex].Add(processedMeshData.VertexCount() - 1);
                             lastVertexLeafProcessed++;
                         }
@@ -425,7 +425,7 @@ namespace TeamCrescendo.ProceduralIvy
 
             processedMesh.vertices = processedMeshData.vertices;
             processedMesh.normals = processedMeshData.normals;
-            processedMesh.colors = processedMeshData.colors;
+            processedMesh.colors32 = processedMeshData.colors32;
             processedMesh.uv = processedMeshData.uv;
 
             processedMesh.SetTriangles(processedMeshData.triangles[0], 0);
@@ -449,7 +449,7 @@ namespace TeamCrescendo.ProceduralIvy
 
             ivyMesh.vertices = buildingMeshData.vertices;
             ivyMesh.normals = buildingMeshData.normals;
-            ivyMesh.colors = buildingMeshData.colors;
+            ivyMesh.colors32 = buildingMeshData.colors32;
             ivyMesh.uv = buildingMeshData.uv;
 
             ivyMesh.SetTriangles(buildingMeshData.triangles[0], 0);
@@ -457,9 +457,7 @@ namespace TeamCrescendo.ProceduralIvy
             if (ivyParameters.generateLeaves)
             {
                 for (var i = 1; i < submeshCount; i++)
-                {
                     ivyMesh.SetTriangles(buildingMeshData.triangles[i], i);
-                }
             }
 
             ivyMesh.RecalculateBounds();

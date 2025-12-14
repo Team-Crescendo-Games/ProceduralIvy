@@ -123,7 +123,7 @@ namespace TeamCrescendo.ProceduralIvy
                 var normal = quat * leafMeshData.normals[v];
                 normal = ivyGOInverseRotation * normal;
 
-                var vertexData = new RTVertexData(vertex, normal, leafMeshData.uv[v], leafMeshData.colors[v]);
+                var vertexData = new RTVertexData(vertex, normal, leafMeshData.uv[v], leafMeshData.colors32[v]);
                 verticesLeaves.Add(vertexData);
             }
         }

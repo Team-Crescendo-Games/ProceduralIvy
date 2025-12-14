@@ -20,7 +20,7 @@ namespace TeamCrescendo.ProceduralIvy
             public Vector3[] vertices;
             public Vector3[] normals;
             public Vector2[] uv;
-            public Color[] colors;
+            public Color32[] colors32;
         }
 
         private struct LeafData
@@ -33,7 +33,7 @@ namespace TeamCrescendo.ProceduralIvy
         private static Vector3[] verts = new Vector3[InitialArraySize];
         private static Vector3[] normals = new Vector3[InitialArraySize];
         private static Vector2[] uvs = new Vector2[InitialArraySize];
-        private static Color[] colors = new Color[InitialArraySize];
+        private static Color32[] colors = new Color32[InitialArraySize];
         private static int[] trisBranches = new int[InitialArraySize];
 
         private static readonly List<List<int>> trisLeaves = new ();
@@ -52,7 +52,6 @@ namespace TeamCrescendo.ProceduralIvy
 
             if (infoPool.ivyContainer.branches.Count == 0)
             {
-                Debug.LogWarning("No branches found. Building into a null mesh.");
                 targetMesh.Clear();
                 return false;
             }
@@ -87,10 +86,8 @@ namespace TeamCrescendo.ProceduralIvy
 
             // cache common vairables
             worldToLocalMatrix = root.worldToLocalMatrix;
-            if (!infoPool.ivyParameters.halfgeom)
-                angleStep = Mathf.Rad2Deg * 2 * Mathf.PI / infoPool.ivyParameters.sides;
-            else
-                angleStep = Mathf.Rad2Deg * 2 * Mathf.PI / infoPool.ivyParameters.sides / 2;
+            float totalAngle = infoPool.ivyParameters.halfgeom ? 180f : 360f;
+            angleStep = totalAngle / infoPool.ivyParameters.sides;
 
             // We pass the pre-calculated offsets so threads know where to write
             BuildGeometryParallel(infoPool, root, branchVertOffsets, branchTriOffsets, leafVertOffsets);
@@ -371,8 +368,8 @@ namespace TeamCrescendo.ProceduralIvy
                             verts[absIndex] = worldToLocalMatrix.MultiplyPoint3x4(worldPos);
                             normals[absIndex] = worldToLocalMatrix.MultiplyVector(quat * cache.normals[v]);
                             uvs[absIndex] = cache.uv[v];
-                            colors[absIndex] = (cache.colors != null && cache.colors.Length > v)
-                                ? cache.colors[v]
+                            colors[absIndex] = (cache.colors32 != null && cache.colors32.Length > v)
+                                ? cache.colors32[v]
                                 : Color.white;
 
                             currentLeaf.verticesLeaves.Add(new RTVertexData(verts[absIndex], normals[absIndex],
@@ -422,7 +419,7 @@ namespace TeamCrescendo.ProceduralIvy
                         vertices = m.vertices,
                         normals = m.normals,
                         uv = m.uv,
-                        colors = m.colors
+                        colors32 = m.colors32
                     };
                 }
             }

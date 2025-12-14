@@ -796,6 +796,52 @@ namespace TeamCrescendo.ProceduralIvy
             MarkSceneDirty(scene);
         }
 
+        private void OptimizeTask()
+        {
+            int totalBranches = CurrentIvyInfo.infoPool.ivyContainer.branches.Count;
+
+            try
+            {
+                for (var b = 0; b < totalBranches; b++)
+                {
+                    float progress = (float)b / totalBranches;
+            
+                    if (EditorUtility.DisplayCancelableProgressBar(
+                            "Optimizing Ivy", 
+                            $"Processing Branch {b}/{totalBranches}", 
+                            progress))
+                    {
+                        Debug.Log("Optimization Cancelled by User");
+                        break;
+                    }
+
+                    var branch = CurrentIvyInfo.infoPool.ivyContainer.branches[b];
+            
+                    // Iterate backwards to safely remove points
+                    for (var p = branch.branchPoints.Count - 2; p > 0; p--)
+                    {
+                        var segment1 = branch.branchPoints[p].point - branch.branchPoints[p - 1].point;
+                        var segment2 = branch.branchPoints[p + 1].point - branch.branchPoints[p].point;
+                
+                        if (Vector3.Angle(segment1, segment2) < CurrentIvyInfo.infoPool.ivyParameters.optAngleBias)
+                        {
+                            branch.RemoveBranchPoint(p);
+                        }
+                    }
+                }
+        
+                RebuildMesh(true);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+            }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
+            }
+        }
+
         private void OnOptimizeClicked()
         {
             bool confirm = EditorUtility.DisplayDialog(
@@ -816,21 +862,7 @@ namespace TeamCrescendo.ProceduralIvy
             
             GetMeshInfo(mf.sharedMesh, out int vertsBefore, out long trisBefore);
             
-            for (var b = 0; b < CurrentIvyInfo.infoPool.ivyContainer.branches.Count; b++)
-            {
-                var branch = CurrentIvyInfo.infoPool.ivyContainer.branches[b];
-                for (var p = 1; p < branch.branchPoints.Count - 1; p++)
-                {
-                    var segment1 = branch.branchPoints[p].point - branch.branchPoints[p - 1].point;
-                    var segment2 = branch.branchPoints[p + 1].point - branch.branchPoints[p].point;
-                    if (Vector3.Angle(segment1, segment2) < CurrentIvyInfo.infoPool.ivyParameters.optAngleBias)
-                    {
-                        branch.RemoveBranchPoint(p);
-                    }
-                }
-            }
-            
-            RebuildMesh(true);
+            OptimizeTask();
             
             GetMeshInfo(mf.sharedMesh, out int vertsAfter, out long trisAfter);
             

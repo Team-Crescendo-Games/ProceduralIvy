@@ -101,7 +101,7 @@ namespace TeamCrescendo.ProceduralIvy
                 var uv = new Vector2(length * ivyParameters.uvScale.y + ivyParameters.uvOffset.y - ivyParameters.stepSize,
                     1f / ivyParameters.sides * i * ivyParameters.uvScale.x + ivyParameters.uvOffset.x);
 
-                verticesLoop[i] = new RTVertexData(vertex, normal, uv, Vector2.zero, Color.black);
+                verticesLoop[i] = new RTVertexData(vertex, normal, uv, Color.black);
             }
         }
 

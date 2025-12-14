@@ -12,20 +12,18 @@ namespace TeamCrescendo.ProceduralIvy
     {
         public Vector3 point;
         public Vector3 grabVector;
-        public float length;
         public Vector3 initialGrowDir;
-
-        public BranchContainer branchContainer;
-        public int index;
-
-        public bool newBranch;
-        public int newBranchNumber;
-
-        public float radius;
-
-        public List<RTVertexData> verticesLoop;
         public Vector3 firstVector;
         public Vector3 axis;
+
+        public int index;
+        public int newBranchNumber;
+        public float length;
+        public float radius;
+        public bool newBranch;
+        
+        public BranchContainer branchContainer;
+        public List<RTVertexData> verticesLoop;
 
         public BranchPoint(Vector3 point, Vector3 grabVector, int index, bool newBranch, int newBranchNumber,
             float length, BranchContainer branchContainer)

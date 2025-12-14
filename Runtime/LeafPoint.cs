@@ -11,25 +11,24 @@ namespace TeamCrescendo.ProceduralIvy
     [Serializable]
     public class LeafPoint
     {
+        public Quaternion forwardRot;
+        public Quaternion leafRotation;
+        
         public Vector3 point;
-        public float lpLength;
 
         public Vector3 left;
         public Vector3 lpForward;
         public Vector3 lpUpward;
+        public Vector3 leafCenter;
+        
         public int chosenLeave;
-
-        public Quaternion forwarRot;
-
         public int initSegmentIdx;
         public int endSegmentIdx;
+        public float lpLength;
         public float displacementFromInitSegment;
-
-        public Quaternion leafRotation;
-
-        public Vector3 leafCenter;
-        public List<RTVertexData> verticesLeaves;
         public float leafScale;
+        
+        public List<RTVertexData> verticesLeaves;
 
         public LeafPoint(Vector3 point, float lpLength, Vector3 lpForward,
             Vector3 lpUpward, int chosenLeave, BranchPoint initSegment,
@@ -53,7 +52,7 @@ namespace TeamCrescendo.ProceduralIvy
             this.chosenLeave = chosenLeave;
             initSegmentIdx = initSegment.index;
             endSegmentIdx = endSegment.index;
-            forwarRot = Quaternion.identity;
+            forwardRot = Quaternion.identity;
 
             var segmentDistance = (initSegment.point - endSegment.point).magnitude;
             var t = (point - initSegment.point).magnitude / segmentDistance;
@@ -101,7 +100,7 @@ namespace TeamCrescendo.ProceduralIvy
                        forward) *
                    quat;
 
-            quat = forwarRot * quat;
+            quat = forwardRot * quat;
 
             var scale = Random.Range(ivyParameters.minScale, ivyParameters.maxScale);
 
@@ -124,7 +123,7 @@ namespace TeamCrescendo.ProceduralIvy
                 var normal = quat * leafMeshData.normals[v];
                 normal = ivyGOInverseRotation * normal;
 
-                var vertexData = new RTVertexData(vertex, normal, leafMeshData.uv[v], Vector2.zero, leafMeshData.colors[v]);
+                var vertexData = new RTVertexData(vertex, normal, leafMeshData.uv[v], leafMeshData.colors[v]);
                 verticesLeaves.Add(vertexData);
             }
         }

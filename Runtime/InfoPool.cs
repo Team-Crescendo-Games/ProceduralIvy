@@ -1,6 +1,6 @@
 using System;
-using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Profiling;
 
 namespace TeamCrescendo.ProceduralIvy
 {
@@ -19,24 +19,15 @@ namespace TeamCrescendo.ProceduralIvy
             public int pointCount;
             public int leafCount;
             public int vertexCount;
-            public float memoryKB;
+            public long memoryBytes;
         }
         
         public IvyMemoryStats GetMemoryStats()
         {
             var stats = new IvyMemoryStats();
-            
             if (ivyContainer == null || ivyContainer.branches == null) return stats;
-
-            const int SIZE_RT_VERTEX = 68;
-            const int SIZE_BRANCH = 128; 
-            const int SIZE_POINT = 160;
-            const int SIZE_LEAF = 220;
-
-            long totalBytes = 0;
-
+            
             stats.branchCount = ivyContainer.branches.Count;
-            totalBytes += stats.branchCount * SIZE_BRANCH;
 
             // Loop is optimized to avoid GC allocs
             for (int i = 0; i < stats.branchCount; i++)
@@ -49,7 +40,6 @@ namespace TeamCrescendo.ProceduralIvy
                 {
                     int pCount = branch.branchPoints.Count;
                     stats.pointCount += pCount;
-                    totalBytes += pCount * SIZE_POINT;
 
                     for (int j = 0; j < pCount; j++)
                     {
@@ -58,7 +48,6 @@ namespace TeamCrescendo.ProceduralIvy
                         {
                             int vCount = bp.verticesLoop.Count;
                             stats.vertexCount += vCount;
-                            totalBytes += vCount * SIZE_RT_VERTEX;
                         }
                     }
                 }
@@ -68,7 +57,6 @@ namespace TeamCrescendo.ProceduralIvy
                 {
                     int lCount = branch.leaves.Count;
                     stats.leafCount += lCount;
-                    totalBytes += lCount * SIZE_LEAF;
                     
                     for (int k = 0; k < lCount; k++)
                     {
@@ -77,13 +65,12 @@ namespace TeamCrescendo.ProceduralIvy
                         {
                             int vCount = lp.verticesLeaves.Count;
                             stats.vertexCount += vCount;
-                            totalBytes += vCount * SIZE_RT_VERTEX;
                         }
                     }
                 }
             }
 
-            stats.memoryKB = totalBytes / 1024f;
+            stats.memoryBytes = Profiler.GetRuntimeMemorySizeLong(ivyContainer) + Profiler.GetRuntimeMemorySizeLong(mesh);
             return stats;
         }
 #endif

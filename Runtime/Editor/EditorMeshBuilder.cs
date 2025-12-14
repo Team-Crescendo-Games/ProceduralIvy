@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 using Debug = UnityEngine.Debug;
@@ -191,9 +192,6 @@ namespace TeamCrescendo.ProceduralIvy
             {
                 Parallel.For(0, infoPool.ivyContainer.branches.Count, b =>
                 {
-                    // Thread-Local Random (System.Random is necessary here)
-                    System.Random rng = new System.Random(b + par.randomSeed);
-
                     var branch = infoPool.ivyContainer.branches[b];
                     int pointCount = branch.branchPoints.Count;
 
@@ -216,10 +214,9 @@ namespace TeamCrescendo.ProceduralIvy
                             // Usually strictly safe to create new here.
                             branchPoint.verticesLoop = new List<RTVertexData>();
 
-                            float radius = CalculateRadius(par, branchPoint.length, rng);
+                            float radius = CalculateRadius(par, branchPoint.length);
                             branchPoint.radius = radius;
 
-                            // ... (Logic identical to before, just using currentVertBase) ...
                             if (p != pointCount - 1)
                             {
                                 var vectors = CalculateVectors(infoPool, rootUp, p, b);
@@ -254,9 +251,7 @@ namespace TeamCrescendo.ProceduralIvy
                                     var vertexForRuntime = direction * radius + (branchPoint.point - rootPosition);
 
                                     // Writing to the list is safe (thread local context)
-                                    branchPoint.verticesLoop.Add(new RTVertexData(
-                                        vertexForRuntime, normals[absIndex], uvs[absIndex], Vector2.zero,
-                                        colors[absIndex]));
+                                    branchPoint.verticesLoop.Add(new RTVertexData(vertexForRuntime, normals[absIndex], uvs[absIndex], colors[absIndex]));
 
                                     currentVertBase++;
                                     localVertCount++;
@@ -277,9 +272,7 @@ namespace TeamCrescendo.ProceduralIvy
                                     0.5f * uvScale.x + uvOffset.x);
 
                                 var centerVertexPosition = worldToLocalMatrix.MultiplyPoint3x4(branchPoint.point);
-                                branchPoint.verticesLoop.Add(new RTVertexData(
-                                    centerVertexPosition, normals[absIndex], uvs[absIndex], Vector2.zero,
-                                    colors[absIndex]));
+                                branchPoint.verticesLoop.Add(new RTVertexData(centerVertexPosition, normals[absIndex], uvs[absIndex], colors[absIndex]));
 
                                 currentVertBase++;
                                 localVertCount++;
@@ -355,7 +348,7 @@ namespace TeamCrescendo.ProceduralIvy
                         quat = Quaternion.AngleAxis(rx, left) *
                                Quaternion.AngleAxis(ry, currentLeaf.lpUpward) *
                                Quaternion.AngleAxis(rz, forward) * quat;
-                        quat = currentLeaf.forwarRot * quat;
+                        quat = currentLeaf.forwardRot * quat;
 
                         float scale = par.minScale + (float)rng.NextDouble() * (par.maxScale - par.minScale);
                         scale *= Mathf.InverseLerp(branch.totalLenght, branch.totalLenght - par.tipInfluence,
@@ -383,7 +376,7 @@ namespace TeamCrescendo.ProceduralIvy
                                 : Color.white;
 
                             currentLeaf.verticesLeaves.Add(new RTVertexData(verts[absIndex], normals[absIndex],
-                                uvs[absIndex], Vector2.zero, colors[absIndex]));
+                                uvs[absIndex], colors[absIndex]));
                         }
 
                         // --- Handle Triangles ---
@@ -435,7 +428,7 @@ namespace TeamCrescendo.ProceduralIvy
             }
         }
 
-        private static float CalculateRadius(IvyParameters par, float length, System.Random rng)
+        private static float CalculateRadius(IvyParameters par, float length)
         {
             float value = (Mathf.Sin(length * par.radiusVarFreq + par.radiusVarOffset) + 1f) * 0.5f;
             return Mathf.Lerp(par.minRadius, par.maxRadius, value);

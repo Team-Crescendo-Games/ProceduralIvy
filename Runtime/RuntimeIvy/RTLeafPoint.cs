@@ -114,7 +114,7 @@ namespace TeamCrescendo.ProceduralIvy
                 var uv = leafMeshData.uv[v];
                 var vertexColor = leafMeshData.colors[v];
 
-                vertices[v] = new RTVertexData(vertex, normal, uv, Vector2.zero, vertexColor);
+                vertices[v] = new RTVertexData(vertex, normal, uv, vertexColor);
             }
         }
     }

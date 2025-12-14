@@ -11,13 +11,11 @@ namespace TeamCrescendo.ProceduralIvy
     [PreferBinarySerialization]
     public class BranchContainer : ScriptableObject
     {
-        public List<BranchPoint> branchPoints;
         public Vector3 growDirection;
-        public List<LeafPoint> leaves;
+        public Quaternion rotationOnFallIteration;
         public float totalLenght;
         public float fallIteration;
-        public bool falling;
-        public Quaternion rotationOnFallIteration;
+        public int branchNumber;
         public int branchSense;
         public float heightParameter;
         public float randomizeHeight;
@@ -25,10 +23,11 @@ namespace TeamCrescendo.ProceduralIvy
         public float currentHeight;
         public float deltaHeight;
         public float newHeight;
+        public bool falling;
 
         public BranchPoint originPointOfThisBranch;
-        public int branchNumber;
-
+        public List<BranchPoint> branchPoints;
+        public List<LeafPoint> leaves;
         public Dictionary<int, List<LeafPoint>> dictRTLeavesByInitSegment;
 
         public BranchContainer()
@@ -317,7 +316,7 @@ namespace TeamCrescendo.ProceduralIvy
                 var newForward = direction.normalized;
                 var oldForward = leaves[i].lpForward;
 
-                leaves[i].forwarRot = Quaternion.FromToRotation(oldForward, newForward);
+                leaves[i].forwardRot = Quaternion.FromToRotation(oldForward, newForward);
 
                 var newLeafPosition = Vector3.LerpUnclamped(previousPoint.point, nextPoint.point,
                     leaves[i].displacementFromInitSegment);

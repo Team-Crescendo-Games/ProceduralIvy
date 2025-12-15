@@ -77,9 +77,7 @@ namespace TeamCrescendo.ProceduralIvy
 
         public void InitializeMeshesDataBaked(Mesh bakedMesh)
         {
-            var numVertices = bakedMesh.vertexCount;
-            var bakedMeshSubMeshCount = bakedMesh.subMeshCount;
-            processedMeshData = new MeshData(numVertices, bakedMeshSubMeshCount);
+            processedMeshData = new MeshData(bakedMesh.vertexCount, bakedMesh.subMeshCount);
         }
 
         public void CheckCopyMesh(int branchIndex, List<BranchContainer> bakedBranches)

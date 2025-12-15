@@ -55,6 +55,7 @@ namespace TeamCrescendo.ProceduralIvy
             MeshFilter mf = GetComponent<MeshFilter>();
             Assert.IsNotNull(mf);
             bakedMesh = mf.sharedMesh;
+            Assert.IsNotNull(bakedMesh);
             Destroy(mf);
 
             MeshRenderer mr = GetComponent<MeshRenderer>();
@@ -109,9 +110,6 @@ namespace TeamCrescendo.ProceduralIvy
             if (backtrackingPoints < 2)
                 throw new ArgumentException($"[RuntimeIvy] Invalid backtracking points: {backtrackingPoints}. Decrease step size or tipInfluence!");
 
-            if (bakedMesh == null)
-                bakedMesh = new Mesh { subMeshCount = submeshCount };
-            
             srcPoints = new List<Vector3>(new Vector3[maxBranches]);
             dstPoints = new List<Vector3>(new Vector3[maxBranches]);
             growingFactorPerBranch = new List<float>(new float[maxBranches]);

@@ -29,7 +29,6 @@ namespace TeamCrescendo.ProceduralIvy
             
             stats.branchCount = ivyContainer.branches.Count;
 
-            // Loop is optimized to avoid GC allocs
             for (int i = 0; i < stats.branchCount; i++)
             {
                 var branch = ivyContainer.branches[i];

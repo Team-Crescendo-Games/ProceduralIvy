@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -7,11 +8,9 @@ namespace TeamCrescendo.ProceduralIvy
 {
     public class RTBakedMeshBuilder
     {
-        public List<BranchContainer> activeBranches;
         private MeshData buildingMeshData;
         private readonly GameObject ivyGameObject;
         private readonly IvyParameters ivyParameters;
-        private readonly bool leavesDataInitialized;
         private readonly List<List<int>> processedBranchesVerticesIndicesPerBranch;
         public MeshData processedMeshData;
         private readonly List<List<int>> processedVerticesIndicesPerBranch;
@@ -23,13 +22,10 @@ namespace TeamCrescendo.ProceduralIvy
         private Mesh ivyMesh;
         private int lastLeafVertProcessed;
         private int lastPointCopied;
-        private int[] lastTriangleIndexPerBranch;
         private int lastVertCount;
         private int lastVertexIndex;
         private int lastVerticesCountProcessed;
         private MeshData[] leavesMeshesByChosenLeaf;
-        private MeshFilter leavesMeshFilter;
-        private MeshRenderer leavesMeshRenderer;
         private bool onOptimizedStretch;
         private Mesh processedMesh;
         private int[] submeshByChosenLeaf;
@@ -53,13 +49,13 @@ namespace TeamCrescendo.ProceduralIvy
             this.submeshByChosenLeaf = submeshByChosenLeaf;
             this.leavesMeshesByChosenLeaf = leavesMeshesByChosenLeaf;
 
-            activeBranches = new List<BranchContainer>();
+            if (backtrackingPoints < 2)
+                throw new ArgumentException($"[RTBakedMeshBuilder] Invalid backtracking points: {backtrackingPoints}");
             this.backtrackingPoints = backtrackingPoints;
 
             submeshCount = materials.Count;
 
             vertCountsPerBranch = new int[numBranches];
-            lastTriangleIndexPerBranch = new int[numBranches];
             vertCountLeavesPerBranch = new int[numBranches];
             processedVerticesIndicesPerBranch = new List<List<int>>(numBranches);
             processedBranchesVerticesIndicesPerBranch = new List<List<int>>(numBranches);
@@ -78,8 +74,6 @@ namespace TeamCrescendo.ProceduralIvy
                 name = Constants.IVY_MESH_NAME
             };
 
-            // rtIvy.MeshFilter.mesh = ivyMesh;
-
             var filteredMaterials = new List<Material> { materials[0] };
 
             if (ivyParameters.generateLeaves)
@@ -88,12 +82,7 @@ namespace TeamCrescendo.ProceduralIvy
                     filteredMaterials.Add(materials[i]);
             }
 
-            var filteredMaterialArray = filteredMaterials.ToArray();
-
-            ivyGameObject.GetComponent<MeshRenderer>().sharedMaterials = filteredMaterialArray;
-            mrProcessedMesh.sharedMaterials = filteredMaterialArray;
-
-            leavesDataInitialized = true;
+            mrProcessedMesh.SetSharedMaterials(filteredMaterials);
         }
 
         public void InitializeMeshesDataBaked(Mesh bakedMesh, int numBranches)
@@ -111,30 +100,34 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void CreateBuildingMeshData(Mesh bakedMesh, int numBranches)
         {
+            if (submeshCount == 0)
+                throw new ArgumentException("[RTBakedMeshBuilder] Invalid submesh count: 0");
+            
             var numVerticesPerLoop = ivyParameters.sides + 1;
             var numVertices = (backtrackingPoints * numVerticesPerLoop + backtrackingPoints * 2 * 8) * numBranches;
 
-            var subMeshCount = bakedMesh.subMeshCount;
             var numTrianglesPerSubmesh = new List<int>();
 
             var branchTrianglesNumber = ((backtrackingPoints - 2) * ivyParameters.sides * 6 + ivyParameters.sides * 3) * numBranches;
             numTrianglesPerSubmesh.Add(branchTrianglesNumber);
 
-            for (var i = 1; i < subMeshCount; i++)
+            for (var i = 1; i < submeshCount; i++)
             {
                 var numTriangles = backtrackingPoints * 6 * numBranches;
                 numTrianglesPerSubmesh.Add(numTriangles);
             }
 
-            buildingMeshData = new MeshData(numVertices, subMeshCount, numTrianglesPerSubmesh);
+            buildingMeshData = new MeshData(numVertices, submeshCount, numTrianglesPerSubmesh);
         }
 
         private void CreateProcessedMeshDataProcedural(Mesh bakedMesh, float lifetime, float velocity)
         {
+            if (submeshCount == 0)
+                throw new ArgumentException("[RTBakedMeshBuilder] Invalid submesh count: 0");
+            
             var ratio = lifetime / velocity;
             var numPoints = Mathf.CeilToInt(ratio * 200);
             var numVertices = numPoints * (ivyParameters.sides + 1);
-            var submeshCount = bakedMesh.subMeshCount;
             var numTrianglesPerSubmesh = new List<int>();
 
             for (var i = 0; i < submeshCount; i++)
@@ -164,7 +157,6 @@ namespace TeamCrescendo.ProceduralIvy
             for (var i = 0; i < vertCountsPerBranch.Length; i++)
             {
                 vertCountsPerBranch[i] = 0;
-                lastTriangleIndexPerBranch[i] = 0;
                 vertCountLeavesPerBranch[i] = 0;
             }
             vertCount = 0;
@@ -183,8 +175,6 @@ namespace TeamCrescendo.ProceduralIvy
 
         public void BuildGeometry(List<BranchContainer> activeBakedBranches, List<BranchContainer> activeBuildingBranches)
         {
-            if (!leavesDataInitialized) return;
-
             ClearTipMesh();
 
             for (var b = 0; b < rtIvyContainer.branches.Count; b++)
@@ -203,8 +193,8 @@ namespace TeamCrescendo.ProceduralIvy
                         var currentBranchPoint = currentBranch.branchPoints[p];
                         var centerLoop = ivyGameObject.transform.InverseTransformPoint(currentBranchPoint.point);
                         
-                        var tipInfluenceFactor = Mathf.InverseLerp(currentBranch.totalLenght,
-                            currentBranch.totalLenght - ivyParameters.tipInfluence,
+                        var tipInfluenceFactor = Mathf.InverseLerp(currentBranch.totalLength,
+                            currentBranch.totalLength - ivyParameters.tipInfluence,
                             currentBranchPoint.length);
 
                         if (p < currentBranch.branchPoints.Count - 1)
@@ -290,8 +280,6 @@ namespace TeamCrescendo.ProceduralIvy
                 buildingMeshData.AddTriangle(0, vertCount - 3 - c);
                 buildingMeshData.AddTriangle(0, vertCount - 2 - c);
             }
-
-            lastTriangleIndexPerBranch[branchIndex] = vertCount - 1;
         }
 
         private void BuildLeaves(int branchIndex, BranchContainer buildingBranchContainer, BranchContainer bakedBranchContainer)
@@ -301,6 +289,9 @@ namespace TeamCrescendo.ProceduralIvy
             for (var i = firstPointIdx; i < buildingBranchContainer.branchPoints.Count; i++)
             {
                 var leaves = bakedBranchContainer.leavesOrderedByInitSegment[i];
+                if (leaves == null)
+                    continue;
+                
                 var rtBranchPoint = buildingBranchContainer.branchPoints[i];
 
                 for (var j = 0; j < leaves.Length; j++)
@@ -308,8 +299,8 @@ namespace TeamCrescendo.ProceduralIvy
                     var currentLeaf = leaves[j];
                     if (currentLeaf == null) continue;
 
-                    var tipInfluenceFactor = Mathf.InverseLerp(buildingBranchContainer.totalLenght,
-                        buildingBranchContainer.totalLenght - ivyParameters.tipInfluence,
+                    var tipInfluenceFactor = Mathf.InverseLerp(buildingBranchContainer.totalLength,
+                        buildingBranchContainer.totalLength - ivyParameters.tipInfluence,
                         rtBranchPoint.length);
 
                     var chosenLeaveMeshData = leavesMeshesByChosenLeaf[currentLeaf.chosenLeave];
@@ -391,6 +382,8 @@ namespace TeamCrescendo.ProceduralIvy
                 for (var i = initSegmentIdx; i < endSegmentIdx; i++)
                 {
                     var leaves = bakedBranchContainer.leavesOrderedByInitSegment[i];
+                    if (leaves == null) continue;
+                    
                     for (var j = 0; j < leaves.Length; j++)
                     {
                         var currentLeaf = leaves[j];

@@ -107,6 +107,8 @@ namespace TeamCrescendo.ProceduralIvy
             processedMeshFilter.sharedMesh = processedMesh;
 
             backtrackingPoints = Mathf.CeilToInt(ivyParameters.tipInfluence / ivyParameters.stepSize);
+            if (backtrackingPoints < 2)
+                throw new ArgumentException($"[RuntimeIvy] Invalid backtracking points: {backtrackingPoints}. Decrease step size or tipInfluence!");
 
             if (bakedMesh == null)
                 bakedMesh = new Mesh { subMeshCount = submeshCount };
@@ -118,11 +120,7 @@ namespace TeamCrescendo.ProceduralIvy
             dstTotalLengthPerBranch = new List<float>(new float[maxBranches]);
 
             for (var i = 0; i < maxBranches; i++)
-            {
-                var branchContainer = ScriptableObject.CreateInstance<BranchContainer>();
-                branchContainer.Init(GetMaxNumPoints(), GetMaxNumLeaves());
-                activeBuildingBranches.Add(branchContainer);
-            }
+                activeBuildingBranches.Add(BranchContainer.Create(GetMaxNumPoints(), GetMaxNumLeaves()));
             
             // init mesh builder
             meshBuilder = new RTBakedMeshBuilder(ivyParameters, rtBuildingIvyContainer,
@@ -180,7 +178,7 @@ namespace TeamCrescendo.ProceduralIvy
             UpdateGrowthSpeed();
 
             for (var i = 0; i < activeBakedBranches.Count; i++) 
-                Growing(i, dt);
+                GrowBranch(i, dt);
 
             currentTimer += dt;
 
@@ -194,79 +192,82 @@ namespace TeamCrescendo.ProceduralIvy
             }
         }
 
-        protected void Growing(int branchIndex, float deltaTime)
+        private void GrowBranch(int branchIndex, float deltaTime)
         {
             var currentBranch = activeBuildingBranches[branchIndex];
 
-            CalculateFactors(srcPoints[branchIndex], dstPoints[branchIndex]);
+            UpdateGrowthSpeed(srcPoints[branchIndex], dstPoints[branchIndex]);
             growingFactorPerBranch[branchIndex] += currentSpeed * deltaTime;
-            growingFactorPerBranch[branchIndex] = Mathf.Clamp(growingFactorPerBranch[branchIndex], 0f, 1f);
+            growingFactorPerBranch[branchIndex] = Mathf.Clamp01(growingFactorPerBranch[branchIndex]);
 
-            currentBranch.totalLenght = Mathf.Lerp(srcTotalLengthPerBranch[branchIndex],
+            currentBranch.totalLength = Mathf.Lerp(srcTotalLengthPerBranch[branchIndex],
                 dstTotalLengthPerBranch[branchIndex], growingFactorPerBranch[branchIndex]);
 
             var lastPoint = currentBranch.GetLastBranchPoint();
-            lastPoint.length = currentBranch.totalLenght;
+            lastPoint.length = currentBranch.totalLength;
 
             lastPoint.point = Vector3.Lerp(srcPoints[branchIndex], dstPoints[branchIndex],
                 growingFactorPerBranch[branchIndex]);
 
             if (growingFactorPerBranch[branchIndex] >= 1)
             {
-                if (!RefreshGeometry())
-                    return;
-                NextPoints(branchIndex);
+                // if (!RefreshGeometry())
+                //     return;
+                AdvanceBranchGrowth(branchIndex);
             }
         }
 
-        protected virtual void NextPoints(int branchIndex)
+        protected virtual void AdvanceBranchGrowth(int branchIndex)
         {
-            if (rtBuildingIvyContainer.branches[branchIndex].branchPoints.Count > 0)
+            var currentBranch = rtBuildingIvyContainer.branches[branchIndex];
+
+            if (currentBranch.branchPoints.Count == 0) return;
+
+            var lastBuildingBranchPoint = currentBranch.GetLastBranchPoint();
+            var bakedBranch = activeBakedBranches[branchIndex];
+
+            // check if we have reached the end of the baked data
+            if (lastBuildingBranchPoint.index >= bakedBranch.branchPoints.Count - 1) return;
+
+            int nextIndex = lastBuildingBranchPoint.index + 1;
+            var nextPoint = bakedBranch.branchPoints[nextIndex];
+
+            currentBranch.AddBranchPoint(nextPoint, ivyParameters.stepSize);
+
+            // Handle branching logic
+            if (nextPoint.newBranch)
             {
-                var lastBuildingBranchPoint = rtBuildingIvyContainer.branches[branchIndex].GetLastBranchPoint();
-                if (lastBuildingBranchPoint.index < activeBakedBranches[branchIndex].branchPoints.Count - 1)
+                var candidateBranch = rtIvyContainer.GetBranchContainerByBranchNumber(nextPoint.newBranchNumber);
+                if (candidateBranch.branchPoints.Count >= 2) 
                 {
-                    var indexBranchPoint = lastBuildingBranchPoint.index;
-                    indexBranchPoint++;
-
-                    var branchPoint = activeBakedBranches[branchIndex].branchPoints[indexBranchPoint];
-                    var branch = rtBuildingIvyContainer.branches[branchIndex];
-
-                    branch.AddBranchPoint(branchPoint, ivyParameters.stepSize);
-
-                    if (branchPoint.newBranch)
-                    {
-                        var candidateBranch =
-                            rtIvyContainer.GetBranchContainerByBranchNumber(branchPoint.newBranchNumber);
-                        if (candidateBranch.branchPoints.Count >= 2) AddNextBranch(branchPoint.newBranchNumber);
-                    }
-
-                    UpdateGrowingPoints(branchIndex);
-
-                    if (rtBuildingIvyContainer.branches[branchIndex].branchPoints.Count > backtrackingPoints)
-                    {
-                        if (!IsVertexLimitReached())
-                        {
-                            meshBuilder.CheckCopyMesh(branchIndex, activeBakedBranches);
-                            refreshProcessedMesh = true;
-                        }
-                        else
-                        {
-                            Debug.LogWarning("Limit vertices reached! --> " + Constants.VERTEX_LIMIT_16 + " vertices");
-                        }
-                    }
+                    AddNextBranch(nextPoint.newBranchNumber);
                 }
             }
+
+            UpdateGrowingPoints(branchIndex);
+
+            // Handle Mesh Updates
+            if (currentBranch.branchPoints.Count > backtrackingPoints)
+            {
+                if (IsVertexLimitReached())
+                {
+                    Debug.LogWarning($"Limit vertices reached! --> {Constants.VERTEX_LIMIT_16} vertices");
+                    return;
+                }
+
+                meshBuilder.CheckCopyMesh(branchIndex, activeBakedBranches);
+                refreshProcessedMesh = true;
+            }
         }
 
-        private void CalculateFactors(Vector3 srcPoint, Vector3 dstPoint)
+        private void UpdateGrowthSpeed(Vector3 srcPoint, Vector3 dstPoint)
         {
-            var factor = Vector3.Distance(srcPoint, dstPoint) / ivyParameters.stepSize;
-            factor = 1.0f / factor;
-            currentSpeed = factor * currentGrowthSpeed;
+            float distance = Vector3.Distance(srcPoint, dstPoint);
+            if (distance > 0.0001f)
+                currentSpeed = ivyParameters.stepSize / distance * currentGrowthSpeed;
         }
 
-        protected virtual void AddNextBranch(int branchNumber)
+        private void AddNextBranch(int branchNumber)
         {
             lastIdxActiveBranch++;
 
@@ -281,7 +282,6 @@ namespace TeamCrescendo.ProceduralIvy
             rtBuildingIvyContainer.AddBranchRuntime(newBuildingBranch);
             activeBakedBranches.Add(bakedBranch);
             activeBuildingBranches.Add(newBuildingBranch);
-            meshBuilder.activeBranches.Add(newBuildingBranch);
 
             UpdateGrowingPoints(rtBuildingIvyContainer.branches.Count - 1);
 
@@ -291,36 +291,35 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void UpdateGrowingPoints(int branchIndex)
         {
-            if (rtBuildingIvyContainer.branches[branchIndex].branchPoints.Count > 0)
+            if (rtBuildingIvyContainer.branches[branchIndex].branchPoints.Count == 0) return;
+            
+            var fromPoint = rtBuildingIvyContainer.branches[branchIndex].GetLastBranchPoint();
+            if (fromPoint.index < activeBakedBranches[branchIndex].branchPoints.Count - 1)
             {
-                var fromPoint = rtBuildingIvyContainer.branches[branchIndex].GetLastBranchPoint();
-                if (fromPoint.index < activeBakedBranches[branchIndex].branchPoints.Count - 1)
-                {
-                    var nextPoint = activeBakedBranches[branchIndex].branchPoints[fromPoint.index + 1];
-                    growingFactorPerBranch[branchIndex] = 0f;
+                var nextPoint = activeBakedBranches[branchIndex].branchPoints[fromPoint.index + 1];
+                growingFactorPerBranch[branchIndex] = 0f;
 
-                    srcPoints[branchIndex] = fromPoint.point;
-                    dstPoints[branchIndex] = nextPoint.point;
+                srcPoints[branchIndex] = fromPoint.point;
+                dstPoints[branchIndex] = nextPoint.point;
 
 
-                    srcTotalLengthPerBranch[branchIndex] = fromPoint.length;
-                    dstTotalLengthPerBranch[branchIndex] = fromPoint.length + ivyParameters.stepSize;
-                }
+                srcTotalLengthPerBranch[branchIndex] = fromPoint.length;
+                dstTotalLengthPerBranch[branchIndex] = fromPoint.length + ivyParameters.stepSize;
             }
         }
 
         private bool RefreshGeometry()
         {
-            // try
-            // {
+            try
+            {
                 meshBuilder.BuildGeometry(activeBakedBranches, activeBuildingBranches);
                 return true;
-            // }
-            // catch (Exception e)
-            // {
-            //     if (verbose) Debug.LogWarning(e);
-            //     return false;
-            // }
+            }
+            catch (Exception e)
+            {
+                if (verbose) Debug.LogWarning(e);
+                return false;
+            }
         }
 
         private void UpdateGrowthSpeed()

@@ -6,53 +6,49 @@ namespace TeamCrescendo.ProceduralIvy
 {
     public class RuntimeIvyGrowth
     {
-        private BranchContainer[] branchesPool;
-        private int branchesPoolIndex;
-        private int branchPointPoolIndex;
+        private readonly int maxNumPoints;
+        private readonly int maxNumLeaves;
+        private readonly int maxNumVerticesPerLeaf;
 
+        private readonly IvyContainer ivyContainer;
+        private readonly GameObject ivyGO;
+        private readonly IvyParameters ivyParameters;
+        private readonly MeshData[] leavesMeshesByChosenLeaf;
+        
         private BranchPoint[] branchPointsPool;
-        private GameObject ivyGO;
-        private IvyParameters ivyParameters;
-        private MeshData[] leavesMeshesByChosenLeaf;
+        private int branchPointPoolIndex;
 
         private LeafPoint[] leavesPool;
         private int leavesPoolIndex;
-        private int maxNumVerticesPerLeaf;
 
-        public Random.State randomstate;
-        private IvyContainer rtIvyContainer;
+        private Random.State rngState;
 
-        public void Init(IvyContainer ivyContainer, IvyParameters ivyParameters,
+        public RuntimeIvyGrowth(IvyContainer ivyContainer, IvyParameters ivyParameters,
             GameObject ivyGO, MeshData[] leavesMeshesByChosenLeaf,
-            int numPoints, int numLeaves, int maxNumVerticesPerLeaf)
+            int maxNumPoints, int maxNumLeaves, int maxNumVerticesPerLeaf)
         {
-            rtIvyContainer = ivyContainer;
+            this.maxNumPoints = maxNumPoints;
+            this.maxNumLeaves = maxNumLeaves;
+            this.ivyContainer = ivyContainer;
             this.ivyParameters = ivyParameters;
             this.ivyGO = ivyGO;
             this.leavesMeshesByChosenLeaf = leavesMeshesByChosenLeaf;
             this.maxNumVerticesPerLeaf = maxNumVerticesPerLeaf;
 
-            branchPointsPool = new BranchPoint[numPoints];
+            branchPointsPool = new BranchPoint[maxNumPoints];
             branchPointPoolIndex = 0;
 
-            for (var i = 0; i < numPoints; i++)
+            for (var i = 0; i < maxNumPoints; i++)
                 branchPointsPool[i] = new BranchPoint();
 
-            leavesPool = new LeafPoint[numLeaves];
+            leavesPool = new LeafPoint[maxNumLeaves];
             leavesPoolIndex = 0;
-            for (var i = 0; i < numLeaves; i++)
+            for (var i = 0; i < maxNumLeaves; i++)
                 leavesPool[i] = new LeafPoint(maxNumVerticesPerLeaf);
-
-            branchesPool = new BranchContainer[ivyParameters.maxBranches];
-            for (var i = 0; i < ivyParameters.maxBranches; i++)
-            {
-                branchesPool[i] = ScriptableObject.CreateInstance<BranchContainer>();
-                branchesPool[i].Init(numPoints, numLeaves);
-            }
 
             Random.InitState(Environment.TickCount);
 
-            var firstBranch = GetNextBranchContainer();
+            var firstBranch = GetNewBranchContainer();
 
             ivyContainer.AddBranchRuntime(firstBranch);
 
@@ -69,7 +65,7 @@ namespace TeamCrescendo.ProceduralIvy
             ivyContainer.branches[0].randomizeHeight = Random.Range(4f, 8f);
             CalculateNewHeight(ivyContainer.branches[0]);
             ivyContainer.branches[0].branchSense = ChooseBranchSense();
-            randomstate = Random.state;
+            rngState = Random.state;
         }
 
         //Este método es para calcular la altura del próximo punto
@@ -98,16 +94,16 @@ namespace TeamCrescendo.ProceduralIvy
         //todo parte del calculatenewpoint, a partir de ahí se entrama todo
         public void Step()
         {
-            Random.state = randomstate;
+            Random.state = rngState;
 
-            for (var b = 0; b < rtIvyContainer.branches.Count; b++)
+            for (var b = 0; b < ivyContainer.branches.Count; b++)
             {
                 //aumentamos el parámetro en el que basamos la altura. podría hacerse al final de la iteración, pero como no sabes dónde va a terminar, mejor ponerlo al principio
-                rtIvyContainer.branches[b].heightParameter += ivyParameters.stepSize;
-                CalculateNewPoint(rtIvyContainer.branches[b]);
+                ivyContainer.branches[b].heightParameter += ivyParameters.stepSize;
+                CalculateNewPoint(ivyContainer.branches[b]);
             }
 
-            randomstate = Random.state;
+            rngState = Random.state;
         }
 
         //Si la rama no está cayendo (está agarrada a una superficie) calculamos la nueva altura del próximo punto y buscamos un muro delante. Si está cayendo, buscamos el próximo punto de la caída.
@@ -264,7 +260,7 @@ namespace TeamCrescendo.ProceduralIvy
         //Añadimos punto y todo lo que ello conlleva. Está la posibilidad de spawnear una rama
         public void AddPoint(BranchContainer branch, Vector3 point, Vector3 normal)
         {
-            branch.totalLenght += ivyParameters.stepSize;
+            branch.totalLength += ivyParameters.stepSize;
 
             var branchPoint = GetNextFreeBranchPoint();
             branchPoint.SetValues(point + normal * branch.currentHeight, -normal);
@@ -273,7 +269,7 @@ namespace TeamCrescendo.ProceduralIvy
             CalculateVerticesLastPoint(branch);
 
             if (Random.value < ivyParameters.branchProbability &&
-                rtIvyContainer.branches.Count < ivyParameters.maxBranches)
+                ivyContainer.branches.Count < ivyParameters.maxBranches)
                 AddBranch(branch, branch.GetLastBranchPoint(), branch.branchPoints[branch.branchPoints.Count - 1].point,
                     normal);
 
@@ -294,8 +290,8 @@ namespace TeamCrescendo.ProceduralIvy
             //Aquí la escala, que es facilita, incluyendo el tip influence
             var scale = Random.Range(ivyParameters.minScale, ivyParameters.maxScale);
 
-            if (leafPoint.lpLength - 0.1f >= branch.totalLenght - ivyParameters.tipInfluence)
-                scale *= Mathf.InverseLerp(branch.totalLenght, branch.totalLenght - ivyParameters.tipInfluence,
+            if (leafPoint.lpLength - 0.1f >= branch.totalLength - ivyParameters.tipInfluence)
+                scale *= Mathf.InverseLerp(branch.totalLength, branch.totalLength - ivyParameters.tipInfluence,
                     leafPoint.lpLength);
             return scale;
         }
@@ -314,7 +310,7 @@ namespace TeamCrescendo.ProceduralIvy
             CalculateVerticesLastPoint(branch);
 
             if (Random.value < ivyParameters.branchProbability &&
-                rtIvyContainer.branches.Count < ivyParameters.maxBranches)
+                ivyContainer.branches.Count < ivyParameters.maxBranches)
                 AddBranch(branch, branch.GetLastBranchPoint(), branch.branchPoints[branch.branchPoints.Count - 1].point,
                     -branch.GetLastBranchPoint().grabVector);
 
@@ -328,10 +324,10 @@ namespace TeamCrescendo.ProceduralIvy
                 var branchPoint = rtBranchContainer.branchPoints[rtBranchContainer.branchPoints.Count - 2];
 
                 var radius = CalculateRadius(branchPoint.length);
-                var axis = GetLoopAxis(branchPoint, rtBranchContainer, rtIvyContainer, ivyGO);
-                var firstVector = GetFirstVector(branchPoint, rtBranchContainer, rtIvyContainer, ivyParameters, axis);
+                var axis = GetLoopAxis(branchPoint, rtBranchContainer, ivyContainer, ivyGO);
+                var firstVector = GetFirstVector(branchPoint, rtBranchContainer, ivyContainer, ivyParameters, axis);
                 branchPoint.CalculateCenterLoop(ivyGO);
-                branchPoint.CalculateVerticesLoop(ivyParameters, rtIvyContainer, ivyGO, firstVector, axis, radius);
+                branchPoint.CalculateVerticesLoop(ivyParameters, ivyContainer, ivyGO, firstVector, axis, radius);
             }
         }
 
@@ -349,7 +345,7 @@ namespace TeamCrescendo.ProceduralIvy
 
                 var leafScale = Random.Range(ivyParameters.minScale, ivyParameters.maxScale);
                 var leafAdded = GetNextLeafPoint();
-                leafAdded.SetValues(leafPoint, branch.totalLenght, branch.growDirection,
+                leafAdded.SetValues(leafPoint, branch.totalLength, branch.growDirection,
                     -branch.GetLastBranchPoint().grabVector, chosenLeaf, initSegment, endSegment, leafScale,
                     ivyParameters);
 
@@ -360,16 +356,12 @@ namespace TeamCrescendo.ProceduralIvy
             }
         }
 
-        //Todo lo necesario para añadir una rama
         public void AddBranch(BranchContainer branch, BranchPoint originBranchPoint, Vector3 point, Vector3 normal)
         {
-            var newBranchContainer = GetNextBranchContainer();
-
-
+            var newBranchContainer = GetNewBranchContainer();
             var nextPoint = GetNextFreeBranchPoint();
             nextPoint.SetValues(point, -normal);
             newBranchContainer.AddBranchPoint(nextPoint, ivyParameters.stepSize);
-
 
             newBranchContainer.growDirection = Vector3.Normalize(Vector3.ProjectOnPlane(branch.growDirection, normal));
             newBranchContainer.randomizeHeight = Random.Range(4f, 8f);
@@ -377,7 +369,7 @@ namespace TeamCrescendo.ProceduralIvy
             newBranchContainer.heightParameter = branch.heightParameter;
             newBranchContainer.branchSense = ChooseBranchSense();
 
-            rtIvyContainer.AddBranchRuntime(newBranchContainer);
+            ivyContainer.AddBranchRuntime(newBranchContainer);
 
             originBranchPoint.InitBranchInThisPoint(newBranchContainer.branchNumber);
         }
@@ -386,7 +378,7 @@ namespace TeamCrescendo.ProceduralIvy
         private void NewGrowDirection(BranchContainer branch)
         {
             branch.growDirection = Vector3.Normalize(Vector3.ProjectOnPlane(Quaternion.AngleAxis(
-                    Mathf.Sin(branch.branchSense * branch.totalLenght * ivyParameters.directionFrequency *
+                    Mathf.Sin(branch.branchSense * branch.totalLength * ivyParameters.directionFrequency *
                               (1 + Random.Range(-ivyParameters.directionRandomness,
                                   ivyParameters.directionRandomness))) *
                     ivyParameters.directionAmplitude * ivyParameters.stepSize * 10f *
@@ -406,14 +398,14 @@ namespace TeamCrescendo.ProceduralIvy
             var newGrowDirection =
                 Vector3.Lerp(branch.growDirection, ivyParameters.gravity, branch.fallIteration / 10f);
             newGrowDirection = Quaternion.AngleAxis(
-                Mathf.Sin(branch.branchSense * branch.totalLenght * ivyParameters.directionFrequency * (1 +
+                Mathf.Sin(branch.branchSense * branch.totalLength * ivyParameters.directionFrequency * (1 +
                     Random.Range(-ivyParameters.directionRandomness / 8f, ivyParameters.directionRandomness / 8f))) *
                 ivyParameters.directionAmplitude * ivyParameters.stepSize * 5f *
                 Mathf.Max(ivyParameters.directionRandomness / 8f, 1f),
                 branch.GetLastBranchPoint().grabVector) * newGrowDirection;
 
             newGrowDirection = Quaternion.AngleAxis(
-                Mathf.Sin(branch.branchSense * branch.totalLenght * ivyParameters.directionFrequency / 2f *
+                Mathf.Sin(branch.branchSense * branch.totalLength * ivyParameters.directionFrequency / 2f *
                           (1 + Random.Range(-ivyParameters.directionRandomness / 8f,
                               ivyParameters.directionRandomness / 8f))) *
                 ivyParameters.directionAmplitude * ivyParameters.stepSize * 5f *
@@ -522,13 +514,7 @@ namespace TeamCrescendo.ProceduralIvy
 
             return res;
         }
-
-        private BranchContainer GetNextBranchContainer()
-        {
-            var res = branchesPool[branchesPoolIndex];
-            branchesPoolIndex++;
-
-            return res;
-        }
+        
+        private BranchContainer GetNewBranchContainer() => BranchContainer.Create(maxNumPoints, maxNumLeaves);
     }
 }

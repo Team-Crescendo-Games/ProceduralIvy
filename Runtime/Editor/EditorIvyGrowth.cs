@@ -259,7 +259,7 @@ namespace TeamCrescendo.ProceduralIvy
         //Añadimos punto y todo lo que ello conlleva. Está la posibilidad de spawnear una rama
         public static void AddPoint(InfoPool infoPool, BranchContainer branch, Vector3 point, Vector3 normal)
         {
-            branch.totalLenght += infoPool.ivyParameters.stepSize;
+            branch.totalLength += infoPool.ivyParameters.stepSize;
             branch.heightParameter += infoPool.ivyParameters.stepSize;
 
             branch.AddBranchPoint(point + normal * branch.currentHeight, -normal);
@@ -277,7 +277,7 @@ namespace TeamCrescendo.ProceduralIvy
         {
             var grabVector = branch.rotationOnFallIteration * branch.GetLastBranchPoint().grabVector;
 
-            branch.totalLenght += infoPool.ivyParameters.stepSize;
+            branch.totalLength += infoPool.ivyParameters.stepSize;
             branch.AddBranchPoint(branch.branchPoints[^1].point + branch.growDirection * infoPool.ivyParameters.stepSize, 
                 grabVector);
 
@@ -317,7 +317,7 @@ namespace TeamCrescendo.ProceduralIvy
                 var leafPos = Vector3.Lerp(segmentStart.point, segmentEnd.point, 0.5f);
                 var grabDir = -branch.GetLastBranchPoint().grabVector;
 
-                branch.AddLeaf(leafPos, branch.totalLenght, branch.growDirection, 
+                branch.AddLeaf(leafPos, branch.totalLength, branch.growDirection, 
                     grabDir, chosenLeaf, segmentStart, segmentEnd);
             }
         }
@@ -333,7 +333,7 @@ namespace TeamCrescendo.ProceduralIvy
 
             // Jitter the noise
             var freqRandomness = 1 + Random.Range(-p.directionRandomness, p.directionRandomness);
-            var frequency = branch.branchSense * branch.totalLenght * p.directionFrequency * freqRandomness;
+            var frequency = branch.branchSense * branch.totalLength * p.directionFrequency * freqRandomness;
 
             // Rotate the grab vector by sin noise
             const float noiseStrength = 10f;
@@ -356,7 +356,7 @@ namespace TeamCrescendo.ProceduralIvy
             var newGrowDirection = Vector3.Lerp(branch.growDirection, infoPool.ivyParameters.gravity,
                 branch.fallIteration / 10f);
             newGrowDirection = Quaternion.AngleAxis(
-                Mathf.Sin(branch.branchSense * branch.totalLenght * infoPool.ivyParameters.directionFrequency *
+                Mathf.Sin(branch.branchSense * branch.totalLength * infoPool.ivyParameters.directionFrequency *
                           (1 + Random.Range(-infoPool.ivyParameters.directionRandomness / 8f,
                               infoPool.ivyParameters.directionRandomness / 8f))) *
                 infoPool.ivyParameters.directionAmplitude * infoPool.ivyParameters.stepSize * 5f *
@@ -364,7 +364,7 @@ namespace TeamCrescendo.ProceduralIvy
                 branch.GetLastBranchPoint().grabVector) * newGrowDirection;
 
             newGrowDirection = Quaternion.AngleAxis(
-                Mathf.Sin(branch.branchSense * branch.totalLenght * infoPool.ivyParameters.directionFrequency / 2f *
+                Mathf.Sin(branch.branchSense * branch.totalLength * infoPool.ivyParameters.directionFrequency / 2f *
                           (1 + Random.Range(-infoPool.ivyParameters.directionRandomness / 8f,
                               infoPool.ivyParameters.directionRandomness / 8f))) *
                 infoPool.ivyParameters.directionAmplitude * infoPool.ivyParameters.stepSize * 5f *

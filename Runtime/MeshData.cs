@@ -30,7 +30,7 @@ namespace TeamCrescendo.ProceduralIvy
             colors32 = new Color32[numVertices];
 
             triangles = new int[numSubmeshes][];
-            for (var i = 0; i < triangles.Length; i++) 
+            for (var i = 0; i < triangles.Length; i++)
                 triangles[i] = new int[numTrianglesPerSubmesh[i]];
 
             triangleIndices = new int[triangles.Length];

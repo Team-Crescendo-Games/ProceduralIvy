@@ -224,7 +224,7 @@ namespace TeamCrescendo.ProceduralIvy
                                 branchPoint.firstVector = vectors[0];
                                 branchPoint.axis = vectors[1];
 
-                                float tipInfluence = GetTipInfluence(par, branchPoint.length, branch.totalLenght);
+                                float tipInfluence = GetTipInfluence(par, branchPoint.length, branch.totalLength);
 
                                 for (var v = 0; v < sidesPlusOne; v++)
                                 {
@@ -265,7 +265,7 @@ namespace TeamCrescendo.ProceduralIvy
                                 else normalWorld = (branchPoint.point - branch.branchPoints[p - 1].point).normalized;
 
                                 normals[absIndex] = worldToLocalMatrix.MultiplyVector(normalWorld);
-                                uvs[absIndex] = new Vector2(branch.totalLenght * uvScale.y + uvOffset.y,
+                                uvs[absIndex] = new Vector2(branch.totalLength * uvScale.y + uvOffset.y,
                                     0.5f * uvScale.x + uvOffset.x);
 
                                 var centerVertexPosition = worldToLocalMatrix.MultiplyPoint3x4(branchPoint.point);
@@ -325,7 +325,7 @@ namespace TeamCrescendo.ProceduralIvy
 
                         // scale is shrinked when closer to tip
                         float scale = par.minScale + (float)rng.NextDouble() * (par.maxScale - par.minScale);
-                        scale *= Mathf.InverseLerp(branch.totalLenght, branch.totalLenght - par.tipInfluence,
+                        scale *= Mathf.InverseLerp(branch.totalLength, branch.totalLength - par.tipInfluence,
                             currentLeaf.lpLength);
 
                         currentLeaf.leafScale = scale;

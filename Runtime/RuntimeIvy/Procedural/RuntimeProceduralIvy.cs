@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Linq;
+using UnityEngine;
 
 namespace TeamCrescendo.ProceduralIvy
 {
@@ -10,29 +11,21 @@ namespace TeamCrescendo.ProceduralIvy
         {
             base.Initialize(growthParameters, ivyContainer, ivyParameters);
 
-            rtIvyGrowth = new RuntimeIvyGrowth();
-            rtIvyGrowth.Init(rtIvyContainer, ivyParameters, gameObject, leavesMeshesByChosenLeaf,
+            rtIvyGrowth = new RuntimeIvyGrowth(rtIvyContainer, ivyParameters, gameObject, leavesMeshesByChosenLeaf,
                 GetMaxNumPoints(), GetMaxNumLeaves(), GetMaxNumVerticesPerLeaf());
-
-            for (var i = 0; i < 10; i++) rtIvyGrowth.Step();
 
             currentLifetime = growthParameters.lifetime;
         }
 
-        protected override void NextPoints(int branchIndex)
+        protected override void AdvanceBranchGrowth(int branchIndex)
         {
-            base.NextPoints(branchIndex);
+            base.AdvanceBranchGrowth(branchIndex);
             rtIvyGrowth.Step();
         }
 
         public override bool IsGrowingFinished() => currentTimer > currentLifetime;
 
-        protected override float GetNormalizedLifeTime()
-        {
-            var res = currentTimer / growthParameters.lifetime;
-            res = Mathf.Clamp(res, 0.1f, 1f);
-            return res;
-        }
+        protected override float GetNormalizedLifeTime() => Mathf.Clamp(currentTimer / growthParameters.lifetime, 0.1f, 1);
 
         protected override void InitializeMeshesData(Mesh bakedMesh, int numBranches)
         {
@@ -44,28 +37,15 @@ namespace TeamCrescendo.ProceduralIvy
         {
             var timePerPoint = ivyParameters.stepSize / growthParameters.growthSpeed;
             var res = Mathf.CeilToInt(growthParameters.lifetime / timePerPoint) * ivyParameters.maxBranches * 2;
-
-            res = 20;
-
             return res;
         }
 
-        protected override int GetMaxNumLeaves()
-        {
-            var res = GetMaxNumPoints();
-
-            return res;
-        }
+        protected override int GetMaxNumLeaves() => GetMaxNumPoints();
 
         private int GetMaxNumVerticesPerLeaf()
         {
-            var res = 0;
-
-            for (var i = 0; i < ivyParameters.leavesPrefabs.Length; i++)
-                if (res <= leavesMeshesByChosenLeaf[i].vertices.Length)
-                    res = leavesMeshesByChosenLeaf[i].vertices.Length;
-
-            return res;
+            if (leavesMeshesByChosenLeaf.Length == 0) return 0;
+            return leavesMeshesByChosenLeaf.Max(m => m.vertices.Length);
         }
     }
 }

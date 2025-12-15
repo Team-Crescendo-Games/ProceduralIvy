@@ -29,8 +29,8 @@ namespace TeamCrescendo.ProceduralIvy
         private void CalculateLifetime()
         {
             var totalIvyLength = 0f;
-            for (var i = 0; i < rtIvyContainer.branches.Count; i++)
-                totalIvyLength += rtIvyContainer.branches[i].totalLenght;
+            foreach (var branch in rtIvyContainer.branches)
+                totalIvyLength += branch.totalLength;
 
             currentLifetime = totalIvyLength / growthParameters.growthSpeed;
             currentLifetime *= 2;
@@ -38,10 +38,8 @@ namespace TeamCrescendo.ProceduralIvy
 
         protected override float GetNormalizedLifeTime()
         {
-            var res = rtBuildingIvyContainer.branches[0].totalLenght / rtIvyContainer.branches[0].totalLenght;
-            res = Mathf.Clamp(res, 0.1f, 1f);
-
-            return res;
+            var res = rtBuildingIvyContainer.branches[0].totalLength / rtIvyContainer.branches[0].totalLength;
+            return Mathf.Clamp(res, 0.1f, 1f);
         }
 
         protected override void InitializeMeshesData(Mesh bakedMesh, int numBranches)

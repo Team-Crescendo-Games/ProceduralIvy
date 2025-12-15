@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 using Random = UnityEngine.Random;
 #if UNITY_EDITOR
 #endif
@@ -13,7 +14,7 @@ namespace TeamCrescendo.ProceduralIvy
     {
         public Vector3 growDirection;
         public Quaternion rotationOnFallIteration;
-        public float totalLenght;
+        public float totalLength;
         public float fallIteration;
         public int branchNumber;
         public int branchSense;
@@ -29,20 +30,24 @@ namespace TeamCrescendo.ProceduralIvy
         public List<BranchPoint> branchPoints;
         public List<LeafPoint> leaves = new();
         [NonSerialized] public LeafPoint[][] leavesOrderedByInitSegment;
-
-        public void Init(int numPoints, int numLeaves)
+        
+        public static BranchContainer Create(int numPoints, int numLeaves)
         {
-            branchPoints = new List<BranchPoint>(numPoints);
+            var newBranch = CreateInstance<BranchContainer>();
+            
+            newBranch.branchPoints = new List<BranchPoint>(numPoints);
 
-            leavesOrderedByInitSegment = new LeafPoint[numPoints][];
+            newBranch.leavesOrderedByInitSegment = new LeafPoint[numPoints][];
             for (var i = 0; i < numPoints; i++) 
-                leavesOrderedByInitSegment[i] = new LeafPoint[1];
+                newBranch.leavesOrderedByInitSegment[i] = new LeafPoint[numLeaves];
+            
+            return newBranch;
         }
         
         public void Init(BranchContainer branchContainer, IvyParameters ivyParameters,
             IvyContainer rtIvyContainer, GameObject ivyGO, MeshData[] leavesMeshesByChosenLeaf)
         {
-            totalLenght = branchContainer.totalLenght;
+            totalLength = branchContainer.totalLength;
             growDirection = branchContainer.growDirection;
             randomizeHeight = branchContainer.randomizeHeight;
             heightVar = branchContainer.heightVar;
@@ -109,15 +114,15 @@ namespace TeamCrescendo.ProceduralIvy
         {
             branchPoints ??= new List<BranchPoint>();
             var newBranchPoint = new BranchPoint(point, grabVector,
-                branchPoints.Count, isNewBranch, newBranchIndex, totalLenght, this);
+                branchPoints.Count, isNewBranch, newBranchIndex, totalLength, this);
             branchPoints.Add(newBranchPoint);
         }
         
         public void AddBranchPoint(BranchPoint rtBranchPoint, float deltaLength)
         {
-            totalLenght += deltaLength;
+            totalLength += deltaLength;
 
-            rtBranchPoint.length = totalLenght;
+            rtBranchPoint.length = totalLength;
             rtBranchPoint.index = branchPoints.Count;
             rtBranchPoint.branchContainer = this;
 
@@ -222,7 +227,7 @@ namespace TeamCrescendo.ProceduralIvy
             for (var i = index + count; i < branchPoints.Count; i++)
                 branchPoints[i].index -= 1;
 
-            totalLenght = branchPoints[index - 1].length;
+            totalLength = branchPoints[index - 1].length;
             branchPoints.RemoveRange(index, count);
 
             // We delete the last leaf as a safety precaution in case it ran out of segments.
@@ -267,20 +272,41 @@ namespace TeamCrescendo.ProceduralIvy
         
         public void AddLeaf(LeafPoint leafAdded)
         {
+            // Fix: Handle 0-length start and ensure expansion covers the requested index
             if (leafAdded.initSegmentIdx >= leavesOrderedByInitSegment.Length)
             {
-                Array.Resize(ref leavesOrderedByInitSegment, leavesOrderedByInitSegment.Length * 2);
+                int newSize = leavesOrderedByInitSegment.Length == 0 ? 4 : leavesOrderedByInitSegment.Length * 2;
+        
+                // Ensure newSize is actually large enough for the requested index
+                while (newSize <= leafAdded.initSegmentIdx)
+                    newSize *= 2;
 
-                for (var i = leafAdded.initSegmentIdx; i < leavesOrderedByInitSegment.Length; i++)
-                    leavesOrderedByInitSegment[i] = new LeafPoint[1];
+                Array.Resize(ref leavesOrderedByInitSegment, newSize);
             }
 
-            leavesOrderedByInitSegment[leafAdded.initSegmentIdx][0] = leafAdded;
+            // Fix: Check for null before access (Lazy Initialization)
+            if (leavesOrderedByInitSegment[leafAdded.initSegmentIdx] == null)
+            {
+                // Create new inner array with the single item
+                leavesOrderedByInitSegment[leafAdded.initSegmentIdx] = new LeafPoint[] { leafAdded };
+            }
+            else
+            {
+                // Fix: Append to existing array instead of overwriting [0]
+                ref LeafPoint[] segment = ref leavesOrderedByInitSegment[leafAdded.initSegmentIdx];
+                int oldLen = segment.Length;
+        
+                Array.Resize(ref segment, oldLen + 1);
+                segment[oldLen] = leafAdded;
+            }
+    
+            // Note: If calling this frequently, consider using List<LeafPoint>[] 
+            // to avoid the garbage collection overhead of constantly resizing arrays.
         }
         
         public Vector2 GetLastUV(IvyParameters ivyParameters)
         {
-            var res = new Vector2(totalLenght * ivyParameters.uvScale.y + ivyParameters.uvOffset.y,
+            var res = new Vector2(totalLength * ivyParameters.uvScale.y + ivyParameters.uvOffset.y,
                 0.5f * ivyParameters.uvScale.x + ivyParameters.uvOffset.x);
             return res;
         }

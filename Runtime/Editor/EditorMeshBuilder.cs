@@ -63,7 +63,7 @@ namespace TeamCrescendo.ProceduralIvy
             CalculateCountsAndOffsets(infoPool, out int totalVerts, out int totalBranchTris,
                 out int[] branchVertOffsets, out int[] branchTriOffsets, out Dictionary<int, int[]> leafVertOffsets);
 
-            long limit = infoPool.ivyParameters.buffer32Bits ? 2147483647L : 65535L;
+            long limit = infoPool.ivyParameters.buffer32Bits ? Constants.VERTEX_LIMIT_32 : Constants.VERTEX_LIMIT_16;
             if (totalVerts > limit)
             {
                 Debug.Log($"Vertex count exceeds limit. Required: {totalVerts}, Limit: {limit}");
@@ -205,12 +205,6 @@ namespace TeamCrescendo.ProceduralIvy
                         {
                             var branchPoint = branch.branchPoints[p];
 
-                            // Note: List operations are not thread safe if accessed by multiple threads.
-                            // Since we only access this specific branch in this thread, it is safe.
-                            // However, we cannot reuse the existing List object if the main thread is reading it.
-                            // Usually strictly safe to create new here.
-                            branchPoint.verticesLoop = new List<VertexData>();
-
                             float radius = CalculateRadius(par, branchPoint.length);
                             branchPoint.radius = radius;
 
@@ -245,11 +239,6 @@ namespace TeamCrescendo.ProceduralIvy
                                         branchPoint.length * uvScale.y + uvOffset.y - stepSize,
                                         (1f / sides) * v * uvScale.x + uvOffset.x);
 
-                                    var vertexForRuntime = direction * radius + (branchPoint.point - rootPosition);
-
-                                    // Writing to the list is safe (thread local context)
-                                    branchPoint.verticesLoop.Add(new VertexData(vertexForRuntime, normals[absIndex], uvs[absIndex], colors[absIndex]));
-
                                     currentVertBase++;
                                     localVertCount++;
                                 }
@@ -267,9 +256,6 @@ namespace TeamCrescendo.ProceduralIvy
                                 normals[absIndex] = worldToLocalMatrix.MultiplyVector(normalWorld);
                                 uvs[absIndex] = new Vector2(branch.totalLength * uvScale.y + uvOffset.y,
                                     0.5f * uvScale.x + uvOffset.x);
-
-                                var centerVertexPosition = worldToLocalMatrix.MultiplyPoint3x4(branchPoint.point);
-                                branchPoint.verticesLoop.Add(new VertexData(centerVertexPosition, normals[absIndex], uvs[absIndex], colors[absIndex]));
 
                                 currentVertBase++;
                                 localVertCount++;
@@ -316,10 +302,7 @@ namespace TeamCrescendo.ProceduralIvy
                         var branch = infoPool.ivyContainer.branches[leafData.branchIndex];
                         var cache = prefabCache[currentLeaf.chosenLeave];
 
-                        // Re-init runtime list
-                        currentLeaf.vertices = new List<VertexData>();
-
-                        Quaternion localRot = IvyUtils.CalculateLeafOrientation(par,
+                        Quaternion localRot = ProceduralIvyCommon.CalculateLeafOrientation(par,
                             currentLeaf.lpForward, currentLeaf.lpUpward, 
                             rng, out Vector3 forward, out Vector3 left);
 
@@ -334,7 +317,7 @@ namespace TeamCrescendo.ProceduralIvy
                         Vector3 offset = left * par.offset.x + currentLeaf.lpUpward * par.offset.y 
                                                              + currentLeaf.lpForward * par.offset.z;
 
-                        // --- Write Verts (Thread Safe due to offsets) ---
+                        // write verts with respect to offset (thread safe)
                         for (var v = 0; v < cache.vertexCount; v++)
                         {
                             int absIndex = vertStart + v;
@@ -347,12 +330,8 @@ namespace TeamCrescendo.ProceduralIvy
                             colors[absIndex] = (cache.colors32 != null && cache.colors32.Length > v)
                                 ? cache.colors32[v]
                                 : Color.white;
-
-                            currentLeaf.vertices.Add(new VertexData(verts[absIndex], normals[absIndex],
-                                uvs[absIndex], colors[absIndex]));
                         }
 
-                        // --- Handle Triangles ---
                         // We must add offsets to the triangles. 
                         // Since List.Add is not safe, we calculate them into a local array and lock-add.
                         // For massive leaf counts, this lock is a bottleneck, but better than single-threaded math.

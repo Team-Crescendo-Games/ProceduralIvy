@@ -89,7 +89,6 @@ namespace TeamCrescendo.ProceduralIvy
         // Export Tab Controls
         private Button SaveSceneBtn => rootVisualElement.Q<Button>("save-scene-btn");
         private Button SavePrefabBtn => rootVisualElement.Q<Button>("save-prefab-btn");
-        private Button ConvertProcBtn => rootVisualElement.Q<Button>("convert-proc-btn");
         private Button ConvertBakedBtn => rootVisualElement.Q<Button>("convert-baked-btn");
         
         #endregion
@@ -532,7 +531,6 @@ namespace TeamCrescendo.ProceduralIvy
             // Export Tab
             SaveSceneBtn.clicked += OnSaveToSceneClicked;
             SavePrefabBtn.clicked += OnSavePrefabClicked;
-            ConvertProcBtn.clicked += OnConvertProceduralClicked;
             ConvertBakedBtn.clicked += OnConvertBakedClicked;
         }
 
@@ -1148,43 +1146,16 @@ namespace TeamCrescendo.ProceduralIvy
 
             if (confirmed)
             {
-                ConvertToRuntimeIvy<RuntimeBakedIvy>(CurrentIvyInfo.gameObject);
-                MarkSceneDirty(CurrentIvyInfo.gameObject.scene);
-            }
-        }
-
-        private void OnConvertProceduralClicked()
-        {
-            if (CurrentIvyInfo.TryGetComponent(out RuntimeIvy existingIvy))
-            {
-                EditorUtility.DisplayDialog(
-                    "Warning",
-                    $"A RuntimeIvy component ({existingIvy.GetType().Name}) already exists on '{CurrentIvyInfo.gameObject.name}'.",
-                    "OK"
-                );
-                return;
-            }
-            
-            bool confirmed = EditorUtility.DisplayDialog(
-                "Convert to Runtime Procedural Ivy",
-                "Are you sure you want to convert the current ivy to a Runtime Procedural Ivy? " +
-                "This will replace the current Ivy component with a Runtime Procedural Ivy component.",
-                "Yes, Convert it",
-                "Cancel"
-            );
-
-            if (confirmed)
-            {
-                ConvertToRuntimeIvy<RuntimeProceduralIvy>(CurrentIvyInfo.gameObject);
+                ConvertToRuntimeIvy(CurrentIvyInfo.gameObject);
                 MarkSceneDirty(CurrentIvyInfo.gameObject.scene);
             }
         }
         
-        private void ConvertToRuntimeIvy<T>(GameObject target) where T : RuntimeIvy
+        private void ConvertToRuntimeIvy(GameObject target)
         {
             // Get or Add the specific Ivy component (Baked or Procedural)
-            if (!target.TryGetComponent(out T specificIvy))
-                specificIvy = target.AddComponent<T>();
+            if (!target.TryGetComponent(out RuntimeIvy specificIvy))
+                specificIvy = target.AddComponent<RuntimeIvy>();
 
             // Get or Add IvyController
             if (!target.TryGetComponent(out IvyController ivyController))

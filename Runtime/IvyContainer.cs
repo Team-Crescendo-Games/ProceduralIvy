@@ -11,13 +11,8 @@ namespace TeamCrescendo.ProceduralIvy
     [PreferBinarySerialization]
     public class IvyContainer : ScriptableObject
     {
-        public List<BranchContainer> branches;
+        public List<BranchContainer> branches = new();
         public Vector3 firstVertexVector;
-
-        private IvyContainer()
-        {
-            branches = new List<BranchContainer>();
-        }
         
         public static IvyContainer Create(Vector3 firstVertexVector)
         {
@@ -36,10 +31,10 @@ namespace TeamCrescendo.ProceduralIvy
              for (var i = 0; i < ivyContainer.branches.Count; i++)
              {
                  var rtBranch = CreateInstance<BranchContainer>();
-                 rtBranch.Init(ivyContainer.branches[i], ivyParameters, container, ivyGO, leavesMeshesByChosenLeaf);
+                 rtBranch.InitRuntime(ivyContainer.branches[i], ivyParameters, container, ivyGO, leavesMeshesByChosenLeaf);
                  container.branches.Add(rtBranch);
              }
-
+             
              container.firstVertexVector = firstVertexVector;
              return container;
          }
@@ -140,10 +135,7 @@ namespace TeamCrescendo.ProceduralIvy
             return res;
         }
 
-        public BranchPoint[] GetNearestSegmentSS(Vector2 pointSS)
-        {
-            return GetNearestSegmentSSBelowDistance(pointSS, float.MaxValue);
-        }
+        public BranchPoint[] GetNearestSegmentSS(Vector2 pointSS) => GetNearestSegmentSSBelowDistance(pointSS, float.MaxValue);
 
         public void AddBranchEditor(BranchContainer newBranchContainer)
         {
@@ -153,7 +145,7 @@ namespace TeamCrescendo.ProceduralIvy
             RefreshBranchIndexing();
         }
         
-        // runtime variant of AddBranch
+        // runtime variant of AddBranch that doesn't add to asset database
         public void AddBranchRuntime(BranchContainer newBranchContainer)
         {
             branches.Add(newBranchContainer);

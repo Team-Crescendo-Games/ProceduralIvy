@@ -38,8 +38,8 @@ namespace TeamCrescendo.ProceduralIvy
             newBranchContainer.growDirection = Quaternion.AngleAxis(Random.value * 360f, rootTransform.up) * rootTransform.forward;
             infoPool.ivyContainer.firstVertexVector = newBranchContainer.growDirection;
             newBranchContainer.randomizeHeight = Random.Range(4f, 8f);
-            CalculateNewHeight(infoPool, newBranchContainer);
-            newBranchContainer.branchSense = ChooseBranchSense();
+            ProceduralIvyCommon.CalculateNewBranchHeight(infoPool.ivyParameters, newBranchContainer);
+            newBranchContainer.branchSense = ProceduralIvyCommon.ChooseBranchSense();
 
             infoPool.ivyContainer.AddBranchEditor(newBranchContainer);
 
@@ -74,7 +74,7 @@ namespace TeamCrescendo.ProceduralIvy
                 }
                 else
                 {
-                    CalculateNewHeight(infoPool, branch);
+                    ProceduralIvyCommon.CalculateNewBranchHeight(infoPool.ivyParameters, branch);
                     CheckWall(infoPool, branch);
                 }
             }
@@ -93,39 +93,13 @@ namespace TeamCrescendo.ProceduralIvy
             newBranchContainer.randomizeHeight = Random.Range(4f, 8f);
             newBranchContainer.currentHeight = baseBranch.currentHeight;
             newBranchContainer.heightParameter = baseBranch.heightParameter;
-            newBranchContainer.branchSense = ChooseBranchSense();
+            newBranchContainer.branchSense = ProceduralIvyCommon.ChooseBranchSense();
             newBranchContainer.originPointOfThisBranch = originBranchPoint;
 
             infoPool.ivyContainer.AddBranchEditor(newBranchContainer);
 
             originBranchPoint.InitBranchInThisPoint(newBranchContainer.branchNumber);
         }
-
-        // Calculates the distance (height) of the branch from the surface geometry.
-        // It oscillates between min/max distance using a sine wave to create natural
-        // volume, preventing the ivy from looking flat or "painted on."
-        private static void CalculateNewHeight(InfoPool infoPool, BranchContainer branch)
-        {
-            var p = infoPool.ivyParameters;
-
-            // normalize sine wave from [-1, 1] to [0, 1] range
-            branch.heightVar = (Mathf.Sin(branch.heightParameter * p.DTSFrequency - 45f) + 1f) / 2f;
-            branch.newHeight = Mathf.Lerp(p.minDistanceToSurface, p.maxDistanceToSurface, branch.heightVar);
-
-            // Adds a second layer of higher-frequency variation based on 'randomizeHeight'
-            // This adds surface roughness so the loop doesn't look like a perfect sine wave
-            var noiseWave = (Mathf.Sin(branch.heightParameter * p.DTSFrequency * branch.randomizeHeight) + 1) / 2f;
-            var noiseAmplitude = p.maxDistanceToSurface / 4f * p.DTSRandomness;
-            branch.newHeight += noiseWave * noiseAmplitude;
-
-            // Ensure we never clip into the wall or float too far away
-            branch.newHeight = Mathf.Clamp(branch.newHeight, p.minDistanceToSurface, p.maxDistanceToSurface);
-
-            branch.deltaHeight = branch.currentHeight - branch.newHeight;
-            branch.currentHeight = branch.newHeight;
-        }
-
-        private static int ChooseBranchSense() => Random.value < 0.5f ? -1 : 1;
 
         private static void CheckWall(InfoPool infoPool, BranchContainer branch)
         {
@@ -143,7 +117,7 @@ namespace TeamCrescendo.ProceduralIvy
             }
             else
             {
-                NewGrowDirectionAfterWall(branch, -branch.GetLastBranchPoint().grabVector, hit.normal);
+                ProceduralIvyCommon.SetGrowDirectionAfterWall(branch, -branch.GetLastBranchPoint().grabVector, hit.normal);
                 AddPoint(infoPool, branch, hit.point, hit.normal);
             }
         }
@@ -156,7 +130,7 @@ namespace TeamCrescendo.ProceduralIvy
                     out RaycastHit hit, branch.currentHeight * 2f, infoPool.ivyParameters.layerMask.value))
             {
                 AddPoint(infoPool, branch, hit.point, hit.normal);
-                NewGrowDirection(infoPool, branch);
+                ProceduralIvyCommon.SetNewGrowDirection(infoPool.ivyParameters, branch);
                 branch.fallIteration = 0f;
                 branch.falling = false;
             }
@@ -188,7 +162,7 @@ namespace TeamCrescendo.ProceduralIvy
                 AddPoint(infoPool, branch, potentialPointPosition, oldSurfaceNormal);
                 AddPoint(infoPool, branch, hit.point, hit.normal);
 
-                NewGrowDirectionAfterCorner(branch, oldSurfaceNormal, hit.normal);
+                ProceduralIvyCommon.SetGrowDirectionAfterCorner(branch, oldSurfaceNormal, hit.normal);
             }
             else
             {
@@ -213,7 +187,7 @@ namespace TeamCrescendo.ProceduralIvy
                 }
                 else
                 {
-                    NewGrowDirectionFalling(infoPool, branch);
+                    ProceduralIvyCommon.SetNewGrowDirectionFalling(infoPool.ivyParameters, branch);
                     AddFallingPoint(infoPool, branch);
                     branch.fallIteration += 1f - infoPool.ivyParameters.stiffness;
                     branch.falling = true;
@@ -221,7 +195,7 @@ namespace TeamCrescendo.ProceduralIvy
             }
             else
             {
-                NewGrowDirectionAfterFall(branch, hit.normal);
+                ProceduralIvyCommon.SetGrowDirectionAfterFall(branch, hit.normal);
                 AddPoint(infoPool, branch, hit.point, hit.normal);
                 branch.fallIteration = 0f;
                 branch.falling = false;
@@ -231,16 +205,18 @@ namespace TeamCrescendo.ProceduralIvy
         //Con esto tiramos rayos alrededor del último punto buscando una superficie donde agarrarnos.
         private static void CheckGrabPoint(InfoPool infoPool, BranchContainer branch)
         {
-            for (var i = 0; i < 6; i++)
+            const float totalSteps = 6;
+            const float angleStep = 360f / totalSteps;
+            for (var i = 0; i < totalSteps; i++)
             {
-                var angle = Mathf.Rad2Deg * 2 * Mathf.PI / 6 * i;
+                var angle = angleStep * i;
                 var ray = new Ray(branch.branchPoints[^1].point + branch.growDirection * infoPool.ivyParameters.stepSize,
                     Quaternion.AngleAxis(angle, branch.growDirection) * branch.GetLastBranchPoint().grabVector);
                 if (Physics.Raycast(ray, out RaycastHit hit, infoPool.ivyParameters.stepSize * 2f,
                         infoPool.ivyParameters.layerMask.value))
                 {
                     AddPoint(infoPool, branch, hit.point, hit.normal);
-                    NewGrowDirectionAfterGrab(branch, hit.normal);
+                    ProceduralIvyCommon.SetGrowDirectionAfterGrab(branch, hit.normal);
                     branch.fallIteration = 0f;
                     branch.falling = false;
                     break;
@@ -249,7 +225,7 @@ namespace TeamCrescendo.ProceduralIvy
                 if (i == 5)
                 {
                     AddFallingPoint(infoPool, branch);
-                    NewGrowDirectionFalling(infoPool, branch);
+                    ProceduralIvyCommon.SetNewGrowDirectionFalling(infoPool.ivyParameters, branch);
                     branch.fallIteration += 1f - infoPool.ivyParameters.stiffness;
                     branch.falling = true;
                 }
@@ -269,7 +245,8 @@ namespace TeamCrescendo.ProceduralIvy
                 infoPool.ivyContainer.branches.Count < infoPool.ivyParameters.maxBranches) 
                 AddBranch(infoPool, branch, branch.GetLastBranchPoint(), normal);
 
-            AddLeaf(infoPool, branch);
+            if (infoPool.ivyParameters.generateLeaves)
+                AddLeaf(infoPool, branch);
         }
 
         //Añadimos punto y todo lo que ello conlleva. Es ligeramente diferente a AddPoint. Está la posibilidad de spawnear una rama
@@ -285,7 +262,8 @@ namespace TeamCrescendo.ProceduralIvy
                 infoPool.ivyContainer.branches.Count < infoPool.ivyParameters.maxBranches)
                 AddBranch(infoPool, branch, branch.GetLastBranchPoint(), -branch.GetLastBranchPoint().grabVector);
 
-            AddLeaf(infoPool, branch);
+            if (infoPool.ivyParameters.generateLeaves)
+                AddLeaf(infoPool, branch);
         }
 
         // Checks if the branch has reached a growth interval suitable for a new leaf.
@@ -317,79 +295,9 @@ namespace TeamCrescendo.ProceduralIvy
                 var leafPos = Vector3.Lerp(segmentStart.point, segmentEnd.point, 0.5f);
                 var grabDir = -branch.GetLastBranchPoint().grabVector;
 
-                branch.AddLeaf(leafPos, branch.totalLength, branch.growDirection, 
+                branch.AddLeafEditor(leafPos, branch.totalLength, branch.growDirection, 
                     grabDir, chosenLeaf, segmentStart, segmentEnd);
             }
-        }
-
-        // Applies sinusoidal noise to the growth direction to simulate organic meandering.
-        // Rotates the growth vector around the surface normal (grabVector) using a 
-        // sine function based on total length. Projects the result back onto the 
-        // plane to ensure the ivy stays attached to the geometry.
-        private static void NewGrowDirection(InfoPool infoPool, BranchContainer branch)
-        {
-            var p = infoPool.ivyParameters;
-            var grabVector = branch.GetLastBranchPoint().grabVector;
-
-            // Jitter the noise
-            var freqRandomness = 1 + Random.Range(-p.directionRandomness, p.directionRandomness);
-            var frequency = branch.branchSense * branch.totalLength * p.directionFrequency * freqRandomness;
-
-            // Rotate the grab vector by sin noise
-            const float noiseStrength = 10f;
-            var amplitudeMod = Mathf.Max(p.directionRandomness, 1f);
-            var angle = Mathf.Sin(frequency) * p.directionAmplitude * p.stepSize * noiseStrength * amplitudeMod;
-            var rotation = Quaternion.AngleAxis(angle, grabVector);
-            var newDir = rotation * branch.growDirection;
-
-            branch.growDirection = Vector3.ProjectOnPlane(newDir, grabVector).normalized;
-        }
-
-        private static void NewGrowDirectionAfterWall(BranchContainer branch, Vector3 oldSurfaceNormal,
-            Vector3 newSurfaceNormal)
-        {
-            branch.growDirection = Vector3.ProjectOnPlane(oldSurfaceNormal, newSurfaceNormal).normalized;
-        }
-
-        private static void NewGrowDirectionFalling(InfoPool infoPool, BranchContainer branch)
-        {
-            var newGrowDirection = Vector3.Lerp(branch.growDirection, infoPool.ivyParameters.gravity,
-                branch.fallIteration / 10f);
-            newGrowDirection = Quaternion.AngleAxis(
-                Mathf.Sin(branch.branchSense * branch.totalLength * infoPool.ivyParameters.directionFrequency *
-                          (1 + Random.Range(-infoPool.ivyParameters.directionRandomness / 8f,
-                              infoPool.ivyParameters.directionRandomness / 8f))) *
-                infoPool.ivyParameters.directionAmplitude * infoPool.ivyParameters.stepSize * 5f *
-                Mathf.Max(infoPool.ivyParameters.directionRandomness / 8f, 1f),
-                branch.GetLastBranchPoint().grabVector) * newGrowDirection;
-
-            newGrowDirection = Quaternion.AngleAxis(
-                Mathf.Sin(branch.branchSense * branch.totalLength * infoPool.ivyParameters.directionFrequency / 2f *
-                          (1 + Random.Range(-infoPool.ivyParameters.directionRandomness / 8f,
-                              infoPool.ivyParameters.directionRandomness / 8f))) *
-                infoPool.ivyParameters.directionAmplitude * infoPool.ivyParameters.stepSize * 5f *
-                Mathf.Max(infoPool.ivyParameters.directionRandomness / 8f, 1f),
-                Vector3.Cross(branch.GetLastBranchPoint().grabVector, branch.growDirection)) * newGrowDirection;
-
-            branch.rotationOnFallIteration = Quaternion.FromToRotation(branch.growDirection, newGrowDirection);
-            branch.growDirection = newGrowDirection;
-        }
-
-        private static void NewGrowDirectionAfterFall(BranchContainer branch, Vector3 newSurfaceNormal)
-        {
-            branch.growDirection =
-                Vector3.ProjectOnPlane(-branch.GetLastBranchPoint().grabVector, newSurfaceNormal).normalized;
-        }
-
-        private static void NewGrowDirectionAfterGrab(BranchContainer branch, Vector3 newSurfaceNormal)
-        {
-            branch.growDirection = Vector3.ProjectOnPlane(branch.growDirection, newSurfaceNormal).normalized;
-        }
-
-        private static void NewGrowDirectionAfterCorner(BranchContainer branch, Vector3 oldSurfaceNormal,
-            Vector3 newSurfaceNormal)
-        {
-            branch.growDirection = Vector3.ProjectOnPlane(-oldSurfaceNormal, newSurfaceNormal).normalized;
         }
     }
 }

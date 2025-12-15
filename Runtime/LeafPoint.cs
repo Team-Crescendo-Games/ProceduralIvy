@@ -87,10 +87,10 @@ namespace TeamCrescendo.ProceduralIvy
         
         public void CreateVertices(IvyParameters ivyParameters, MeshData leafMeshData, Transform rootTransform)
         {
-            int numVertices = leafMeshData.vertices.Length;
+            int numVertices = leafMeshData.vertices.Count;
             vertices = new List<VertexData>(numVertices);
 
-            Quaternion randomLocalRot = IvyUtils.CalculateLeafOrientation(ivyParameters, 
+            Quaternion randomLocalRot = ProceduralIvyCommon.CalculateLeafOrientation(ivyParameters, 
                 lpForward, lpUpward, null, out _, out _);
             
             Quaternion rootRotInv = Quaternion.Inverse(rootTransform.rotation);

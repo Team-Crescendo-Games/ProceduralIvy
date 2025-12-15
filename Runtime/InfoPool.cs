@@ -40,16 +40,6 @@ namespace TeamCrescendo.ProceduralIvy
                 {
                     int pCount = branch.branchPoints.Count;
                     stats.pointCount += pCount;
-
-                    for (int j = 0; j < pCount; j++)
-                    {
-                        var bp = branch.branchPoints[j];
-                        if (bp.verticesLoop != null)
-                        {
-                            int vCount = bp.verticesLoop.Count;
-                            stats.vertexCount += vCount;
-                        }
-                    }
                 }
 
                 // Leaves

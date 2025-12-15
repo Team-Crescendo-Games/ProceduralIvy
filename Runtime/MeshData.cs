@@ -8,104 +8,114 @@ namespace TeamCrescendo.ProceduralIvy
     [Serializable]
     public class MeshData
     {
-        public Vector3[] vertices;
-        public Vector3[] normals;
-        public Vector2[] uv;
-        public Color32[] colors32;
+        public List<Vector3> vertices;
+        public List<Vector3> normals;
+        public List<Vector2> uv;
+        public List<Color32> colors32;
 
-        public int[] triangleIndices;
-        public int[][] triangles;
-        private int vertCount;
-        private int vertexIndex;
+        // We use an array of Lists because the number of submeshes is usually 
+        // fixed at initialization, but the number of triangles within them is dynamic.
+        public List<int>[] triangles;
 
-        public MeshData(int numVertices, int numSubmeshes, List<int> numTrianglesPerSubmesh)
+        public MeshData(int initialVertexCapacity, int numSubmeshes)
         {
-            if (numVertices <= 0 || numSubmeshes <= 0 || numTrianglesPerSubmesh.Count != numSubmeshes)
+            if (initialVertexCapacity < 0 || numSubmeshes <= 0)
+            {
                 throw new ArgumentException(
-                    $"[RTMeshData] Invalid arguments: numVertices={numVertices}, numSubmeshes={numSubmeshes}, numTrianglesPerSubmesh.Count={numTrianglesPerSubmesh.Count}");
+                    $"[MeshData] Invalid arguments: initialVertexCapacity={initialVertexCapacity}, numSubmeshes={numSubmeshes}");
+            }
 
-            vertices = new Vector3[numVertices];
-            normals = new Vector3[numVertices];
-            uv = new Vector2[numVertices];
-            colors32 = new Color32[numVertices];
+            vertices = new List<Vector3>(initialVertexCapacity);
+            normals = new List<Vector3>(initialVertexCapacity);
+            uv = new List<Vector2>(initialVertexCapacity);
+            colors32 = new List<Color32>(initialVertexCapacity);
 
-            triangles = new int[numSubmeshes][];
-            for (var i = 0; i < triangles.Length; i++)
-                triangles[i] = new int[numTrianglesPerSubmesh[i]];
-
-            triangleIndices = new int[triangles.Length];
-            vertexIndex = 0;
+            triangles = new List<int>[numSubmeshes];
+            for (var i = 0; i < numSubmeshes; i++)
+            {
+                // Initialize with a reasonable default capacity to avoid immediate resizing
+                triangles[i] = new List<int>(initialVertexCapacity); 
+            }
         }
 
         public MeshData(Mesh mesh)
         {
             Assert.IsNotNull(mesh);
-            
-            vertices = mesh.vertices;
-            normals = mesh.normals;
-            uv = mesh.uv;
-            colors32 = mesh.colors32;
-            
-            triangles = new int[mesh.subMeshCount][];
-            for (var i = 0; i < triangles.Length; i++) 
-                triangles[i] = mesh.GetTriangles(i);
-            
-            triangleIndices = new int[triangles.Length];
-            vertexIndex = 0;
+
+            vertices = new List<Vector3>();
+            normals = new List<Vector3>();
+            uv = new List<Vector2>();
+            colors32 = new List<Color32>();
+
+            mesh.GetVertices(vertices);
+            mesh.GetNormals(normals);
+            mesh.GetUVs(0, uv);
+            mesh.GetColors(colors32);
+
+            triangles = new List<int>[mesh.subMeshCount];
+            for (var i = 0; i < triangles.Length; i++)
+            {
+                triangles[i] = new List<int>();
+                mesh.GetTriangles(triangles[i], i);
+            }
         }
 
         public void AddTriangle(int submesh, int value)
         {
-            if (submesh < 0 || submesh >= triangles.Length) 
+            if (submesh < 0 || submesh >= triangles.Length)
             {
                 throw new IndexOutOfRangeException(
-                    $"[RTMeshData] Attempted to access Submesh {submesh}, but only {triangles.Length} submeshes exist)");
-            }
-    
-            if (triangleIndices[submesh] >= triangles[submesh].Length)
-            {
-                // If current size is 0, jump to 4 (or any small power of 2). Otherwise, double it.
-                var currentLen = triangles[submesh].Length;
-                var newSize = currentLen == 0 ? 4 : currentLen * 2;
-        
-                Array.Resize(ref triangles[submesh], newSize);
+                    $"[MeshData] Attempted to access Submesh {submesh}, but only {triangles.Length} submeshes exist");
             }
 
-            triangles[submesh][triangleIndices[submesh]] = value;
-            triangleIndices[submesh]++;
+            triangles[submesh].Add(value);
         }
 
-        public void AddVertex(Vector3 vertexValue, Vector3 normalValue, Vector2 uvValue, Color color)
+        public void AddVertex(Vector3 vertexValue, Vector3 normalValue, Vector2 uvValue, Color32 color)
         {
-            if (vertCount >= vertices.Length) Resize();
-
-            vertices[vertexIndex] = vertexValue;
-            normals[vertexIndex] = normalValue;
-            uv[vertexIndex] = uvValue;
-            colors32[vertexIndex] = color;
-
-            vertexIndex++;
-            vertCount++;
+            vertices.Add(vertexValue);
+            normals.Add(normalValue);
+            uv.Add(uvValue);
+            colors32.Add(color);
         }
 
-        private void Resize()
-        {
-            var newSize = vertices.Length * 2;
-            Array.Resize(ref vertices, newSize);
-            Array.Resize(ref normals, newSize);
-            Array.Resize(ref uv, newSize);
-            Array.Resize(ref colors32, newSize);
-        }
-
-        public int VertexCount() => vertCount;
+        public int VertexCount() => vertices.Count;
 
         public void Clear()
         {
-            vertCount = 0;
-            vertexIndex = 0;
+            vertices.Clear();
+            normals.Clear();
+            uv.Clear();
+            colors32.Clear();
+            foreach (var triangleList in triangles)
+                triangleList.Clear();
+        }
 
-            for (var i = 0; i < triangleIndices.Length; i++) 
-                triangleIndices[i] = 0;
+        // Apply mesh data to a particular mesh at runtime
+        public void Apply(Mesh targetMesh, int submeshCount, bool generateLeaves)
+        {
+            targetMesh.Clear();
+            targetMesh.subMeshCount = submeshCount;
+            targetMesh.MarkDynamic(); 
+
+            targetMesh.SetVertices(vertices);
+            targetMesh.SetNormals(normals);
+            targetMesh.SetColors(colors32);
+            targetMesh.SetUVs(0, uv);
+
+            if (triangles.Length > 0)
+                targetMesh.SetTriangles(triangles[0], 0);
+
+            if (generateLeaves)
+            {
+                for (var i = 1; i < submeshCount; i++)
+                {
+                    if (i < triangles.Length)
+                        targetMesh.SetTriangles(triangles[i], i);
+                }
+            }
+
+            targetMesh.RecalculateBounds();
         }
     }
 }

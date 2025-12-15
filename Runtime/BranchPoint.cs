@@ -14,7 +14,6 @@ namespace TeamCrescendo.ProceduralIvy
         public Vector3 point;
         public Vector3 grabVector;
         public Vector3 initialGrowDir;
-        [NonSerialized] public Vector3 centerLoop;
         public Vector3 firstVector;
         public Vector3 axis;
 
@@ -25,7 +24,7 @@ namespace TeamCrescendo.ProceduralIvy
         public bool newBranch;
 
         public BranchContainer branchContainer;
-        public List<VertexData> verticesLoop = new();
+        [NonSerialized] public List<VertexData> verticesLoop = new();
 
         public BranchPoint() { }
 
@@ -46,7 +45,7 @@ namespace TeamCrescendo.ProceduralIvy
             SetValues(point, Vector3.zero, branchContainer, index, false, false, -1, length);
         }
         
-        public BranchPoint(BranchPoint branchPoint, BranchContainer rtBranchContainer, IvyParameters ivyParameters)
+        public BranchPoint(BranchPoint branchPoint, BranchContainer rtBranchContainer)
          {
              point = branchPoint.point;
              grabVector = branchPoint.grabVector;
@@ -99,8 +98,7 @@ namespace TeamCrescendo.ProceduralIvy
         public BranchPoint GetNextPoint() =>
             index < branchContainer.branchPoints.Count - 1 ? branchContainer.branchPoints[index + 1] : null;
 
-        public BranchPoint GetPreviousPoint() =>
-            index > 0 ? branchContainer.branchPoints[index - 1] : null;
+        public BranchPoint GetPreviousPoint() => index > 0 ? branchContainer.branchPoints[index - 1] : null;
 
         public void Move(Vector3 newPosition)
         {
@@ -134,13 +132,10 @@ namespace TeamCrescendo.ProceduralIvy
             Assert.IsNotNull(verticesLoop);
             verticesLoop.Clear();
             
-            var angle = 0f;
-            if (!ivyParameters.halfgeom)
-                angle = Mathf.Rad2Deg * 2 * Mathf.PI / ivyParameters.sides;
-            else
-                angle = Mathf.Rad2Deg * 2 * Mathf.PI / ivyParameters.sides / 2;
+            float totalAngle = ivyParameters.halfgeom ? 180f : 360f;
+            var angle = totalAngle / ivyParameters.sides;
 
-            var inverseIvyGORotation = Quaternion.Inverse(ivyGO.transform.rotation);
+            var rootRotationInv = Quaternion.Inverse(ivyGO.transform.rotation);
 
             for (var i = 0; i < ivyParameters.sides + 1; i++)
             {
@@ -153,11 +148,11 @@ namespace TeamCrescendo.ProceduralIvy
                 else
                     normal = direction;
 
-                normal = inverseIvyGORotation * normal;
+                normal = rootRotationInv * normal;
 
                 var vertex = direction * radius + point;
                 vertex -= ivyGO.transform.position;
-                vertex = inverseIvyGORotation * vertex;
+                vertex = rootRotationInv * vertex;
 
                 var uv = new Vector2(
                     length * ivyParameters.uvScale.y + ivyParameters.uvOffset.y - ivyParameters.stepSize,
@@ -165,11 +160,6 @@ namespace TeamCrescendo.ProceduralIvy
 
                 verticesLoop.Add(new VertexData(vertex, normal, uv, Color.black));
             }
-        }
-
-        public void CalculateCenterLoop(GameObject ivyGO)
-        {
-            centerLoop = Quaternion.Inverse(ivyGO.transform.rotation) * (point - ivyGO.transform.position);
         }
     }
 }

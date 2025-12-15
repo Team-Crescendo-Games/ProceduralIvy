@@ -15,7 +15,7 @@ namespace TeamCrescendo.ProceduralIvy
         private IvyParameters ivyParameters;
         private RTMeshData[] leavesMeshesByChosenLeaf;
 
-        private RTLeafPoint[] leavesPool;
+        private LeafPoint[] leavesPool;
         private int leavesPoolIndex;
         private int maxNumVerticesPerLeaf;
 
@@ -38,14 +38,10 @@ namespace TeamCrescendo.ProceduralIvy
             for (var i = 0; i < numPoints; i++)
                 branchPointsPool[i] = new RTBranchPoint(ivyParameters);
 
-            leavesPool = new RTLeafPoint[numLeaves];
+            leavesPool = new LeafPoint[numLeaves];
             leavesPoolIndex = 0;
             for (var i = 0; i < numLeaves; i++)
-            {
-                var leafPoint = new RTLeafPoint();
-                leafPoint.PreInit(maxNumVerticesPerLeaf);
-                leavesPool[i] = leafPoint;
-            }
+                leavesPool[i] = new LeafPoint(maxNumVerticesPerLeaf);
 
             branchesPool = new RTBranchContainer[ivyParameters.maxBranches];
             for (var i = 0; i < ivyParameters.maxBranches; i++)
@@ -301,38 +297,6 @@ namespace TeamCrescendo.ProceduralIvy
             return scale;
         }
 
-        private Quaternion CalculateLeafRotation(LeafPoint leafPoint)
-        {
-            Vector3 left, forward;
-            Quaternion res;
-            //Aquí cálculos de orientación en función de las opciones de rotación
-            if (!ivyParameters.globalOrientation)
-            {
-                forward = leafPoint.lpForward;
-                left = leafPoint.left;
-            }
-            else
-            {
-                forward = ivyParameters.globalRotation;
-                left = Vector3.Normalize(Vector3.Cross(ivyParameters.globalRotation, leafPoint.lpUpward));
-            }
-
-            //Y aplicamos la rotación
-            res = Quaternion.LookRotation(leafPoint.lpUpward, forward);
-            res = Quaternion.AngleAxis(ivyParameters.rotation.x, left) *
-                  Quaternion.AngleAxis(ivyParameters.rotation.y, leafPoint.lpUpward) *
-                  Quaternion.AngleAxis(ivyParameters.rotation.z, forward) * res;
-            res = Quaternion.AngleAxis(Random.Range(-ivyParameters.randomRotation.x, ivyParameters.randomRotation.x),
-                      left) *
-                  Quaternion.AngleAxis(Random.Range(-ivyParameters.randomRotation.y, ivyParameters.randomRotation.y),
-                      leafPoint.lpUpward) *
-                  Quaternion.AngleAxis(Random.Range(-ivyParameters.randomRotation.z, ivyParameters.randomRotation.z),
-                      forward) *
-                  res;
-
-            return res;
-        }
-
         //Añadimos punto y todo lo que ello conlleva. Es ligeramente diferente a AddPoint. Está la posibilidad de spawnear una rama
         private void AddFallingPoint(RTBranchContainer branch)
         {
@@ -388,7 +352,7 @@ namespace TeamCrescendo.ProceduralIvy
                     ivyParameters);
 
                 var leafMeshData = leavesMeshesByChosenLeaf[leafAdded.chosenLeave];
-                leafAdded.CreateVertices(ivyParameters, leafMeshData, ivyGO);
+                leafAdded.CreateVertices(ivyParameters, leafMeshData, ivyGO.transform);
 
                 branch.AddLeaf(leafAdded);
             }
@@ -539,7 +503,7 @@ namespace TeamCrescendo.ProceduralIvy
             return res;
         }
 
-        private RTLeafPoint GetNextLeafPoint()
+        private LeafPoint GetNextLeafPoint()
         {
             var res = leavesPool[leavesPoolIndex];
             leavesPoolIndex++;
@@ -550,8 +514,7 @@ namespace TeamCrescendo.ProceduralIvy
 
                 for (var i = leavesPoolIndex; i < leavesPool.Length; i++)
                 {
-                    leavesPool[i] = new RTLeafPoint();
-                    leavesPool[i].PreInit(maxNumVerticesPerLeaf);
+                    leavesPool[i] = new LeafPoint(maxNumVerticesPerLeaf);
                 }
             }
 

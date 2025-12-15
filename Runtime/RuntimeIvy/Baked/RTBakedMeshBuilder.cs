@@ -56,7 +56,7 @@ namespace TeamCrescendo.ProceduralIvy
             activeBranches = new List<RTBranchContainer>();
             this.backtrackingPoints = backtrackingPoints;
 
-            submeshCount = rtIvy.MeshRenderer.sharedMaterials.Length;
+            submeshCount = materials.Count;
 
             vertCountsPerBranch = new int[numBranches];
             lastTriangleIndexPerBranch = new int[numBranches];
@@ -78,7 +78,7 @@ namespace TeamCrescendo.ProceduralIvy
                 name = Constants.IVY_MESH_NAME
             };
 
-            rtIvy.MeshFilter.mesh = ivyMesh;
+            // rtIvy.MeshFilter.mesh = ivyMesh;
 
             var filteredMaterials = new List<Material> { materials[0] };
 
@@ -100,7 +100,6 @@ namespace TeamCrescendo.ProceduralIvy
         {
             CreateBuildingMeshData(bakedMesh, numBranches);
             CreateProcessedMeshData(bakedMesh);
-            bakedMesh.Clear();
         }
 
         public void InitializeMeshesDataProcedural(Mesh bakedMesh, int numBranches, float lifetime, float velocity)
@@ -322,7 +321,7 @@ namespace TeamCrescendo.ProceduralIvy
                         buildingMeshData.AddTriangle(submesh, triangleValue);
                     }
 
-                    for (var v = 0; v < currentLeaf.vertices.Length; v++)
+                    for (var v = 0; v < currentLeaf.vertices.Count; v++)
                     {
                         var vertex = Vector3.LerpUnclamped(currentLeaf.leafCenter, currentLeaf.vertices[v].vertex,
                             tipInfluenceFactor);
@@ -406,7 +405,7 @@ namespace TeamCrescendo.ProceduralIvy
                             processedMeshData.AddTriangle(submesh, triangleValue);
                         }
 
-                        for (var v = 0; v < currentLeaf.vertices.Length; v++)
+                        for (var v = 0; v < currentLeaf.vertices.Count; v++)
                         {
                             var vertexData = currentLeaf.vertices[v];
                             processedMeshData.AddVertex(vertexData.vertex, vertexData.normal, vertexData.uv, vertexData.color32);

@@ -6,9 +6,9 @@ namespace TeamCrescendo.ProceduralIvy
     {
         private RuntimeIvyGrowth rtIvyGrowth;
 
-        protected override void Init(IvyContainer ivyContainer, IvyParameters ivyParameters)
+        public override void Initialize(RuntimeGrowthParameters growthParameters, IvyContainer ivyContainer, IvyParameters ivyParameters)
         {
-            base.Init(ivyContainer, ivyParameters);
+            base.Initialize(growthParameters, ivyContainer, ivyParameters);
 
             rtIvyGrowth = new RuntimeIvyGrowth();
             rtIvyGrowth.Init(rtIvyContainer, ivyParameters, gameObject, leavesMeshesByChosenLeaf,
@@ -25,22 +25,13 @@ namespace TeamCrescendo.ProceduralIvy
             rtIvyGrowth.Step();
         }
 
-        public override bool IsGrowingFinished()
-        {
-            var res = currentTimer > currentLifetime;
-            return res;
-        }
+        public override bool IsGrowingFinished() => currentTimer > currentLifetime;
 
         protected override float GetNormalizedLifeTime()
         {
             var res = currentTimer / growthParameters.lifetime;
             res = Mathf.Clamp(res, 0.1f, 1f);
             return res;
-        }
-
-        public void SetIvyParameters(IvyPreset ivyPreset)
-        {
-            ivyParameters.DeepCopy(ivyPreset);
         }
 
         protected override void InitializeMeshesData(Mesh bakedMesh, int numBranches)
@@ -64,15 +55,6 @@ namespace TeamCrescendo.ProceduralIvy
             var res = GetMaxNumPoints();
 
             return res;
-        }
-
-        public override void InitIvy(RuntimeGrowthParameters growthParameters, IvyContainer ivyContainer,
-            IvyParameters ivyParameters)
-        {
-            this.growthParameters = growthParameters;
-            Init(null, ivyParameters);
-            InitMeshBuilder();
-            AddFirstBranch();
         }
 
         private int GetMaxNumVerticesPerLeaf()

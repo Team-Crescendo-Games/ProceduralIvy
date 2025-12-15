@@ -1198,19 +1198,6 @@ namespace TeamCrescendo.ProceduralIvy
             // Reset growth parameters for new components
             if (ivyController.growthParameters == null)
                 ivyController.growthParameters = new RuntimeGrowthParameters();
-
-            SetupProcessedMesh(specificIvy);
-        }
-        
-        private void SetupProcessedMesh(RuntimeIvy rtBakedIvy)
-        {
-            var processedMesh = new GameObject("ProcessedMesh");
-    
-            processedMesh.transform.SetParent(rtBakedIvy.transform);
-            processedMesh.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
-
-            rtBakedIvy.mrProcessedMesh = processedMesh.AddComponent<MeshRenderer>();
-            rtBakedIvy.mfProcessedMesh = processedMesh.AddComponent<MeshFilter>();
         }
 
         #endregion

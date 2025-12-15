@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 using Random = UnityEngine.Random;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -11,15 +12,12 @@ namespace TeamCrescendo.ProceduralIvy
     [Serializable]
     public class LeafPoint
     {
-        public Quaternion forwardRot;
-        public Quaternion leafRotation;
-        
         public Vector3 point;
+        public Vector3 leafCenter;
 
-        public Vector3 left;
         public Vector3 lpForward;
         public Vector3 lpUpward;
-        public Vector3 leafCenter;
+        public Vector3 GetLeafLeft() => Vector3.Cross(lpForward, lpUpward).normalized;
         
         public int chosenLeave;
         public int initSegmentIdx;
@@ -28,18 +26,32 @@ namespace TeamCrescendo.ProceduralIvy
         public float displacementFromInitSegment;
         public float leafScale;
         
-        public List<RTVertexData> verticesLeaves;
+        public List<RTVertexData> vertices;
+
+        public LeafPoint(LeafPoint other)
+        {
+            point = other.point;
+            lpLength = other.lpLength;
+            lpForward = other.lpForward;
+            lpUpward = other.lpUpward;
+            chosenLeave = other.chosenLeave;
+            initSegmentIdx = other.initSegmentIdx;
+            endSegmentIdx = other.endSegmentIdx;
+            displacementFromInitSegment = other.displacementFromInitSegment;
+            leafScale = other.leafScale;
+            vertices = new List<RTVertexData>(other.vertices);
+        }
+        
+        public LeafPoint(int maxNumVertices)
+        {
+            vertices = new List<RTVertexData>(maxNumVertices);
+        }
 
         public LeafPoint(Vector3 point, float lpLength, Vector3 lpForward,
             Vector3 lpUpward, int chosenLeave, BranchPoint initSegment,
             BranchPoint endSegment)
         {
             SetValues(point, lpLength, lpForward, lpUpward, chosenLeave, initSegment, endSegment);
-        }
-
-        public void InitializeRuntime()
-        {
-            verticesLeaves = new List<RTVertexData>(4);
         }
 
         public void SetValues(Vector3 point, float lpLength, Vector3 lpForward, Vector3 lpUpward,
@@ -52,79 +64,50 @@ namespace TeamCrescendo.ProceduralIvy
             this.chosenLeave = chosenLeave;
             initSegmentIdx = initSegment.index;
             endSegmentIdx = endSegment.index;
-            forwardRot = Quaternion.identity;
 
             var segmentDistance = (initSegment.point - endSegment.point).magnitude;
             var t = (point - initSegment.point).magnitude / segmentDistance;
 
             displacementFromInitSegment = Mathf.Clamp(t, 0.01f, 0.99f);
-            left = Vector3.Cross(lpForward, lpUpward).normalized;
+        }
+        
+        public void SetValues(Vector3 point, float lpLength, Vector3 lpForward, Vector3 lpUpward,
+            int chosenLeave, RTBranchPoint initSegment, RTBranchPoint endSegment, float leafScale,
+            IvyParameters ivyParameters)
+        {
+            this.point = point;
+            this.lpForward = lpForward;
+            this.lpUpward = lpUpward;
+            this.chosenLeave = chosenLeave;
+            initSegmentIdx = initSegment.index;
+            this.leafScale = leafScale;
         }
         
         public Vector2 GetScreenspacePosition() => HandleUtility.WorldToGUIPoint(point);
-
-        public float GetLengthFactor(BranchContainer branchContainer, float correctionFactor)
+        
+        public void CreateVertices(IvyParameters ivyParameters, RTMeshData leafMeshData, Transform rootTransform)
         {
-            var res = lpLength <= branchContainer.totalLenght * 1.15f * correctionFactor ? 1f : 0f;
-            return res;
-        }
+            int numVertices = leafMeshData.vertices.Length;
+            vertices = new List<RTVertexData>(numVertices);
 
-        public void CreateVertices(IvyParameters ivyParameters, RTMeshData leafMeshData, GameObject ivyGO)
-        {
-            Vector3 left, forward;
-            Quaternion quat;
+            Quaternion randomLocalRot = IvyUtils.CalculateLeafOrientation(ivyParameters, 
+                lpForward, lpUpward, null, out _, out _);
+            
+            Quaternion rootRotInv = Quaternion.Inverse(rootTransform.rotation);
+            Quaternion finalRot = rootRotInv * randomLocalRot;
 
-            if (!ivyParameters.globalOrientation)
+            Vector3 worldOffset = GetLeafLeft() * ivyParameters.offset.x 
+                                  + lpUpward * ivyParameters.offset.y 
+                                  + lpForward * ivyParameters.offset.z;
+
+            Vector3 relativePos = point + worldOffset - rootTransform.position;
+            Vector3 finalPosOffset = rootRotInv * relativePos;
+
+            for (var v = 0; v < numVertices; v++)
             {
-                forward = lpForward;
-                left = this.left;
-            }
-            else
-            {
-                forward = ivyParameters.globalRotation;
-                left = Vector3.Normalize(Vector3.Cross(ivyParameters.globalRotation, lpUpward));
-            }
-
-            quat = Quaternion.LookRotation(lpUpward, forward);
-
-            quat = Quaternion.AngleAxis(ivyParameters.rotation.x, left) *
-                   Quaternion.AngleAxis(ivyParameters.rotation.y, lpUpward) *
-                   Quaternion.AngleAxis(ivyParameters.rotation.z, forward) *
-                   quat;
-
-            quat = Quaternion.AngleAxis(Random.Range(-ivyParameters.randomRotation.x, ivyParameters.randomRotation.x),
-                       left) *
-                   Quaternion.AngleAxis(Random.Range(-ivyParameters.randomRotation.y, ivyParameters.randomRotation.y),
-                       lpUpward) *
-                   Quaternion.AngleAxis(Random.Range(-ivyParameters.randomRotation.z, ivyParameters.randomRotation.z),
-                       forward) *
-                   quat;
-
-            quat = forwardRot * quat;
-
-            var scale = Random.Range(ivyParameters.minScale, ivyParameters.maxScale);
-
-            leafRotation = quat;
-
-            leafCenter = point - ivyGO.transform.position;
-            leafCenter = Quaternion.Inverse(ivyGO.transform.rotation) * leafCenter;
-
-            verticesLeaves ??= new List<RTVertexData>(4);
-
-            var ivyGOInverseRotation = Quaternion.Inverse(ivyGO.transform.rotation);
-
-            for (var v = 0; v < leafMeshData.vertices.Length; v++)
-            {
-                var offset = left * ivyParameters.offset.x + lpUpward * ivyParameters.offset.y +
-                             lpForward * ivyParameters.offset.z;
-
-                var vertex = quat * leafMeshData.vertices[v] * scale + leafCenter + offset;
-
-                var normal = quat * leafMeshData.normals[v];
-                normal = ivyGOInverseRotation * normal;
-
-                var vertexData = new RTVertexData(vertex, normal, leafMeshData.uv[v], leafMeshData.colors32[v]);
-                verticesLeaves.Add(vertexData);
+                Vector3 vertex = finalRot * leafMeshData.vertices[v] * leafScale + finalPosOffset;
+                Vector3 normal = finalRot * leafMeshData.normals[v];
+                vertices.Add(new RTVertexData(vertex, normal, leafMeshData.uv[v], leafMeshData.colors32[v]));
             }
         }
     }

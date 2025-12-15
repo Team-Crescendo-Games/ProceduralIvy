@@ -28,7 +28,6 @@ namespace TeamCrescendo.ProceduralIvy
         public BranchPoint originPointOfThisBranch;
         public List<BranchPoint> branchPoints;
         public List<LeafPoint> leaves;
-        public Dictionary<int, List<LeafPoint>> dictRTLeavesByInitSegment;
 
         public BranchContainer()
         {
@@ -41,41 +40,18 @@ namespace TeamCrescendo.ProceduralIvy
             leaves = new List<LeafPoint>(numLeaves * 2);
         }
 
-        public void PrepareRTLeavesDict()
+        public Dictionary<int, List<LeafPoint>> PrepareRTLeavesDict()
         {
-            dictRTLeavesByInitSegment = new Dictionary<int, List<LeafPoint>>();
+            var dictRTLeavesByInitSegment = new Dictionary<int, List<LeafPoint>>();
 
             for (var i = 0; i < branchPoints.Count; i++)
             {
-                var leaves = new List<LeafPoint>();
-                GetLeavesInSegment(branchPoints[i], leaves);
-                dictRTLeavesByInitSegment[i] = leaves;
+                var tmpLeaves = new List<LeafPoint>();
+                GetLeavesInSegment(branchPoints[i], tmpLeaves);
+                dictRTLeavesByInitSegment[i] = tmpLeaves;
             }
-        }
-
-        public void UpdateLeavesDictEntry(int initSegmentIdx, LeafPoint leaf)
-        {
-            if (dictRTLeavesByInitSegment.ContainsKey(initSegmentIdx))
-            {
-                dictRTLeavesByInitSegment[initSegmentIdx].Add(leaf);
-            }
-            else
-            {
-                var newEntryLeaves = new List<LeafPoint>();
-                newEntryLeaves.Add(leaf);
-                dictRTLeavesByInitSegment[initSegmentIdx] = newEntryLeaves;
-            }
-        }
-
-        public void AddBranchPoint(BranchPoint branchPoint)
-        {
-            branchPoint.index = branchPoints.Count;
-            branchPoint.newBranch = false;
-            branchPoint.newBranchNumber = -1;
-            branchPoint.branchContainer = this;
-            branchPoint.length = totalLenght;
-
-            branchPoints.Add(branchPoint);
+            
+            return dictRTLeavesByInitSegment;
         }
 
         public void AddBranchPoint(Vector3 point, Vector3 grabVector, bool isNewBranch=false, int newBranchIndex=-1)
@@ -96,13 +72,6 @@ namespace TeamCrescendo.ProceduralIvy
             for (var i = index + 1; i < branchPoints.Count; i++) branchPoints[i].index += 1;
 
             return newBranchPoint;
-        }
-
-        public void GetLeavesInSegmentRT(int initSegmentIdx, int endSegmentIdx, List<LeafPoint> res)
-        {
-            for (var i = initSegmentIdx; i <= endSegmentIdx; i++)
-                if (dictRTLeavesByInitSegment.ContainsKey(i))
-                    res.AddRange(dictRTLeavesByInitSegment[i]);
         }
 
         public void GetLeavesInSegment(BranchPoint initSegment, List<LeafPoint> res)
@@ -134,35 +103,6 @@ namespace TeamCrescendo.ProceduralIvy
                 initSegment, endSegment, leafIndex);
 
             return res;
-        }
-
-        public void RepositionLeavesAfterAdd02(BranchPoint newPoint)
-        {
-            var previousPoint = newPoint.GetPreviousPoint();
-            var nextPoint = newPoint.GetNextPoint();
-
-            var leaves = new List<LeafPoint>();
-            GetLeavesInSegment(previousPoint, leaves);
-
-            var dirSegment01 = (newPoint.point - previousPoint.point).normalized;
-            var dirSegment02 = (nextPoint.point - newPoint.point).normalized;
-            for (var i = 0; i < leaves.Count; i++)
-            {
-                var oldLeafVector01 = leaves[i].point - branchPoints[leaves[i].initSegmentIdx].point;
-                var oldLeafVector02 = leaves[i].point - branchPoints[leaves[i].endSegmentIdx].point;
-
-                var projectionOnSegment01 =
-                    previousPoint.point + dirSegment01 * Vector3.Dot(oldLeafVector01, dirSegment01);
-                var projectionOnSegment02 = nextPoint.point + dirSegment02 * Vector3.Dot(oldLeafVector02, dirSegment02);
-                var newLeafPositionToNewPoint = newPoint.point - projectionOnSegment01;
-
-                if (Vector3.Dot(newLeafPositionToNewPoint, dirSegment01) >= 0)
-                    leaves[i].SetValues(projectionOnSegment01, leaves[i].lpLength, dirSegment01, leaves[i].lpUpward,
-                        leaves[i].chosenLeave, previousPoint, newPoint);
-                else
-                    leaves[i].SetValues(projectionOnSegment02, leaves[i].lpLength, dirSegment02, leaves[i].lpUpward,
-                        leaves[i].chosenLeave, newPoint, nextPoint);
-            }
         }
 
         public void RepositionLeavesAfterRemove02(BranchPoint removedPoint)
@@ -227,24 +167,6 @@ namespace TeamCrescendo.ProceduralIvy
                 leaves.RemoveAt(leaves.Count - 1);
         }
 
-        public BranchPoint GetNearestPointFrom(Vector3 from)
-        {
-            BranchPoint res = null;
-            var minDistance = float.MaxValue;
-
-            for (var i = 0; i < branchPoints.Count; i++)
-            {
-                var newSqrDst = (branchPoints[i].point - from).sqrMagnitude;
-                if (newSqrDst <= minDistance)
-                {
-                    res = branchPoints[i];
-                    minDistance = newSqrDst;
-                }
-            }
-
-            return res;
-        }
-
         public BranchPoint GetNearestPointWSFrom(Vector3 from)
         {
             BranchPoint res = null;
@@ -264,8 +186,6 @@ namespace TeamCrescendo.ProceduralIvy
         }
 
         public BranchPoint GetLastBranchPoint() => branchPoints[^1];
-
-        public void AddLeaf(LeafPoint leafPoint) => leaves.Add(leafPoint);
 
         // Appends a leaf at the given index or at the end if index is invalid.
         public LeafPoint AddLeaf(Vector3 position, float length, Vector3 forward, Vector3 upward,
@@ -313,10 +233,10 @@ namespace TeamCrescendo.ProceduralIvy
                 var direction = nextPoint.point - previousPoint.point;
                 if (direction == Vector3.zero) continue; 
 
-                var newForward = direction.normalized;
-                var oldForward = leaves[i].lpForward;
-
-                leaves[i].forwardRot = Quaternion.FromToRotation(oldForward, newForward);
+                // var newForward = direction.normalized;
+                // var oldForward = leaves[i].lpForward;
+                //
+                // leaves[i].forwardRot = Quaternion.FromToRotation(oldForward, newForward);
 
                 var newLeafPosition = Vector3.LerpUnclamped(previousPoint.point, nextPoint.point,
                     leaves[i].displacementFromInitSegment);

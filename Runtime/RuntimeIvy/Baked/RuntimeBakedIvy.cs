@@ -20,9 +20,9 @@ namespace TeamCrescendo.ProceduralIvy
             return res;
         }
 
-        protected override void Init(IvyContainer ivyContainer, IvyParameters ivyParameters)
+        public override void Initialize(RuntimeGrowthParameters growthParameters, IvyContainer ivyContainer, IvyParameters ivyParameters)
         {
-            base.Init(ivyContainer, ivyParameters);
+            base.Initialize(growthParameters, ivyContainer, ivyParameters);
             CalculateLifetime();
         }
 
@@ -49,22 +49,8 @@ namespace TeamCrescendo.ProceduralIvy
             meshBuilder.InitializeMeshesDataBaked(bakedMesh, numBranches);
         }
 
-        protected override int GetMaxNumPoints()
-        {
-            return 0;
-        }
+        protected override int GetMaxNumPoints() => 0;
 
-        protected override int GetMaxNumLeaves()
-        {
-            return 0;
-        }
-
-        public override void InitIvy(RuntimeGrowthParameters growthParameters, IvyContainer ivyContainer, IvyParameters ivyParameters)
-        {
-            this.growthParameters = growthParameters;
-            Init(ivyContainer, ivyParameters);
-            InitMeshBuilder();
-            AddFirstBranch();
-        }
+        protected override int GetMaxNumLeaves() => 0;
     }
 }

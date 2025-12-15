@@ -1,5 +1,6 @@
 ﻿using System;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace TeamCrescendo.ProceduralIvy
 {
@@ -20,6 +21,6 @@ namespace TeamCrescendo.ProceduralIvy
         
         public float delay = 0f;
         
-        public bool startGrowthOnAwake = true;
+        public bool startGrowthOnStart = true;
     }
 }

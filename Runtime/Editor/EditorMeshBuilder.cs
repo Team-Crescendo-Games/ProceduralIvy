@@ -317,46 +317,22 @@ namespace TeamCrescendo.ProceduralIvy
                         var cache = prefabCache[currentLeaf.chosenLeave];
 
                         // Re-init runtime list
-                        currentLeaf.verticesLeaves = new List<RTVertexData>();
+                        currentLeaf.vertices = new List<RTVertexData>();
 
-                        // --- Orientation Math (Same as before, using System.Random) ---
-                        Vector3 left, forward;
-                        if (!par.globalOrientation)
-                        {
-                            forward = currentLeaf.lpForward;
-                            left = currentLeaf.left;
-                        }
-                        else
-                        {
-                            forward = par.globalRotation;
-                            left = Vector3.Cross(par.globalRotation, currentLeaf.lpUpward).normalized;
-                        }
+                        Quaternion localRot = IvyUtils.CalculateLeafOrientation(par,
+                            currentLeaf.lpForward, currentLeaf.lpUpward, 
+                            rng, out Vector3 forward, out Vector3 left);
 
-                        Quaternion quat = Quaternion.LookRotation(currentLeaf.lpUpward, forward);
-                        quat = Quaternion.AngleAxis(par.rotation.x, left) *
-                               Quaternion.AngleAxis(par.rotation.y, currentLeaf.lpUpward) *
-                               Quaternion.AngleAxis(par.rotation.z, forward) * quat;
-
-                        // System.Random Range replacement
-                        float rx = (float)(rng.NextDouble() * 2.0 - 1.0) * par.randomRotation.x;
-                        float ry = (float)(rng.NextDouble() * 2.0 - 1.0) * par.randomRotation.y;
-                        float rz = (float)(rng.NextDouble() * 2.0 - 1.0) * par.randomRotation.z;
-
-                        quat = Quaternion.AngleAxis(rx, left) *
-                               Quaternion.AngleAxis(ry, currentLeaf.lpUpward) *
-                               Quaternion.AngleAxis(rz, forward) * quat;
-                        quat = currentLeaf.forwardRot * quat;
-
+                        // scale is shrinked when closer to tip
                         float scale = par.minScale + (float)rng.NextDouble() * (par.maxScale - par.minScale);
                         scale *= Mathf.InverseLerp(branch.totalLenght, branch.totalLenght - par.tipInfluence,
                             currentLeaf.lpLength);
 
                         currentLeaf.leafScale = scale;
-                        currentLeaf.leafRotation = quat;
                         currentLeaf.leafCenter = worldToLocalMatrix.MultiplyPoint3x4(currentLeaf.point);
 
-                        Vector3 offset = left * par.offset.x + currentLeaf.lpUpward * par.offset.y +
-                                         currentLeaf.lpForward * par.offset.z;
+                        Vector3 offset = left * par.offset.x + currentLeaf.lpUpward * par.offset.y 
+                                                             + currentLeaf.lpForward * par.offset.z;
 
                         // --- Write Verts (Thread Safe due to offsets) ---
                         for (var v = 0; v < cache.vertexCount; v++)
@@ -364,15 +340,15 @@ namespace TeamCrescendo.ProceduralIvy
                             int absIndex = vertStart + v;
 
                             // Transform World
-                            Vector3 worldPos = (quat * cache.vertices[v] * scale) + currentLeaf.point + offset;
+                            Vector3 worldPos = (localRot * cache.vertices[v] * scale) + currentLeaf.point + offset;
                             verts[absIndex] = worldToLocalMatrix.MultiplyPoint3x4(worldPos);
-                            normals[absIndex] = worldToLocalMatrix.MultiplyVector(quat * cache.normals[v]);
+                            normals[absIndex] = worldToLocalMatrix.MultiplyVector(localRot * cache.normals[v]);
                             uvs[absIndex] = cache.uv[v];
                             colors[absIndex] = (cache.colors32 != null && cache.colors32.Length > v)
                                 ? cache.colors32[v]
                                 : Color.white;
 
-                            currentLeaf.verticesLeaves.Add(new RTVertexData(verts[absIndex], normals[absIndex],
+                            currentLeaf.vertices.Add(new RTVertexData(verts[absIndex], normals[absIndex],
                                 uvs[absIndex], colors[absIndex]));
                         }
 

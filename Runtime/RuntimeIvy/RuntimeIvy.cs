@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Assertions;
 using Random = UnityEngine.Random;
 
 namespace TeamCrescendo.ProceduralIvy
@@ -8,42 +9,30 @@ namespace TeamCrescendo.ProceduralIvy
     public abstract class RuntimeIvy : MonoBehaviour
     {
         public bool verbose = false;
-        
-        private MeshFilter meshFilter;
-        public MeshFilter MeshFilter => meshFilter ??= GetComponent<MeshFilter>();
-        
-        private MeshRenderer meshRenderer;
-        public MeshRenderer MeshRenderer => meshRenderer ??= GetComponent<MeshRenderer>();
-        
-        public MeshRenderer mrProcessedMesh;
-        public MeshFilter mfProcessedMesh;
-        
-        private List<float> srcTotalLengthPerBranch;
-        private List<float> dstTotalLengthPerBranch;
-        private List<float> growingFactorPerBranch;
+
+        private MeshRenderer processedMeshRenderer;
+        private MeshFilter processedMeshFilter;
 
         protected List<RTBranchContainer> activeBakedBranches;
-        protected List<RTBranchContainer> activeBuildingBranches;
+        private List<RTBranchContainer> activeBuildingBranches;
         private int backtrackingPoints;
         private Mesh bakedMesh;
-        protected float currentGrowthSpeed;
+        private float currentGrowthSpeed;
         protected float currentLifetime;
-        protected float currentSpeed;
+        private float currentSpeed;
         protected float currentTimer;
-        protected List<Vector3> dstPoints;
 
         protected RuntimeGrowthParameters growthParameters;
 
         protected IvyParameters ivyParameters;
-        protected List<int> lastCopiedIndexPerBranch;
 
-        protected int lastIdxActiveBranch;
-        protected List<Material> leavesMaterials;
+        private int lastIdxActiveBranch;
+        private List<Material> leavesMaterials;
 
         protected RTMeshData[] leavesMeshesByChosenLeaf;
-        protected int maxBranches;
+        private int maxBranches;
 
-        public RTBakedMeshBuilder meshBuilder;
+        protected RTBakedMeshBuilder meshBuilder;
         private Mesh processedMesh;
 
         private bool refreshProcessedMesh;
@@ -51,20 +40,49 @@ namespace TeamCrescendo.ProceduralIvy
         protected RTIvyContainer rtBuildingIvyContainer;
         protected RTIvyContainer rtIvyContainer;
 
-        protected List<Vector3> srcPoints;
-        protected int[] submeshByChoseLeaf;
+        private List<float> srcTotalLengthPerBranch;
+        private List<float> dstTotalLengthPerBranch;
+        private List<float> growingFactorPerBranch;
+        private List<Vector3> srcPoints;
+        private List<Vector3> dstPoints;
+        private int[] submeshByChoseLeaf;
 
-        public void AwakeInit()
+        private bool awoken = false;
+
+        public void Awake()
         {
-            bakedMesh = MeshFilter.sharedMesh;
-            MeshFilter.sharedMesh = null;
+            if (awoken) return;
+            
+            // destroy baked mf and mr
+            MeshFilter mf = GetComponent<MeshFilter>();
+            Assert.IsNotNull(mf);
+            bakedMesh = mf.sharedMesh;
+            Destroy(mf);
+
+            MeshRenderer mr = GetComponent<MeshRenderer>();
+            if (mr != null) Destroy(mr);
+            
+            var childProcessedMeshObj = new GameObject($"{name} + ProcessedMesh");
+            childProcessedMeshObj.transform.SetParent(transform);
+            childProcessedMeshObj.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+            childProcessedMeshObj.hideFlags = HideFlags.HideAndDontSave;
+
+            processedMeshRenderer = childProcessedMeshObj.AddComponent<MeshRenderer>();
+            processedMeshFilter = childProcessedMeshObj.AddComponent<MeshFilter>();
+            
+            awoken = true;
         }
-
-        protected virtual void Init(IvyContainer ivyContainer, IvyParameters ivyParameters)
+        
+        public virtual void Initialize(RuntimeGrowthParameters growthParameters, IvyContainer ivyContainer, IvyParameters ivyParameters)
         {
+            // initialize if not already
+            Awake();
+            
+            this.growthParameters = growthParameters;
             rtIvyContainer = new RTIvyContainer();
             rtBuildingIvyContainer = new RTIvyContainer();
 
+            // instantiate a new parameter set object
             this.ivyParameters = new IvyParameters(ivyParameters);
 
             CreateLeavesDict();
@@ -87,77 +105,84 @@ namespace TeamCrescendo.ProceduralIvy
 
             var submeshCount = ivyParameters.leavesPrefabs.Length + 1;
             processedMesh = new Mesh { subMeshCount = submeshCount };
-            
-            mfProcessedMesh.sharedMesh = processedMesh;
+            processedMeshFilter.sharedMesh = processedMesh;
 
-            refreshProcessedMesh = false;
-            backtrackingPoints = GetBacktrackingPoints();
+            backtrackingPoints = Mathf.CeilToInt(ivyParameters.tipInfluence / ivyParameters.stepSize);
 
             if (bakedMesh == null)
-            {
                 bakedMesh = new Mesh { subMeshCount = submeshCount };
-                bakedMesh.subMeshCount = submeshCount;
-            }
             
-            lastCopiedIndexPerBranch = new List<int>(maxBranches);
-            srcPoints = new List<Vector3>(maxBranches);
-            dstPoints = new List<Vector3>(maxBranches);
-            growingFactorPerBranch = new List<float>(maxBranches);
-            srcTotalLengthPerBranch = new List<float>(maxBranches);
-            dstTotalLengthPerBranch = new List<float>(maxBranches);
+            srcPoints = new List<Vector3>(new Vector3[maxBranches]);
+            dstPoints = new List<Vector3>(new Vector3[maxBranches]);
+            growingFactorPerBranch = new List<float>(new float[maxBranches]);
+            srcTotalLengthPerBranch = new List<float>(new float[maxBranches]);
+            dstTotalLengthPerBranch = new List<float>(new float[maxBranches]);
 
             for (var i = 0; i < maxBranches; i++)
             {
-                srcPoints.Add(Vector3.zero);
-                dstPoints.Add(Vector3.zero);
-                growingFactorPerBranch.Add(0f);
-                srcTotalLengthPerBranch.Add(0f);
-                dstTotalLengthPerBranch.Add(0f);
-                lastCopiedIndexPerBranch.Add(-1);
-
-                var branchPointsSize = GetMaxNumPoints();
-                var numLeaves = GetMaxNumLeaves();
-
-                var branchContainer = new RTBranchContainer(branchPointsSize, numLeaves);
+                var branchContainer = new RTBranchContainer(GetMaxNumPoints(), GetMaxNumLeaves());
                 activeBuildingBranches.Add(branchContainer);
             }
+            
+            // init mesh builder
+            meshBuilder = new RTBakedMeshBuilder(ivyParameters, rtBuildingIvyContainer,
+                this, maxBranches, processedMesh, processedMeshRenderer,
+                backtrackingPoints, submeshByChoseLeaf, leavesMeshesByChosenLeaf, 
+                leavesMaterials);
+
+            InitializeMeshesData(bakedMesh, maxBranches);
+            
+            // add first branch
+            AddNextBranch(0);
         }
 
         private void SetUpMaxBranches(IvyContainer ivyContainer)
         {
             maxBranches = ivyParameters.maxBranches;
-            if (ivyContainer != null) maxBranches = Mathf.Max(ivyParameters.maxBranches, ivyContainer.branches.Count);
+            if (ivyContainer != null) 
+                maxBranches = Mathf.Max(ivyParameters.maxBranches, ivyContainer.branches.Count);
         }
 
-        protected void InitMeshBuilder()
+        private void CreateLeavesDict()
         {
-            meshBuilder = new RTBakedMeshBuilder(ivyParameters, rtBuildingIvyContainer,
-                this, maxBranches, processedMesh, mrProcessedMesh,
-                backtrackingPoints, submeshByChoseLeaf, leavesMeshesByChosenLeaf, 
-                leavesMaterials);
+            leavesMaterials = new List<Material>();
 
-            InitializeMeshesData(bakedMesh, maxBranches);
+            var prefabs = ivyParameters.leavesPrefabs;
+            leavesMeshesByChosenLeaf = new RTMeshData[prefabs.Length];
+
+            leavesMaterials.Add(ivyParameters.branchesMaterial);
+
+            submeshByChoseLeaf = new int[prefabs.Length];
+            var submeshCount = 0;
+            for (var i = 0; i < prefabs.Length; i++)
+            {
+                if (!prefabs[i].TryGetComponent<MeshRenderer>(out var leafMeshRenderer))
+                    throw new ArgumentException($"No MeshRenderer found on {prefabs[i].name}. Assign a valid prefab.");
+                if (!prefabs[i].TryGetComponent<MeshFilter>(out var leafMeshFilter))
+                    throw new ArgumentException($"No MeshFilter found on {prefabs[i].name}. Assign a valid prefab.");
+                
+                if (!leavesMaterials.Contains(leafMeshRenderer.sharedMaterial))
+                {
+                    leavesMaterials.Add(leafMeshRenderer.sharedMaterial);
+                    submeshCount++;
+                }
+
+                submeshByChoseLeaf[i] = submeshCount;
+                var leafMeshData = new RTMeshData(leafMeshFilter.sharedMesh);
+                leavesMeshesByChosenLeaf[i] = leafMeshData;
+            }
+
+            processedMeshRenderer.SetSharedMaterials(leavesMaterials);
         }
 
-        protected void AddFirstBranch()
-        {
-            AddNextBranch(0);
-        }
-
-        private int GetBacktrackingPoints()
-        {
-            var res = Mathf.CeilToInt(ivyParameters.tipInfluence / ivyParameters.stepSize);
-            return res;
-        }
-
-        public void UpdateIvy(float deltaTime)
+        public void UpdateIvy(float dt)
         {
             UpdateGrowthSpeed();
 
             for (var i = 0; i < activeBakedBranches.Count; i++) 
-                Growing(i, deltaTime);
+                Growing(i, dt);
 
-            currentTimer += deltaTime;
+            currentTimer += dt;
 
             if (!RefreshGeometry())
                 return;
@@ -319,44 +344,10 @@ namespace TeamCrescendo.ProceduralIvy
         private Vector3 CalculateFirstVertexVector() =>
             Quaternion.AngleAxis(Random.value * 360f, transform.up) * transform.forward;
 
-        private void CreateLeavesDict()
-        {
-            leavesMaterials = new List<Material>();
-
-            var prefabs = ivyParameters.leavesPrefabs;
-            leavesMeshesByChosenLeaf = new RTMeshData[prefabs.Length];
-
-            leavesMaterials.Add(ivyParameters.branchesMaterial);
-
-            submeshByChoseLeaf = new int[prefabs.Length];
-            var submeshCount = 0;
-            for (var i = 0; i < prefabs.Length; i++)
-            {
-                var leafMeshRenderer = prefabs[i].GetComponent<MeshRenderer>();
-                var leafMeshFilter = prefabs[i].GetComponent<MeshFilter>();
-
-                if (!leavesMaterials.Contains(leafMeshRenderer.sharedMaterial))
-                {
-                    leavesMaterials.Add(leafMeshRenderer.sharedMaterial);
-                    submeshCount++;
-                }
-
-                submeshByChoseLeaf[i] = submeshCount;
-                var leafMeshData = new RTMeshData(leafMeshFilter.sharedMesh);
-                leavesMeshesByChosenLeaf[i] = leafMeshData;
-            }
-
-            var materials = leavesMaterials.ToArray();
-            mrProcessedMesh.sharedMaterials = materials;
-        }
-
         protected abstract void InitializeMeshesData(Mesh bakedMesh, int numBranches);
         protected abstract float GetNormalizedLifeTime();
         protected abstract int GetMaxNumPoints();
         protected abstract int GetMaxNumLeaves();
         public abstract bool IsGrowingFinished();
-
-        public abstract void InitIvy(RuntimeGrowthParameters growthParameters, IvyContainer ivyContainer,
-            IvyParameters ivyParameters);
     }
 }

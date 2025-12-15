@@ -61,9 +61,9 @@ namespace TeamCrescendo.ProceduralIvy
                     for (int k = 0; k < lCount; k++)
                     {
                         var lp = branch.leaves[k];
-                        if (lp.verticesLeaves != null)
+                        if (lp.vertices != null)
                         {
-                            int vCount = lp.verticesLeaves.Count;
+                            int vCount = lp.vertices.Count;
                             stats.vertexCount += vCount;
                         }
                     }

@@ -20,7 +20,7 @@ namespace TeamCrescendo.ProceduralIvy
 
         public float heightVar;
 
-        public RTLeafPoint[][] leavesOrderedByInitSegment;
+        public LeafPoint[][] leavesOrderedByInitSegment;
         public float newHeight;
         public float randomizeHeight;
         public Quaternion rotationOnFallIteration;
@@ -54,27 +54,25 @@ namespace TeamCrescendo.ProceduralIvy
                 branchPoints.Add(rtBranchPoint);
             }
 
-            branchContainer.PrepareRTLeavesDict();
+            var dictRTLeavesByInitSegment = branchContainer.PrepareRTLeavesDict();
 
             if (ivyParameters.generateLeaves)
             {
-                leavesOrderedByInitSegment = new RTLeafPoint[branchPoints.Count][];
+                leavesOrderedByInitSegment = new LeafPoint[branchPoints.Count][];
                 for (var i = 0; i < branchPoints.Count; i++)
                 {
-                    var leavesToBake = branchContainer.dictRTLeavesByInitSegment[i];
-                    var numLeaves = 0;
-                    if (leavesToBake != null) numLeaves = leavesToBake.Count;
-
-
-                    leavesOrderedByInitSegment[i] = new RTLeafPoint[numLeaves];
-
-
+                    var leavesToBake = dictRTLeavesByInitSegment[i];
+                    var numLeaves = leavesToBake.Count;
+                    leavesOrderedByInitSegment[i] = new LeafPoint[numLeaves];
+                    
+                    if (numLeaves == 0) continue;
+                    
                     for (var j = 0; j < numLeaves; j++)
                     {
-                        var rtLeafPoint = new RTLeafPoint(leavesToBake[j], ivyParameters);
+                        var rtLeafPoint = new LeafPoint(leavesToBake[j]);
                         var leafMeshData = leavesMeshesByChosenLeaf[rtLeafPoint.chosenLeave];
 
-                        rtLeafPoint.CreateVertices(ivyParameters, leafMeshData, ivyGO);
+                        rtLeafPoint.CreateVertices(ivyParameters, leafMeshData, ivyGO.transform);
                         leavesOrderedByInitSegment[i][j] = rtLeafPoint;
                     }
                 }
@@ -97,8 +95,9 @@ namespace TeamCrescendo.ProceduralIvy
         {
             branchPoints = new List<RTBranchPoint>(numPoints);
 
-            leavesOrderedByInitSegment = new RTLeafPoint[numPoints][];
-            for (var i = 0; i < numPoints; i++) leavesOrderedByInitSegment[i] = new RTLeafPoint[1];
+            leavesOrderedByInitSegment = new LeafPoint[numPoints][];
+            for (var i = 0; i < numPoints; i++) 
+                leavesOrderedByInitSegment[i] = new LeafPoint[1];
         }
 
         public void AddBranchPoint(RTBranchPoint rtBranchPoint, float deltaLength)
@@ -114,14 +113,14 @@ namespace TeamCrescendo.ProceduralIvy
 
         public RTBranchPoint GetLastBranchPoint() => branchPoints[^1];
 
-        public void AddLeaf(RTLeafPoint leafAdded)
+        public void AddLeaf(LeafPoint leafAdded)
         {
             if (leafAdded.initSegmentIdx >= leavesOrderedByInitSegment.Length)
             {
                 Array.Resize(ref leavesOrderedByInitSegment, leavesOrderedByInitSegment.Length * 2);
 
                 for (var i = leafAdded.initSegmentIdx; i < leavesOrderedByInitSegment.Length; i++)
-                    leavesOrderedByInitSegment[i] = new RTLeafPoint[1];
+                    leavesOrderedByInitSegment[i] = new LeafPoint[1];
             }
 
             leavesOrderedByInitSegment[leafAdded.initSegmentIdx][0] = leafAdded;

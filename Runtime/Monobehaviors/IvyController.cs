@@ -27,11 +27,13 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void Awake()
         {
-            runtimeIvy.AwakeInit();
-
             state = State.GROWTH_NOT_STARTED;
+        }
 
-            if (growthParameters.startGrowthOnAwake) StartGrowth();
+        private void Start()
+        {
+            if (growthParameters.startGrowthOnStart) 
+                StartGrowth();
         }
 
         private void Update()
@@ -54,7 +56,7 @@ namespace TeamCrescendo.ProceduralIvy
         {
             if (state == State.GROWTH_NOT_STARTED)
             {
-                runtimeIvy.InitIvy(growthParameters, ivyContainer, ivyParameters);
+                runtimeIvy.Initialize(growthParameters, ivyContainer, ivyParameters);
 
                 if (growthParameters.delay > 0)
                     state = State.WAITING_FOR_DELAY;
@@ -87,10 +89,10 @@ namespace TeamCrescendo.ProceduralIvy
             }
         }
 
-        private void UpdateGrowingState(float deltaTime)
+        private void UpdateGrowingState(float dt)
         {
             if (!runtimeIvy.IsGrowingFinished() && !runtimeIvy.IsVertexLimitReached())
-                runtimeIvy.UpdateIvy(deltaTime);
+                runtimeIvy.UpdateIvy(dt);
             else
                 state = State.GROWTH_FINISHED;
         }

@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 namespace TeamCrescendo.ProceduralIvy
 {
@@ -12,8 +10,8 @@ namespace TeamCrescendo.ProceduralIvy
         [Header("Growth Settings")]
         public float stepSize = 0.1f;
         public int randomSeed;
-        public float branchProbability = 0.05f;
-        public int maxBranches = 5;
+        [Range(0f, 1f)] public float branchProbability = 0.05f;
+        [Range(1, 100)] public int maxBranches = 5;
         public LayerMask layerMask = -1;
         public float minDistanceToSurface = 0.01f;
         public float maxDistanceToSurface = 0.03f;
@@ -23,35 +21,37 @@ namespace TeamCrescendo.ProceduralIvy
         public float directionAmplitude = 20f;
         public float directionRandomness = 1f;
         public Vector3 gravity;
-        public float grabProvabilityOnFall = 0.1f;
+        [Range(0,1)] public float grabProbabilityOnFall = 0.1f;
         public float stiffness = 0.03f;
-        public float optAngleBias = 15f;
-        public int leaveEvery = 1;
-        public int randomLeaveEvery = 1;
-
+        public float optimizationAngle = 15f;
+        
         [Header("Geometry Settings")]
         public bool buffer32Bits;
         public bool halfgeom;
         public int sides = 3;
-        public float minRadius = 0.025f;
-        public float maxRadius = 0.05f;
+        public float minBranchRadius = 0.025f;
+        public float maxBranchRadius = 0.05f;
         public float radiusVarFreq = 1f;
         public float radiusVarOffset;
         public float tipInfluence = 0.5f;
+        
+        [Header("UV")]
         public Vector2 uvScale = new(1f, 1f);
         public Vector2 uvOffset = new(0f, 0f);
-
-        public float minScale = 0.7f;
-        public float maxScale = 1.2f;
-        public bool globalOrientation;
-        public Vector3 globalRotation = -Vector3.up;
-        public Vector3 rotation = Vector3.zero;
-        public Vector3 randomRotation = Vector3.zero;
-        public Vector3 offset = Vector3.zero;
-        public float LMUVPadding = 0.002f;
-        public Material branchesMaterial;
+        
+        [Header("Leaf")]
+        public int leaveEvery = 1;
+        public int randomLeaveEvery = 1;
+        public float minLeafScale = 0.7f;
+        public float maxLeafScale = 1.2f;
+        public bool globalLeafOrientation;
+        public Vector3 globalLeafRotation = -Vector3.up;
+        public Vector3 leafLocalRotation = Vector3.zero;
+        public Vector3 leafRandomRotation = Vector3.zero;
+        public Vector3 leafOffset = Vector3.zero;
 
         [Header("Prefab Settings")]
+        public Material branchesMaterial;
         public GameObject[] leavesPrefabs = Array.Empty<GameObject>();
         public float[] leavesProb = Array.Empty<float>();
         
@@ -59,11 +59,6 @@ namespace TeamCrescendo.ProceduralIvy
         public bool generateBranches = true;
         public bool generateLeaves = true;
         public bool generateLightmapUVs;
-        
-        public IvyParameters()
-        {
-            // create a default parameter set
-        }
 
         public IvyParameters(IvyParameters paramsCopy)
         {
@@ -97,29 +92,28 @@ namespace TeamCrescendo.ProceduralIvy
             directionAmplitude = copyFrom.directionAmplitude;
             directionRandomness = copyFrom.directionRandomness;
             gravity = copyFrom.gravity;
-            grabProvabilityOnFall = copyFrom.grabProvabilityOnFall;
+            grabProbabilityOnFall = copyFrom.grabProbabilityOnFall;
             stiffness = copyFrom.stiffness;
-            optAngleBias = copyFrom.optAngleBias;
+            optimizationAngle = copyFrom.optimizationAngle;
             leaveEvery = copyFrom.leaveEvery;
             randomLeaveEvery = copyFrom.randomLeaveEvery;
 
             halfgeom = copyFrom.halfgeom;
             sides = copyFrom.sides;
-            minRadius = copyFrom.minRadius;
-            maxRadius = copyFrom.maxRadius;
+            minBranchRadius = copyFrom.minBranchRadius;
+            maxBranchRadius = copyFrom.maxBranchRadius;
             radiusVarFreq = copyFrom.radiusVarFreq;
             radiusVarOffset = copyFrom.radiusVarOffset;
             tipInfluence = copyFrom.tipInfluence;
             uvScale = copyFrom.uvScale;
             uvOffset = copyFrom.uvOffset;
-            minScale = copyFrom.minScale;
-            maxScale = copyFrom.maxScale;
-            globalOrientation = copyFrom.globalOrientation;
-            globalRotation = copyFrom.globalRotation;
-            rotation = copyFrom.rotation;
-            randomRotation = copyFrom.randomRotation;
-            offset = copyFrom.offset;
-            LMUVPadding = copyFrom.LMUVPadding;
+            minLeafScale = copyFrom.minLeafScale;
+            maxLeafScale = copyFrom.maxLeafScale;
+            globalLeafOrientation = copyFrom.globalLeafOrientation;
+            globalLeafRotation = copyFrom.globalLeafRotation;
+            leafLocalRotation = copyFrom.leafLocalRotation;
+            leafRandomRotation = copyFrom.leafRandomRotation;
+            leafOffset = copyFrom.leafOffset;
 
             generateBranches = copyFrom.generateBranches;
             generateLeaves = copyFrom.generateLeaves;
@@ -146,17 +140,16 @@ namespace TeamCrescendo.ProceduralIvy
                 Mathf.Approximately(directionFrequency, compareTo.directionFrequency) &&
                 Mathf.Approximately(directionAmplitude, compareTo.directionAmplitude) &&
                 Mathf.Approximately(directionRandomness, compareTo.directionRandomness) &&
-                Mathf.Approximately(grabProvabilityOnFall, compareTo.grabProvabilityOnFall) &&
+                Mathf.Approximately(grabProbabilityOnFall, compareTo.grabProbabilityOnFall) &&
                 Mathf.Approximately(stiffness, compareTo.stiffness) &&
-                Mathf.Approximately(optAngleBias, compareTo.optAngleBias) &&
-                Mathf.Approximately(minRadius, compareTo.minRadius) &&
-                Mathf.Approximately(maxRadius, compareTo.maxRadius) &&
+                Mathf.Approximately(optimizationAngle, compareTo.optimizationAngle) &&
+                Mathf.Approximately(minBranchRadius, compareTo.minBranchRadius) &&
+                Mathf.Approximately(maxBranchRadius, compareTo.maxBranchRadius) &&
                 Mathf.Approximately(radiusVarFreq, compareTo.radiusVarFreq) &&
                 Mathf.Approximately(radiusVarOffset, compareTo.radiusVarOffset) &&
                 Mathf.Approximately(tipInfluence, compareTo.tipInfluence) &&
-                Mathf.Approximately(minScale, compareTo.minScale) &&
-                Mathf.Approximately(maxScale, compareTo.maxScale) &&
-                Mathf.Approximately(LMUVPadding, compareTo.LMUVPadding);
+                Mathf.Approximately(minLeafScale, compareTo.minLeafScale) &&
+                Mathf.Approximately(maxLeafScale, compareTo.maxLeafScale);
 
             if (!floatsEqual) return false;
 
@@ -164,10 +157,10 @@ namespace TeamCrescendo.ProceduralIvy
                 gravity == compareTo.gravity &&
                 uvScale == compareTo.uvScale &&
                 uvOffset == compareTo.uvOffset &&
-                globalRotation == compareTo.globalRotation &&
-                rotation == compareTo.rotation &&
-                randomRotation == compareTo.randomRotation &&
-                offset == compareTo.offset;
+                globalLeafRotation == compareTo.globalLeafRotation &&
+                leafLocalRotation == compareTo.leafLocalRotation &&
+                leafRandomRotation == compareTo.leafRandomRotation &&
+                leafOffset == compareTo.leafOffset;
 
             if (!vectorsEqual) return false;
 
@@ -180,7 +173,7 @@ namespace TeamCrescendo.ProceduralIvy
                 buffer32Bits == compareTo.buffer32Bits &&
                 halfgeom == compareTo.halfgeom &&
                 sides == compareTo.sides &&
-                globalOrientation == compareTo.globalOrientation &&
+                globalLeafOrientation == compareTo.globalLeafOrientation &&
                 generateBranches == compareTo.generateBranches &&
                 generateLeaves == compareTo.generateLeaves &&
                 generateLightmapUVs == compareTo.generateLightmapUVs &&

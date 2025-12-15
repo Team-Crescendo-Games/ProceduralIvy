@@ -86,7 +86,7 @@ namespace TeamCrescendo.ProceduralIvy
             var leafIndex = (nextLeaf != null) ? cursorSelectedBranch.leaves.IndexOf(nextLeaf) : -1;
             
             // Note: AddRandomLeaf handles the actual creation and mesh update
-            lastLeafPoint = cursorSelectedBranch.AddRandomLeaf(leafInfo.pointWS, overSegment[0], overSegment[1], leafIndex, infoPool);
+            lastLeafPoint = cursorSelectedBranch.AddRandomLeaf(leafInfo.pointWS, overSegment[0], overSegment[1], leafIndex, IvyData);
 
             RefreshMesh(true, true);
         }
@@ -94,7 +94,7 @@ namespace TeamCrescendo.ProceduralIvy
         private LeafInfo GetLeafPosition(Event currentEvent, float brushSize)
         {
             // Projects mouse onto the segment line to find position
-            var nearestSegment = infoPool.ivyContainer.GetNearestSegmentSS(currentEvent.mousePosition);
+            var nearestSegment = IvyData.ivyContainer.GetNearestSegmentSS(currentEvent.mousePosition);
 
             var segment0PointSS = nearestSegment[0].GetScreenspacePosition();
             var segment1PointSS = nearestSegment[1].GetScreenspacePosition();

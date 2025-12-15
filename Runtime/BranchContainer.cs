@@ -37,7 +37,7 @@ namespace TeamCrescendo.ProceduralIvy
             
             newBranch.branchPoints = new List<BranchPoint>(new BranchPoint[maxBranches]);
 
-            newBranch.leavesOrderedByInitSegment = new();
+            newBranch.leavesOrderedByInitSegment = new(maxBranches);
             for (var i = 0; i < maxBranches; i++) 
                 newBranch.leavesOrderedByInitSegment.Add(new List<LeafPoint>());
             
@@ -72,7 +72,7 @@ namespace TeamCrescendo.ProceduralIvy
 
             if (ivyParameters.generateLeaves)
             {
-                leavesOrderedByInitSegment = new();
+                leavesOrderedByInitSegment = new(branchPoints.Count);
                 for (var i = 0; i < branchPoints.Count; i++)
                 {
                     var leavesToBake = dictRTLeavesByInitSegment[i];
@@ -156,9 +156,9 @@ namespace TeamCrescendo.ProceduralIvy
         }
 
         public LeafPoint AddRandomLeaf(Vector3 pointWS, BranchPoint initSegment, BranchPoint endSegment, int leafIndex,
-            InfoPool infoPool)
+            IvyData ivyData)
         {
-            var chosenLeave = Random.Range(0, infoPool.ivyParameters.leavesPrefabs.Length);
+            var chosenLeave = Random.Range(0, ivyData.ivyParameters.leavesPrefabs.Length);
 
             var forward = initSegment.initialGrowDir;
 

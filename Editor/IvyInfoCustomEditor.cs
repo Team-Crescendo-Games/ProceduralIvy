@@ -27,18 +27,18 @@ namespace TeamCrescendo.ProceduralIvy
             
             if (GUILayout.Button("Delete Ivy"))
             {
-                ProceduralIvyEditorWindow.PromptDeleteIvyData(ivyInfo.infoPool);
+                ProceduralIvyEditorWindow.PromptDeleteIvyData(ivyInfo.ivyData);
                 if (Selection.activeGameObject == ivyInfo.gameObject)
                     Selection.activeGameObject = null;
                 DestroyImmediate(ivyInfo.gameObject);
             }
 
-            if (ivyInfo.infoPool != null)
+            if (ivyInfo.ivyData != null)
             {
                 GUILayout.Space(10);
                 GUILayout.Label("Memory Profiling", EditorStyles.boldLabel);
 
-                var currentStats = ivyInfo.infoPool.GetMemoryStats();
+                var currentStats = ivyInfo.ivyData.GetMemoryStats();
                 
                 EditorGUILayout.HelpBox(
                     $"Total Branches: {currentStats.branchCount}\n" +

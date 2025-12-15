@@ -89,7 +89,7 @@ namespace TeamCrescendo.ProceduralIvy
             }
 
             IvyInfo info = ProceduralIvyEditorWindow.Instance.CurrentIvyInfo;
-            InfoPool pool = info?.infoPool;
+            IvyData pool = info?.ivyData;
             currentMode?.Init(pool);
             
             SceneView.RepaintAll();
@@ -151,7 +151,7 @@ namespace TeamCrescendo.ProceduralIvy
         {
             if (info == null) return;
             if (toolMode != ToolMode.None && currentMode != null && ProceduralIvyEditorWindow.Instance != null)
-                currentMode.Init(info.infoPool);
+                currentMode.Init(info.ivyData);
         }
     }
 }

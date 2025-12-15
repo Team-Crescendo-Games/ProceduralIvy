@@ -230,8 +230,8 @@ namespace TeamCrescendo.ProceduralIvy
                 var bp = cursorSelectedBranch.branchPoints[index];
                 
                 cursorSelectedBranch.GetLeavesInSegment(bp, affectedLeaves);
-                Vector3 newPos = originalPositions[i] + (delta * affectedInfluences[i]);
-                bp.Move(newPos);
+                Vector3 newPos = originalPositions[i] + delta * affectedInfluences[i];
+                bp.point = newPos;
             }
 
             cursorSelectedBranch.RepositionLeaves(affectedLeaves, true);

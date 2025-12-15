@@ -26,24 +26,32 @@ namespace TeamCrescendo.ProceduralIvy
         public BranchContainer branchContainer;
         [NonSerialized] public List<VertexData> verticesLoop = new();
 
-        public BranchPoint() { }
-
-        public BranchPoint(Vector3 point, Vector3 grabVector, int index, bool newBranch, int newBranchNumber,
-            float length, BranchContainer branchContainer)
+        public BranchPoint(Vector3 point, Vector3 grabVector, int index, bool newBranch, int newBranchNumber, float length, BranchContainer branchContainer)
         {
-            SetValues(point, grabVector, branchContainer, index, false, newBranch, newBranchNumber,
-                length);
+            this.point = point;
+            this.grabVector = grabVector;
+            this.branchContainer = branchContainer;
+            this.index = index;
+            this.newBranch = newBranch;
+            this.newBranchNumber = newBranchNumber;
+
+            radius = 1f;
+
+            this.length = length;
+
+            if (index >= 1 && branchContainer != null && branchContainer.branchPoints.Count > index - 1)
+            {
+                var prevPoint = branchContainer.branchPoints[index - 1].point;
+                initialGrowDir = (point - prevPoint).normalized;
+            }
+            else
+            {
+                initialGrowDir = Vector3.zero;
+            }
         }
 
         public BranchPoint(Vector3 point, Vector3 grabVector, int index, float length, BranchContainer branchContainer)
-        {
-            SetValues(point, grabVector, branchContainer, index, false, false, -1, length);
-        }
-
-        public BranchPoint(Vector3 point, int index, float length, BranchContainer branchContainer)
-        {
-            SetValues(point, Vector3.zero, branchContainer, index, false, false, -1, length);
-        }
+        : this(point, grabVector, index, false, -1, length, branchContainer) { }
         
         public BranchPoint(BranchPoint branchPoint, BranchContainer rtBranchContainer)
          {
@@ -61,49 +69,12 @@ namespace TeamCrescendo.ProceduralIvy
              axis = branchPoint.axis;
          }
 
-        public void SetValues(Vector3 point, Vector3 grabVector,
-            BranchContainer branchContainer, int index, bool blocked, bool newBranch,
-            int newBranchNumber, float length)
-        {
-            this.point = point;
-            this.grabVector = grabVector;
-            this.branchContainer = branchContainer;
-            this.index = index;
-            this.newBranch = newBranch;
-            this.newBranchNumber = newBranchNumber;
-
-            radius = 1f;
-
-            this.length = length;
-
-            initialGrowDir = Vector3.zero;
-            if (index >= 1) initialGrowDir = (point - branchContainer.branchPoints[index - 1].point).normalized;
-        }
-        
-        public void SetValues(Vector3 point, Vector3 grabVector)
-        {
-            SetValues(point, grabVector, false, -1);
-        }
-
-        public void SetValues(Vector3 point, Vector3 grabVector, bool newBranch, int newBranchNumber)
-        {
-            this.point = point;
-            this.grabVector = grabVector;
-            this.newBranch = newBranch;
-            this.newBranchNumber = newBranchNumber;
-        }
-
         public Vector2 GetScreenspacePosition() => HandleUtility.WorldToGUIPoint(point);
 
         public BranchPoint GetNextPoint() =>
             index < branchContainer.branchPoints.Count - 1 ? branchContainer.branchPoints[index + 1] : null;
 
         public BranchPoint GetPreviousPoint() => index > 0 ? branchContainer.branchPoints[index - 1] : null;
-
-        public void Move(Vector3 newPosition)
-        {
-            point = newPosition;
-        }
 
         public void InitBranchInThisPoint(int branchNumber)
         {

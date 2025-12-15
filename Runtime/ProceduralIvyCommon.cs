@@ -13,23 +13,23 @@ namespace TeamCrescendo.ProceduralIvy
             out Vector3 forward,
             out Vector3 left)
         {
-            forward = ivyParameters.globalOrientation ? ivyParameters.globalRotation : lastPointForward;
+            forward = ivyParameters.globalLeafOrientation ? ivyParameters.globalLeafRotation : lastPointForward;
             left = Vector3.Cross(forward, lastPointUpward).normalized;
 
             // base alignment
             var leafRotation = Quaternion.LookRotation(lastPointUpward, forward);
 
             // parameter defined offsets
-            leafRotation = Quaternion.AngleAxis(ivyParameters.rotation.x, left) *
-                           Quaternion.AngleAxis(ivyParameters.rotation.y, lastPointUpward) *
-                           Quaternion.AngleAxis(ivyParameters.rotation.z, forward) * leafRotation;
+            leafRotation = Quaternion.AngleAxis(ivyParameters.leafLocalRotation.x, left) *
+                           Quaternion.AngleAxis(ivyParameters.leafLocalRotation.y, lastPointUpward) *
+                           Quaternion.AngleAxis(ivyParameters.leafLocalRotation.z, forward) * leafRotation;
 
             rng ??= new();
             
             // random jitter
-            float rx = (float)(rng.NextDouble() * 2.0 - 1.0) * ivyParameters.randomRotation.x;
-            float ry = (float)(rng.NextDouble() * 2.0 - 1.0) * ivyParameters.randomRotation.y;
-            float rz = (float)(rng.NextDouble() * 2.0 - 1.0) * ivyParameters.randomRotation.z;
+            float rx = (float)(rng.NextDouble() * 2.0 - 1.0) * ivyParameters.leafRandomRotation.x;
+            float ry = (float)(rng.NextDouble() * 2.0 - 1.0) * ivyParameters.leafRandomRotation.y;
+            float rz = (float)(rng.NextDouble() * 2.0 - 1.0) * ivyParameters.leafRandomRotation.z;
 
             leafRotation = Quaternion.AngleAxis(rx, left) *
                            Quaternion.AngleAxis(ry, lastPointUpward) *

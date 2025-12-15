@@ -45,25 +45,25 @@ namespace TeamCrescendo.ProceduralIvy
         private static float angleStep;
         private static Matrix4x4 worldToLocalMatrix;
 
-        public static bool Build(InfoPool infoPool, Transform root, MeshRenderer mr, Mesh targetMesh)
+        public static bool Build(IvyData ivyData, Transform root, MeshRenderer mr, Mesh targetMesh)
         {
-            if (infoPool == null || root == null || mr == null || targetMesh == null)
+            if (ivyData == null || root == null || mr == null || targetMesh == null)
                 throw new ArgumentNullException();
 
-            if (infoPool.ivyContainer.branches.Count == 0)
+            if (ivyData.ivyContainer.branches.Count == 0)
             {
                 targetMesh.Clear();
                 return false;
             }
 
-            CachePrefabData(infoPool);
+            CachePrefabData(ivyData);
 
-            InitializeMaterialsAndBuckets(infoPool, mr);
+            InitializeMaterialsAndBuckets(ivyData, mr);
 
-            CalculateCountsAndOffsets(infoPool, out int totalVerts, out int totalBranchTris,
+            CalculateCountsAndOffsets(ivyData, out int totalVerts, out int totalBranchTris,
                 out int[] branchVertOffsets, out int[] branchTriOffsets, out Dictionary<int, int[]> leafVertOffsets);
 
-            long limit = infoPool.ivyParameters.buffer32Bits ? Constants.VERTEX_LIMIT_32 : Constants.VERTEX_LIMIT_16;
+            long limit = ivyData.ivyParameters.buffer32Bits ? Constants.VERTEX_LIMIT_32 : Constants.VERTEX_LIMIT_16;
             if (totalVerts > limit)
             {
                 Debug.Log($"Vertex count exceeds limit. Required: {totalVerts}, Limit: {limit}");
@@ -86,15 +86,15 @@ namespace TeamCrescendo.ProceduralIvy
 
             // cache common vairables
             worldToLocalMatrix = root.worldToLocalMatrix;
-            float totalAngle = infoPool.ivyParameters.halfgeom ? 180f : 360f;
-            angleStep = totalAngle / infoPool.ivyParameters.sides;
+            float totalAngle = ivyData.ivyParameters.halfgeom ? 180f : 360f;
+            angleStep = totalAngle / ivyData.ivyParameters.sides;
 
             // We pass the pre-calculated offsets so threads know where to write
-            BuildGeometryParallel(infoPool, root, branchVertOffsets, branchTriOffsets, leafVertOffsets);
+            BuildGeometryParallel(ivyData, root, branchVertOffsets, branchTriOffsets, leafVertOffsets);
 
             // update mesh
             targetMesh.Clear();
-            targetMesh.indexFormat = infoPool.ivyParameters.buffer32Bits ? IndexFormat.UInt32 : IndexFormat.UInt16;
+            targetMesh.indexFormat = ivyData.ivyParameters.buffer32Bits ? IndexFormat.UInt32 : IndexFormat.UInt16;
 
             targetMesh.SetVertices(verts, 0, totalVerts);
             targetMesh.SetNormals(normals, 0, totalVerts);
@@ -113,7 +113,7 @@ namespace TeamCrescendo.ProceduralIvy
             return true;
         }
 
-        private static void CalculateCountsAndOffsets(InfoPool infoPool,
+        private static void CalculateCountsAndOffsets(IvyData ivyData,
             out int totalVerts, out int totalBranchTris,
             out int[] branchVertOffsets, out int[] branchTriOffsets,
             out Dictionary<int, int[]> leafVertOffsets)
@@ -121,23 +121,23 @@ namespace TeamCrescendo.ProceduralIvy
             totalVerts = 0;
             totalBranchTris = 0;
 
-            int branchCount = infoPool.ivyContainer.branches.Count;
+            int branchCount = ivyData.ivyContainer.branches.Count;
             branchVertOffsets = new int[branchCount];
             branchTriOffsets = new int[branchCount];
             leafVertOffsets = new Dictionary<int, int[]>();
 
-            int sidesPlusOne = infoPool.ivyParameters.sides + 1;
-            int sidesTimesSix = infoPool.ivyParameters.sides * 6;
-            int sidesTimesThree = infoPool.ivyParameters.sides * 3;
+            int sidesPlusOne = ivyData.ivyParameters.sides + 1;
+            int sidesTimesSix = ivyData.ivyParameters.sides * 6;
+            int sidesTimesThree = ivyData.ivyParameters.sides * 3;
 
-            if (infoPool.ivyParameters.generateBranches)
+            if (ivyData.ivyParameters.generateBranches)
             {
                 for (var i = 0; i < branchCount; i++)
                 {
                     branchVertOffsets[i] = totalVerts;
                     branchTriOffsets[i] = totalBranchTris;
 
-                    var branch = infoPool.ivyContainer.branches[i];
+                    var branch = ivyData.ivyContainer.branches[i];
                     int pointCount = branch.branchPoints.Count;
 
                     if (pointCount > 1)
@@ -148,7 +148,7 @@ namespace TeamCrescendo.ProceduralIvy
                 }
             }
 
-            if (infoPool.ivyParameters.generateLeaves)
+            if (ivyData.ivyParameters.generateLeaves)
             {
                 foreach (var kvp in leavesByMaterialIndex)
                 {
@@ -171,10 +171,10 @@ namespace TeamCrescendo.ProceduralIvy
             }
         }
 
-        private static void BuildGeometryParallel(InfoPool infoPool, Transform root,
+        private static void BuildGeometryParallel(IvyData ivyData, Transform root,
             int[] branchVertOffsets, int[] branchTriOffsets, Dictionary<int, int[]> leafVertOffsets)
         {
-            var par = infoPool.ivyParameters;
+            var par = ivyData.ivyParameters;
             int sides = par.sides;
             int sidesPlusOne = sides + 1;
             bool generateBranches = par.generateBranches;
@@ -187,9 +187,9 @@ namespace TeamCrescendo.ProceduralIvy
 
             if (generateBranches)
             {
-                Parallel.For(0, infoPool.ivyContainer.branches.Count, b =>
+                Parallel.For(0, ivyData.ivyContainer.branches.Count, b =>
                 {
-                    var branch = infoPool.ivyContainer.branches[b];
+                    var branch = ivyData.ivyContainer.branches[b];
                     int pointCount = branch.branchPoints.Count;
 
                     if (pointCount > 1)
@@ -210,7 +210,7 @@ namespace TeamCrescendo.ProceduralIvy
 
                             if (p != pointCount - 1)
                             {
-                                var vectors = CalculateVectors(infoPool, rootUp, p, b);
+                                var vectors = CalculateVectors(ivyData, rootUp, p, b);
                                 // Note: CalculateVectors reads other branches if b>0?? 
                                 // Original code: checks p-1, p+1 within SAME branch. Safe.
                                 // Branch 0 special case accesses 'firstVertexVector'. Safe (readonly).
@@ -299,7 +299,7 @@ namespace TeamCrescendo.ProceduralIvy
                         System.Random rng = new System.Random(leafData.branchIndex + par.randomSeed + matIndex + i);
 
                         var currentLeaf = leafData.leaf;
-                        var branch = infoPool.ivyContainer.branches[leafData.branchIndex];
+                        var branch = ivyData.ivyContainer.branches[leafData.branchIndex];
                         var cache = prefabCache[currentLeaf.chosenLeave];
 
                         Quaternion localRot = ProceduralIvyCommon.CalculateLeafOrientation(par,
@@ -307,15 +307,15 @@ namespace TeamCrescendo.ProceduralIvy
                             rng, out Vector3 forward, out Vector3 left);
 
                         // scale is shrinked when closer to tip
-                        float scale = par.minScale + (float)rng.NextDouble() * (par.maxScale - par.minScale);
+                        float scale = par.minLeafScale + (float)rng.NextDouble() * (par.maxLeafScale - par.minLeafScale);
                         scale *= Mathf.InverseLerp(branch.totalLength, branch.totalLength - par.tipInfluence,
                             currentLeaf.lpLength);
 
                         currentLeaf.leafScale = scale;
                         currentLeaf.leafCenter = worldToLocalMatrix.MultiplyPoint3x4(currentLeaf.point);
 
-                        Vector3 offset = left * par.offset.x + currentLeaf.lpUpward * par.offset.y 
-                                                             + currentLeaf.lpForward * par.offset.z;
+                        Vector3 offset = left * par.leafOffset.x + currentLeaf.lpUpward * par.leafOffset.y 
+                                                             + currentLeaf.lpForward * par.leafOffset.z;
 
                         // write verts with respect to offset (thread safe)
                         for (var v = 0; v < cache.vertexCount; v++)
@@ -351,14 +351,14 @@ namespace TeamCrescendo.ProceduralIvy
         }
 
         // --- Helper: Cache Prefab Data Including Arrays (Unity API not thread safe) ---
-        private static void CachePrefabData(InfoPool infoPool)
+        private static void CachePrefabData(IvyData ivyData)
         {
             prefabCache.Clear();
-            if (!infoPool.ivyParameters.generateLeaves) return;
+            if (!ivyData.ivyParameters.generateLeaves) return;
 
-            for (int i = 0; i < infoPool.ivyParameters.leavesPrefabs.Length; i++)
+            for (int i = 0; i < ivyData.ivyParameters.leavesPrefabs.Length; i++)
             {
-                var go = infoPool.ivyParameters.leavesPrefabs[i];
+                var go = ivyData.ivyParameters.leavesPrefabs[i];
                 if (go == null) continue;
                 var mf = go.GetComponent<MeshFilter>();
                 var mr = go.GetComponent<MeshRenderer>();
@@ -383,7 +383,7 @@ namespace TeamCrescendo.ProceduralIvy
         private static float CalculateRadius(IvyParameters par, float length)
         {
             float value = (Mathf.Sin(length * par.radiusVarFreq + par.radiusVarOffset) + 1f) * 0.5f;
-            return Mathf.Lerp(par.minRadius, par.maxRadius, value);
+            return Mathf.Lerp(par.minBranchRadius, par.maxBranchRadius, value);
         }
 
         private static void TriangulateBranchThreadSafe(IvyParameters par, BranchContainer branch, int triStartBase,
@@ -426,15 +426,15 @@ namespace TeamCrescendo.ProceduralIvy
             }
         }
 
-        private static void InitializeMaterialsAndBuckets(InfoPool infoPool, MeshRenderer mr)
+        private static void InitializeMaterialsAndBuckets(IvyData ivyData, MeshRenderer mr)
         {
             uniqueMaterials.Clear();
             foreach (var list in trisLeaves) list.Clear();
             leavesByMaterialIndex.Clear();
-            if (infoPool.ivyParameters.generateLeaves)
+            if (ivyData.ivyParameters.generateLeaves)
             {
                 var matToPrefabIndices = new Dictionary<Material, int>();
-                for (int i = 0; i < infoPool.ivyParameters.leavesPrefabs.Length; i++)
+                for (int i = 0; i < ivyData.ivyParameters.leavesPrefabs.Length; i++)
                 {
                     if (!prefabCache.TryGetValue(i, out var cache)) continue;
                     if (!matToPrefabIndices.ContainsKey(cache.material))
@@ -446,9 +446,9 @@ namespace TeamCrescendo.ProceduralIvy
                     }
                 }
 
-                for (int b = 0; b < infoPool.ivyContainer.branches.Count; b++)
+                for (int b = 0; b < ivyData.ivyContainer.branches.Count; b++)
                 {
-                    var branch = infoPool.ivyContainer.branches[b];
+                    var branch = ivyData.ivyContainer.branches[b];
                     for (int l = 0; l < branch.leaves.Count; l++)
                     {
                         var leaf = branch.leaves[l];
@@ -467,7 +467,7 @@ namespace TeamCrescendo.ProceduralIvy
             }
             else
             {
-                mr.sharedMaterials = new[] { infoPool.ivyParameters.branchesMaterial };
+                mr.sharedMaterials = new[] { ivyData.ivyParameters.branchesMaterial };
             }
         }
 
@@ -481,15 +481,15 @@ namespace TeamCrescendo.ProceduralIvy
             }
         }
 
-        private static Vector3[] CalculateVectors(InfoPool infoPool, Vector3 rootUp, int p, int b)
+        private static Vector3[] CalculateVectors(IvyData ivyData, Vector3 rootUp, int p, int b)
         {
             Vector3 firstVector, axis;
-            var branch = infoPool.ivyContainer.branches[b];
+            var branch = ivyData.ivyContainer.branches[b];
             if (b == 0 && p == 0)
             {
                 axis = rootUp;
-                if (!infoPool.ivyParameters.halfgeom) firstVector = infoPool.ivyContainer.firstVertexVector;
-                else firstVector = Quaternion.AngleAxis(90f, axis) * infoPool.ivyContainer.firstVertexVector;
+                if (!ivyData.ivyParameters.halfgeom) firstVector = ivyData.ivyContainer.firstVertexVector;
+                else firstVector = Quaternion.AngleAxis(90f, axis) * ivyData.ivyContainer.firstVertexVector;
             }
             else
             {
@@ -497,7 +497,7 @@ namespace TeamCrescendo.ProceduralIvy
                 else
                     axis = Vector3.Lerp(branch.branchPoints[p].point - branch.branchPoints[p - 1].point,
                         branch.branchPoints[p + 1].point - branch.branchPoints[p].point, 0.5f).normalized;
-                if (!infoPool.ivyParameters.halfgeom)
+                if (!ivyData.ivyParameters.halfgeom)
                     firstVector = Vector3.ProjectOnPlane(branch.branchPoints[p].grabVector, axis).normalized;
                 else
                     firstVector = Quaternion.AngleAxis(90f, axis) *

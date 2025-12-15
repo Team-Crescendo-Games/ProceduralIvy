@@ -6,7 +6,7 @@ namespace TeamCrescendo.ProceduralIvy
 {
     [Serializable]
     [PreferBinarySerialization]
-    public class InfoPool : ScriptableObject
+    public class IvyData : ScriptableObject
     {
         public IvyContainer ivyContainer;
         public IvyParameters ivyParameters;

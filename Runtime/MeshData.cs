@@ -81,20 +81,12 @@ namespace TeamCrescendo.ProceduralIvy
 
         public int VertexCount() => vertices.Count;
 
-        public void Clear()
-        {
-            vertices.Clear();
-            normals.Clear();
-            uv.Clear();
-            colors32.Clear();
-            foreach (var triangleList in triangles)
-                triangleList.Clear();
-        }
-
         // Apply mesh data to a particular mesh at runtime
-        public void Apply(Mesh targetMesh, int submeshCount, bool generateLeaves)
+        public void Apply(Mesh targetMesh, int submeshCount, bool generateLeaves, bool clearMesh=false)
         {
-            targetMesh.Clear();
+            if (clearMesh)
+                targetMesh.Clear();
+            
             targetMesh.subMeshCount = submeshCount;
             targetMesh.MarkDynamic(); 
 

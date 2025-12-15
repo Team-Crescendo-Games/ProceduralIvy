@@ -8,7 +8,7 @@ namespace TeamCrescendo.ProceduralIvy
 {
     public class RuntimeMeshBuilder
     {
-        public MeshData processedMeshData;
+        public readonly MeshData processedMeshData;
         
         private readonly IvyParameters ivyParameters;
         private readonly List<List<int>> processedBranchesVerticesIndicesPerBranch;
@@ -21,18 +21,8 @@ namespace TeamCrescendo.ProceduralIvy
         private readonly int[] submeshByChosenLeaf;
         private readonly int submeshCount;
         
-        private int endIdxLeaves;
-        private int initIdxLeaves;
-        private int lastLeafVertProcessed;
-        private int lastPointCopied;
-        private int lastVertCount;
-        private int lastVertexIndex;
-        private int lastVerticesCountProcessed;
-        private bool onOptimizedStretch;
-        private int vertCount;
-
         public RuntimeMeshBuilder(IvyParameters ivyParameters, IvyContainer ivyContainer,
-            int numBranches, Mesh processedMesh, MeshRenderer mrProcessedMesh, 
+            int numBranches, Mesh processedMesh, Mesh originalMesh, MeshRenderer mrProcessedMesh, 
             int backtrackingPoints, int[] submeshByChosenLeaf, 
             MeshData[] leavesMeshesByChosenLeaf, List<Material> materials)
         {
@@ -62,8 +52,6 @@ namespace TeamCrescendo.ProceduralIvy
                 processedBranchesVerticesIndicesPerBranch.Add(new List<int>());
             }
 
-            vertCount = 0;
-
             var filteredMaterials = new List<Material> { materials[0] };
 
             if (ivyParameters.generateLeaves)
@@ -73,11 +61,8 @@ namespace TeamCrescendo.ProceduralIvy
             }
 
             mrProcessedMesh.SetSharedMaterials(filteredMaterials);
-        }
-
-        public void InitializeMeshesDataBaked(Mesh bakedMesh)
-        {
-            processedMeshData = new MeshData(bakedMesh.vertexCount, bakedMesh.subMeshCount);
+            
+            processedMeshData = new MeshData(originalMesh.vertexCount, originalMesh.subMeshCount);
         }
 
         public void CheckCopyMesh(int branchIndex, List<BranchContainer> bakedBranches)

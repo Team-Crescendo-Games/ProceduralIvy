@@ -63,7 +63,7 @@ namespace TeamCrescendo.ProceduralIvy
         private void PerformDelete()
         {
             for (var i = 0; i < branchesToRemove.Count; i++)
-                infoPool.ivyContainer.RemoveBranch(branchesToRemove[i]);
+                IvyData.ivyContainer.RemoveBranch(branchesToRemove[i]);
             branchesToRemove.Clear();
         }
 
@@ -73,7 +73,7 @@ namespace TeamCrescendo.ProceduralIvy
             {
                 if (pointsToCheck[i].newBranch && pointsToCheck[i].newBranchNumber != cursorSelectedBranch.branchNumber)
                 {
-                    var orphanBranch = infoPool.ivyContainer.GetBranchContainerByBranchNumber(pointsToCheck[i].newBranchNumber);
+                    var orphanBranch = IvyData.ivyContainer.GetBranchContainerByBranchNumber(pointsToCheck[i].newBranchNumber);
                     if (orphanBranch != null && !branchesToRemove.Contains(orphanBranch))
                     {
                         branchesToRemove.Add(orphanBranch);

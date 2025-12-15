@@ -81,7 +81,7 @@ namespace TeamCrescendo.ProceduralIvy
                 cursorSelectedBranch.RemoveRange(pointsToRemove[0].index, pointsToRemove.Count);
 
             for (var i = 0; i < branchesToRemove.Count; i++) 
-                infoPool.ivyContainer.RemoveBranch(branchesToRemove[i]);
+                IvyData.ivyContainer.RemoveBranch(branchesToRemove[i]);
         }
 
         private void CheckOrphanBranches(List<BranchPoint> pointsToCheck)
@@ -91,7 +91,7 @@ namespace TeamCrescendo.ProceduralIvy
                 if (pointsToCheck[i].newBranch && pointsToCheck[i].newBranchNumber != cursorSelectedBranch.branchNumber)
                 {
                     var orphanBranch =
-                        infoPool.ivyContainer.GetBranchContainerByBranchNumber(pointsToCheck[i].newBranchNumber);
+                        IvyData.ivyContainer.GetBranchContainerByBranchNumber(pointsToCheck[i].newBranchNumber);
                     if (orphanBranch != null)
                     {
                         branchesToRemove.Add(orphanBranch);

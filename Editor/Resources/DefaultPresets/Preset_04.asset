@@ -12,12 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 14d7701cd56353b42a02be1296fa2511, type: 3}
   m_Name: Preset_04
   m_EditorClassIdentifier: 
-  presetName: 
   ivyParameters:
     stepSize: 0.05
     randomSeed: 0
-    branchProvability: 0.02
-    maxBranchs: 15
+    branchProbability: 0
+    maxBranches: 1
     layerMask:
       serializedVersion: 2
       m_Bits: 4294967295
@@ -29,29 +28,28 @@ MonoBehaviour:
     directionAmplitude: 50
     directionRandomness: 1
     gravity: {x: 0, y: -1, z: 0}
-    grabProvabilityOnFall: 1
+    grabProbabilityOnFall: 1
     stiffness: 0.03
-    optAngleBias: 15
-    leaveEvery: 2
-    randomLeaveEvery: 1
+    optimizationAngle: 15
     buffer32Bits: 0
     halfgeom: 1
     sides: 3
-    minRadius: 0.01
-    maxRadius: 0.005
+    minBranchRadius: 0.01
+    maxBranchRadius: 0.005
     radiusVarFreq: 1
     radiusVarOffset: 0
     tipInfluence: 1
     uvScale: {x: 0.5, y: 10}
     uvOffset: {x: 0, y: 0}
-    minScale: 0.7
-    maxScale: 1.2
-    globalOrientation: 1
-    globalRotation: {x: -0, y: -1, z: -0}
-    rotation: {x: 30, y: 180, z: 0}
-    randomRotation: {x: 30, y: 24, z: 22}
-    offset: {x: 0, y: 0, z: 0}
-    LMUVPadding: 0.002
+    leaveEvery: 2
+    randomLeaveEvery: 1
+    minLeafScale: 0.7
+    maxLeafScale: 1.2
+    globalLeafOrientation: 1
+    globalLeafRotation: {x: -0, y: -1, z: -0}
+    leafLocalRotation: {x: 30, y: 180, z: 0}
+    leafRandomRotation: {x: 30, y: 24, z: 22}
+    leafOffset: {x: 0, y: 0, z: 0}
     branchesMaterial: {fileID: 2100000, guid: 2bc7758f26740d140ab9279be99c3fd2, type: 2}
     leavesPrefabs:
     - {fileID: 8649792681698546789, guid: 9db539a4d0a28c74e90ecadfd390efb3, type: 3}

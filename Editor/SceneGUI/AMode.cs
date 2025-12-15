@@ -6,7 +6,7 @@ namespace TeamCrescendo.ProceduralIvy
 {
     public abstract class AMode
     {
-        protected InfoPool infoPool;
+        protected IvyData IvyData;
         protected Vector3 mouseNormal;
         protected Vector3 mousePoint;
 
@@ -18,9 +18,9 @@ namespace TeamCrescendo.ProceduralIvy
 
         protected bool toolPaintingAllowed;
 
-        public void Init(InfoPool infoPool)
+        public void Init(IvyData ivyData)
         {
-            this.infoPool = infoPool;
+            this.IvyData = ivyData;
         }
 
         public void Update(Event currentEvent, Rect forbiddenRect)
@@ -52,13 +52,13 @@ namespace TeamCrescendo.ProceduralIvy
 
         protected void SelectBranchPointSS(Vector2 mousePosition, float brushSize)
         {
-            if (infoPool == null) return;
+            if (IvyData == null) return;
             
             var minDistance = brushSize;
             cursorSelectedBranch = null;
             cursorSelectedPoint = null;
 
-            var nearestSegment = infoPool.ivyContainer.GetNearestSegmentSSBelowDistance(mousePosition, minDistance);
+            var nearestSegment = IvyData.ivyContainer.GetNearestSegmentSSBelowDistance(mousePosition, minDistance);
 
             if (nearestSegment != null)
             {
@@ -86,7 +86,7 @@ namespace TeamCrescendo.ProceduralIvy
         {
             var mouseScreenPos = Event.current.mousePosition;
             var ray = HandleUtility.GUIPointToWorldRay(mouseScreenPos);
-            LayerMask mask = infoPool ? infoPool.ivyParameters.layerMask : ~0;
+            LayerMask mask = IvyData ? IvyData.ivyParameters.layerMask : ~0;
             if (Physics.Raycast(ray, out RaycastHit hit, distance, mask))
             {
                 SceneView.lastActiveSceneView.Repaint();
@@ -99,8 +99,8 @@ namespace TeamCrescendo.ProceduralIvy
 
         protected void RefreshMesh(bool repositionLeaves, bool updatePositionLeaves)
         {
-            if (repositionLeaves && infoPool.ivyParameters.generateLeaves)
-                foreach (var branch in infoPool.ivyContainer.branches)
+            if (repositionLeaves && IvyData.ivyParameters.generateLeaves)
+                foreach (var branch in IvyData.ivyContainer.branches)
                     branch.RepositionLeaves(updatePositionLeaves);
             
             ProceduralIvyEditorWindow.Instance.RebuildMesh(true);

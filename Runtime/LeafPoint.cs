@@ -96,9 +96,9 @@ namespace TeamCrescendo.ProceduralIvy
             Quaternion rootRotInv = Quaternion.Inverse(rootTransform.rotation);
             Quaternion finalRot = rootRotInv * randomLocalRot;
 
-            Vector3 worldOffset = GetLeafLeft() * ivyParameters.offset.x 
-                                  + lpUpward * ivyParameters.offset.y 
-                                  + lpForward * ivyParameters.offset.z;
+            Vector3 worldOffset = GetLeafLeft() * ivyParameters.leafOffset.x 
+                                  + lpUpward * ivyParameters.leafOffset.y 
+                                  + lpForward * ivyParameters.leafOffset.z;
 
             Vector3 relativePos = point + worldOffset - rootTransform.position;
             Vector3 finalPosOffset = rootRotInv * relativePos;

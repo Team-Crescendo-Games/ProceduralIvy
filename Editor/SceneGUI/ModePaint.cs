@@ -131,7 +131,7 @@ namespace TeamCrescendo.ProceduralIvy
         
         private Vector3 GetMousePointOverBranch(Event currentEvent, float brushSize)
         {
-            var nearestSegment = infoPool.ivyContainer.GetNearestSegmentSS(currentEvent.mousePosition);
+            var nearestSegment = IvyData.ivyContainer.GetNearestSegmentSS(currentEvent.mousePosition);
 
             Vector2 segment1PointSS = nearestSegment[0].GetScreenspacePosition();
             Vector2 segment2PointSS = nearestSegment[1].GetScreenspacePosition();
@@ -179,7 +179,7 @@ namespace TeamCrescendo.ProceduralIvy
                     RefreshMesh(true, true);
                 }
 
-                rayCastHit = RayCastSceneView(brushDistance + infoPool.ivyParameters.maxDistanceToSurface * 1.5f);
+                rayCastHit = RayCastSceneView(brushDistance + IvyData.ivyParameters.maxDistanceToSurface * 1.5f);
             }
             else
             {
@@ -193,19 +193,19 @@ namespace TeamCrescendo.ProceduralIvy
                 mouseNormal = -SceneView.currentDrawingSceneView.camera.transform.forward;
             }
 
-            var needToCreateNewIvy = infoPool == null 
-                                     || infoPool.ivyContainer.branches.Count == 0
+            var needToCreateNewIvy = IvyData == null 
+                                     || IvyData.ivyContainer.branches.Count == 0
                                      || cursorSelectedBranch == null;
             
             if (needToCreateNewIvy)
             {
-                float minDist = infoPool ? infoPool.ivyParameters.minDistanceToSurface : 0.1f;
+                float minDist = IvyData ? IvyData.ivyParameters.minDistanceToSurface : 0.1f;
                 Vector3 originPoint = mousePoint + mouseNormal * minDist;
                 Vector3 originNormal = -mouseNormal;
                 ProceduralIvyEditorWindow.Instance.CreateNewIvyGameObject(originPoint, originNormal);
                 ProceduralIvyEditorWindow.Instance.StartGrowthIvy(originPoint, originNormal);
-                infoPool = ProceduralIvyEditorWindow.Instance.CurrentIvyInfo.infoPool;
-                Assert.IsNotNull(infoPool);
+                IvyData = ProceduralIvyEditorWindow.Instance.CurrentIvyInfo.ivyData;
+                Assert.IsNotNull(IvyData);
             }
 
             if (!needToCreateNewIvy)
@@ -214,14 +214,14 @@ namespace TeamCrescendo.ProceduralIvy
                 
                 if (cursorSelectedPoint.index != cursorSelectedBranch.branchPoints.Count - 1)
                 {
-                    EditorIvyGrowth.AddBranch(infoPool, cursorSelectedBranch, cursorSelectedPoint, mouseNormal);
-                    cursorSelectedBranch = infoPool.ivyContainer.branches[^1];
+                    EditorIvyGrowth.AddBranch(IvyData, cursorSelectedBranch, cursorSelectedPoint, mouseNormal);
+                    cursorSelectedBranch = IvyData.ivyContainer.branches[^1];
                     cursorSelectedPoint = cursorSelectedBranch.branchPoints[0];
                 }
             }
             else
             {
-                cursorSelectedBranch = infoPool.ivyContainer.branches[0];
+                cursorSelectedBranch = IvyData.ivyContainer.branches[0];
                 cursorSelectedPoint = cursorSelectedBranch.branchPoints[0];
             }
             
@@ -231,7 +231,7 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void HandleMouseDrag(Event currentEvent)
         {
-            if (!RayCastSceneView(brushDistance + infoPool.ivyParameters.maxDistanceToSurface * 1.5f))
+            if (!RayCastSceneView(brushDistance + IvyData.ivyParameters.maxDistanceToSurface * 1.5f))
             {
                 RefreshBrushDistance();
                 mousePoint = RefreshBrushWS(currentEvent);
@@ -249,7 +249,7 @@ namespace TeamCrescendo.ProceduralIvy
 
         private void CheckPainting()
         {
-            if (cursorSelectedPoint != null && Vector3.Distance(mousePoint, cursorSelectedPoint.point) > infoPool.ivyParameters.stepSize)
+            if (cursorSelectedPoint != null && Vector3.Distance(mousePoint, cursorSelectedPoint.point) > IvyData.ivyParameters.stepSize)
             {
                 ProcessPoints();
             }
@@ -259,7 +259,7 @@ namespace TeamCrescendo.ProceduralIvy
         {
             cursorSelectedBranch.currentHeight = 0.001f;
             var distance = Vector3.Distance(mousePoint, cursorSelectedPoint.point);
-            var numPoints = Mathf.CeilToInt(distance / infoPool.ivyParameters.stepSize);
+            var numPoints = Mathf.CeilToInt(distance / IvyData.ivyParameters.stepSize);
             var newGrowDirection = (mousePoint - cursorSelectedPoint.point).normalized;
             var srcPoint = cursorSelectedPoint.point;
 
@@ -267,8 +267,8 @@ namespace TeamCrescendo.ProceduralIvy
 
             for (var i = 1; i < numPoints; i++)
             {
-                var intermediatePoint = srcPoint + i * infoPool.ivyParameters.stepSize * newGrowDirection;
-                EditorIvyGrowth.AddPoint(infoPool, cursorSelectedBranch, intermediatePoint, mouseNormal);
+                var intermediatePoint = srcPoint + i * IvyData.ivyParameters.stepSize * newGrowDirection;
+                EditorIvyGrowth.AddPoint(IvyData, cursorSelectedBranch, intermediatePoint, mouseNormal);
                 cursorSelectedPoint = cursorSelectedPoint.GetNextPoint();
             }
 

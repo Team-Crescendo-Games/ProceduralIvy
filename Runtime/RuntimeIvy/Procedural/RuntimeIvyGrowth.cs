@@ -6,24 +6,24 @@ namespace TeamCrescendo.ProceduralIvy
 {
     public class RuntimeIvyGrowth
     {
-        private RTBranchContainer[] branchesPool;
+        private BranchContainer[] branchesPool;
         private int branchesPoolIndex;
         private int branchPointPoolIndex;
 
-        private RTBranchPoint[] branchPointsPool;
+        private BranchPoint[] branchPointsPool;
         private GameObject ivyGO;
         private IvyParameters ivyParameters;
-        private RTMeshData[] leavesMeshesByChosenLeaf;
+        private MeshData[] leavesMeshesByChosenLeaf;
 
         private LeafPoint[] leavesPool;
         private int leavesPoolIndex;
         private int maxNumVerticesPerLeaf;
 
         public Random.State randomstate;
-        private RTIvyContainer rtIvyContainer;
+        private IvyContainer rtIvyContainer;
 
-        public void Init(RTIvyContainer ivyContainer, IvyParameters ivyParameters,
-            GameObject ivyGO, RTMeshData[] leavesMeshesByChosenLeaf,
+        public void Init(IvyContainer ivyContainer, IvyParameters ivyParameters,
+            GameObject ivyGO, MeshData[] leavesMeshesByChosenLeaf,
             int numPoints, int numLeaves, int maxNumVerticesPerLeaf)
         {
             rtIvyContainer = ivyContainer;
@@ -32,26 +32,29 @@ namespace TeamCrescendo.ProceduralIvy
             this.leavesMeshesByChosenLeaf = leavesMeshesByChosenLeaf;
             this.maxNumVerticesPerLeaf = maxNumVerticesPerLeaf;
 
-            branchPointsPool = new RTBranchPoint[numPoints];
+            branchPointsPool = new BranchPoint[numPoints];
             branchPointPoolIndex = 0;
 
             for (var i = 0; i < numPoints; i++)
-                branchPointsPool[i] = new RTBranchPoint(ivyParameters);
+                branchPointsPool[i] = new BranchPoint();
 
             leavesPool = new LeafPoint[numLeaves];
             leavesPoolIndex = 0;
             for (var i = 0; i < numLeaves; i++)
                 leavesPool[i] = new LeafPoint(maxNumVerticesPerLeaf);
 
-            branchesPool = new RTBranchContainer[ivyParameters.maxBranches];
+            branchesPool = new BranchContainer[ivyParameters.maxBranches];
             for (var i = 0; i < ivyParameters.maxBranches; i++)
-                branchesPool[i] = new RTBranchContainer(numPoints, numLeaves);
+            {
+                branchesPool[i] = ScriptableObject.CreateInstance<BranchContainer>();
+                branchesPool[i].Init(numPoints, numLeaves);
+            }
 
             Random.InitState(Environment.TickCount);
 
             var firstBranch = GetNextBranchContainer();
 
-            ivyContainer.AddBranch(firstBranch);
+            ivyContainer.AddBranchRuntime(firstBranch);
 
             var nextRTBranchPoint = GetNextFreeBranchPoint();
             nextRTBranchPoint.SetValues(ivyGO.transform.position, -ivyGO.transform.up, false, 0);
@@ -70,7 +73,7 @@ namespace TeamCrescendo.ProceduralIvy
         }
 
         //Este método es para calcular la altura del próximo punto
-        private void CalculateNewHeight(RTBranchContainer branch)
+        private void CalculateNewHeight(BranchContainer branch)
         {
             branch.heightVar = (Mathf.Sin(branch.heightParameter * ivyParameters.DTSFrequency - 45f) + 1f) / 2f;
 
@@ -108,7 +111,7 @@ namespace TeamCrescendo.ProceduralIvy
         }
 
         //Si la rama no está cayendo (está agarrada a una superficie) calculamos la nueva altura del próximo punto y buscamos un muro delante. Si está cayendo, buscamos el próximo punto de la caída.
-        private void CalculateNewPoint(RTBranchContainer branch)
+        private void CalculateNewPoint(BranchContainer branch)
         {
             if (!branch.falling)
             {
@@ -122,7 +125,7 @@ namespace TeamCrescendo.ProceduralIvy
         }
 
         //Definimos el punto a checkear y la dirección a él. Tiramos un raycast y si está libre buscamos el suelo. Si por el contrario topamos con un muro, añadimos un punto y calculamos una nueva growdirection
-        private void CheckWall(RTBranchContainer branch)
+        private void CheckWall(BranchContainer branch)
         {
             var checkPoint = GetNextFreeBranchPoint();
             checkPoint.point = branch.GetLastBranchPoint().point + branch.growDirection * ivyParameters.stepSize +
@@ -148,7 +151,7 @@ namespace TeamCrescendo.ProceduralIvy
 
         //Si no encontramos muro en el paso anterior, entonces buscamos si tenemos suelo. tiramos el rayo y si da positivo, añadimos punto, calculamos growdirection y decimos al sistema que no estamos cayendo. Si por el contrario no 
         //hemos encontrado suelo, intenamos agarrarnos al otro lado de la posible esquina.
-        private void CheckFloor(RTBranchContainer branch, RTBranchPoint potentialPoint, Vector3 oldSurfaceNormal)
+        private void CheckFloor(BranchContainer branch, BranchPoint potentialPoint, Vector3 oldSurfaceNormal)
         {
             var ray = new Ray(potentialPoint.point, -oldSurfaceNormal);
             RaycastHit RC;
@@ -177,7 +180,7 @@ namespace TeamCrescendo.ProceduralIvy
         }
 
         //Si hábíamos perdido pie, comprobamos si estamos en una esquina e intentamos seguir por el otro lado de lamisma
-        private void CheckCorner(RTBranchContainer branch, RTBranchPoint potentialPoint, Vector3 oldSurfaceNormal)
+        private void CheckCorner(BranchContainer branch, BranchPoint potentialPoint, Vector3 oldSurfaceNormal)
         {
             var ray = new Ray(
                 potentialPoint.point + branch.branchPoints[branch.branchPoints.Count - 1].grabVector * 2f *
@@ -201,7 +204,7 @@ namespace TeamCrescendo.ProceduralIvy
         }
 
         //Este se usa si estamos en una caída. Está la probabilidad de buscar una superficie donde agarrarnos (checkgrabpoint). Si topamos con una superficie se añade punto y se dice al sistema que no estamos cayendo
-        private void CheckFall(RTBranchContainer branch)
+        private void CheckFall(BranchContainer branch)
         {
             var ray = new Ray(branch.branchPoints[branch.branchPoints.Count - 1].point, branch.growDirection);
             RaycastHit RC;
@@ -229,7 +232,7 @@ namespace TeamCrescendo.ProceduralIvy
         }
 
         //Con esto tiramos rayos alrededor del último punto buscando una superficie donde agarrarnos.
-        private void CheckGrabPoint(RTBranchContainer branch)
+        private void CheckGrabPoint(BranchContainer branch)
         {
             for (var i = 0; i < 6; i++)
             {
@@ -259,9 +262,9 @@ namespace TeamCrescendo.ProceduralIvy
         }
 
         //Añadimos punto y todo lo que ello conlleva. Está la posibilidad de spawnear una rama
-        public void AddPoint(RTBranchContainer branch, Vector3 point, Vector3 normal)
+        public void AddPoint(BranchContainer branch, Vector3 point, Vector3 normal)
         {
-            branch.totalLength += ivyParameters.stepSize;
+            branch.totalLenght += ivyParameters.stepSize;
 
             var branchPoint = GetNextFreeBranchPoint();
             branchPoint.SetValues(point + normal * branch.currentHeight, -normal);
@@ -298,7 +301,7 @@ namespace TeamCrescendo.ProceduralIvy
         }
 
         //Añadimos punto y todo lo que ello conlleva. Es ligeramente diferente a AddPoint. Está la posibilidad de spawnear una rama
-        private void AddFallingPoint(RTBranchContainer branch)
+        private void AddFallingPoint(BranchContainer branch)
         {
             var grabVector = branch.rotationOnFallIteration * branch.GetLastBranchPoint().grabVector;
 
@@ -318,7 +321,7 @@ namespace TeamCrescendo.ProceduralIvy
             if (ivyParameters.generateLeaves) AddLeave(branch);
         }
 
-        private void CalculateVerticesLastPoint(RTBranchContainer rtBranchContainer)
+        private void CalculateVerticesLastPoint(BranchContainer rtBranchContainer)
         {
             if (rtBranchContainer.branchPoints.Count > 1)
             {
@@ -333,21 +336,20 @@ namespace TeamCrescendo.ProceduralIvy
         }
 
         //Todo lo necesario para añadir una nueva hoja
-        private void AddLeave(RTBranchContainer branch)
+        private void AddLeave(BranchContainer branch)
         {
             if (branch.branchPoints.Count %
                 (ivyParameters.leaveEvery + Random.Range(0, ivyParameters.randomLeaveEvery)) == 0)
             {
                 var chosenLeaf = Random.Range(0, ivyParameters.leavesPrefabs.Length);
 
-                var initSegment = branch.branchPoints[branch.branchPoints.Count - 2];
-                var endSegment = branch.branchPoints[branch.branchPoints.Count - 1];
+                var initSegment = branch.branchPoints[^2];
+                var endSegment = branch.branchPoints[^1];
                 var leafPoint = Vector3.Lerp(initSegment.point, endSegment.point, 0.5f);
-
 
                 var leafScale = Random.Range(ivyParameters.minScale, ivyParameters.maxScale);
                 var leafAdded = GetNextLeafPoint();
-                leafAdded.SetValues(leafPoint, branch.totalLength, branch.growDirection,
+                leafAdded.SetValues(leafPoint, branch.totalLenght, branch.growDirection,
                     -branch.GetLastBranchPoint().grabVector, chosenLeaf, initSegment, endSegment, leafScale,
                     ivyParameters);
 
@@ -359,7 +361,7 @@ namespace TeamCrescendo.ProceduralIvy
         }
 
         //Todo lo necesario para añadir una rama
-        public void AddBranch(RTBranchContainer branch, RTBranchPoint originBranchPoint, Vector3 point, Vector3 normal)
+        public void AddBranch(BranchContainer branch, BranchPoint originBranchPoint, Vector3 point, Vector3 normal)
         {
             var newBranchContainer = GetNextBranchContainer();
 
@@ -375,16 +377,16 @@ namespace TeamCrescendo.ProceduralIvy
             newBranchContainer.heightParameter = branch.heightParameter;
             newBranchContainer.branchSense = ChooseBranchSense();
 
-            rtIvyContainer.AddBranch(newBranchContainer);
+            rtIvyContainer.AddBranchRuntime(newBranchContainer);
 
             originBranchPoint.InitBranchInThisPoint(newBranchContainer.branchNumber);
         }
 
         //Cálculos de nuevas growdirection en diferentes casuísticas
-        private void NewGrowDirection(RTBranchContainer branch)
+        private void NewGrowDirection(BranchContainer branch)
         {
             branch.growDirection = Vector3.Normalize(Vector3.ProjectOnPlane(Quaternion.AngleAxis(
-                    Mathf.Sin(branch.branchSense * branch.totalLength * ivyParameters.directionFrequency *
+                    Mathf.Sin(branch.branchSense * branch.totalLenght * ivyParameters.directionFrequency *
                               (1 + Random.Range(-ivyParameters.directionRandomness,
                                   ivyParameters.directionRandomness))) *
                     ivyParameters.directionAmplitude * ivyParameters.stepSize * 10f *
@@ -393,25 +395,25 @@ namespace TeamCrescendo.ProceduralIvy
                 branch.GetLastBranchPoint().grabVector));
         }
 
-        private void NewGrowDirectionAfterWall(RTBranchContainer branch, Vector3 oldSurfaceNormal,
+        private void NewGrowDirectionAfterWall(BranchContainer branch, Vector3 oldSurfaceNormal,
             Vector3 newSurfaceNormal)
         {
             branch.growDirection = Vector3.Normalize(Vector3.ProjectOnPlane(oldSurfaceNormal, newSurfaceNormal));
         }
 
-        private void NewGrowDirectionFalling(RTBranchContainer branch)
+        private void NewGrowDirectionFalling(BranchContainer branch)
         {
             var newGrowDirection =
                 Vector3.Lerp(branch.growDirection, ivyParameters.gravity, branch.fallIteration / 10f);
             newGrowDirection = Quaternion.AngleAxis(
-                Mathf.Sin(branch.branchSense * branch.totalLength * ivyParameters.directionFrequency * (1 +
+                Mathf.Sin(branch.branchSense * branch.totalLenght * ivyParameters.directionFrequency * (1 +
                     Random.Range(-ivyParameters.directionRandomness / 8f, ivyParameters.directionRandomness / 8f))) *
                 ivyParameters.directionAmplitude * ivyParameters.stepSize * 5f *
                 Mathf.Max(ivyParameters.directionRandomness / 8f, 1f),
                 branch.GetLastBranchPoint().grabVector) * newGrowDirection;
 
             newGrowDirection = Quaternion.AngleAxis(
-                Mathf.Sin(branch.branchSense * branch.totalLength * ivyParameters.directionFrequency / 2f *
+                Mathf.Sin(branch.branchSense * branch.totalLenght * ivyParameters.directionFrequency / 2f *
                           (1 + Random.Range(-ivyParameters.directionRandomness / 8f,
                               ivyParameters.directionRandomness / 8f))) *
                 ivyParameters.directionAmplitude * ivyParameters.stepSize * 5f *
@@ -422,26 +424,26 @@ namespace TeamCrescendo.ProceduralIvy
             branch.growDirection = newGrowDirection;
         }
 
-        private void NewGrowDirectionAfterFall(RTBranchContainer branch, Vector3 newSurfaceNormal)
+        private void NewGrowDirectionAfterFall(BranchContainer branch, Vector3 newSurfaceNormal)
         {
             branch.growDirection =
                 Vector3.Normalize(Vector3.ProjectOnPlane(-branch.GetLastBranchPoint().grabVector, newSurfaceNormal));
         }
 
-        private void NewGrowDirectionAfterGrab(RTBranchContainer branch, Vector3 newSurfaceNormal)
+        private void NewGrowDirectionAfterGrab(BranchContainer branch, Vector3 newSurfaceNormal)
         {
             branch.growDirection = Vector3.Normalize(Vector3.ProjectOnPlane(branch.growDirection, newSurfaceNormal));
         }
 
-        private void NewGrowDirectionAfterCorner(RTBranchContainer branch, Vector3 oldSurfaceNormal,
+        private void NewGrowDirectionAfterCorner(BranchContainer branch, Vector3 oldSurfaceNormal,
             Vector3 newSurfaceNormal)
         {
             branch.growDirection = Vector3.Normalize(Vector3.ProjectOnPlane(-oldSurfaceNormal, newSurfaceNormal));
         }
 
 
-        public Vector3 GetFirstVector(RTBranchPoint rtBranchPoint, RTBranchContainer rtBranchContainer,
-            RTIvyContainer rtIvyContainer, IvyParameters ivyParameters, Vector3 axis)
+        public Vector3 GetFirstVector(BranchPoint rtBranchPoint, BranchContainer rtBranchContainer,
+            IvyContainer rtIvyContainer, IvyParameters ivyParameters, Vector3 axis)
         {
             var firstVector = Vector3.zero;
 
@@ -464,8 +466,8 @@ namespace TeamCrescendo.ProceduralIvy
             return firstVector;
         }
 
-        public Vector3 GetLoopAxis(RTBranchPoint rtBranchPoint, RTBranchContainer rtBranchContainer,
-            RTIvyContainer rtIvyContainer, GameObject ivyGo)
+        public Vector3 GetLoopAxis(BranchPoint rtBranchPoint, BranchContainer rtBranchContainer,
+            IvyContainer rtIvyContainer, GameObject ivyGo)
         {
             var axis = Vector3.zero;
 
@@ -485,7 +487,7 @@ namespace TeamCrescendo.ProceduralIvy
             return axis;
         }
 
-        private RTBranchPoint GetNextFreeBranchPoint()
+        private BranchPoint GetNextFreeBranchPoint()
         {
             var res = branchPointsPool[branchPointPoolIndex];
             branchPointPoolIndex++;
@@ -496,7 +498,7 @@ namespace TeamCrescendo.ProceduralIvy
 
                 for (var i = branchPointPoolIndex; i < branchPointsPool.Length; i++)
                 {
-                    branchPointsPool[i] = new RTBranchPoint(ivyParameters);
+                    branchPointsPool[i] = new BranchPoint();
                 }
             }
 
@@ -521,7 +523,7 @@ namespace TeamCrescendo.ProceduralIvy
             return res;
         }
 
-        private RTBranchContainer GetNextBranchContainer()
+        private BranchContainer GetNextBranchContainer()
         {
             var res = branchesPool[branchesPoolIndex];
             branchesPoolIndex++;

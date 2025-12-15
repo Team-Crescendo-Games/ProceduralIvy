@@ -26,7 +26,7 @@ namespace TeamCrescendo.ProceduralIvy
         public float displacementFromInitSegment;
         public float leafScale;
         
-        public List<RTVertexData> vertices;
+        public List<VertexData> vertices;
 
         public LeafPoint(LeafPoint other)
         {
@@ -39,12 +39,12 @@ namespace TeamCrescendo.ProceduralIvy
             endSegmentIdx = other.endSegmentIdx;
             displacementFromInitSegment = other.displacementFromInitSegment;
             leafScale = other.leafScale;
-            vertices = new List<RTVertexData>(other.vertices);
+            vertices = new List<VertexData>(other.vertices);
         }
         
         public LeafPoint(int maxNumVertices)
         {
-            vertices = new List<RTVertexData>(maxNumVertices);
+            vertices = new List<VertexData>(maxNumVertices);
         }
 
         public LeafPoint(Vector3 point, float lpLength, Vector3 lpForward,
@@ -72,7 +72,7 @@ namespace TeamCrescendo.ProceduralIvy
         }
         
         public void SetValues(Vector3 point, float lpLength, Vector3 lpForward, Vector3 lpUpward,
-            int chosenLeave, RTBranchPoint initSegment, RTBranchPoint endSegment, float leafScale,
+            int chosenLeave, BranchPoint initSegment, BranchPoint endSegment, float leafScale,
             IvyParameters ivyParameters)
         {
             this.point = point;
@@ -85,10 +85,10 @@ namespace TeamCrescendo.ProceduralIvy
         
         public Vector2 GetScreenspacePosition() => HandleUtility.WorldToGUIPoint(point);
         
-        public void CreateVertices(IvyParameters ivyParameters, RTMeshData leafMeshData, Transform rootTransform)
+        public void CreateVertices(IvyParameters ivyParameters, MeshData leafMeshData, Transform rootTransform)
         {
             int numVertices = leafMeshData.vertices.Length;
-            vertices = new List<RTVertexData>(numVertices);
+            vertices = new List<VertexData>(numVertices);
 
             Quaternion randomLocalRot = IvyUtils.CalculateLeafOrientation(ivyParameters, 
                 lpForward, lpUpward, null, out _, out _);
@@ -107,7 +107,7 @@ namespace TeamCrescendo.ProceduralIvy
             {
                 Vector3 vertex = finalRot * leafMeshData.vertices[v] * leafScale + finalPosOffset;
                 Vector3 normal = finalRot * leafMeshData.normals[v];
-                vertices.Add(new RTVertexData(vertex, normal, leafMeshData.uv[v], leafMeshData.colors32[v]));
+                vertices.Add(new VertexData(vertex, normal, leafMeshData.uv[v], leafMeshData.colors32[v]));
             }
         }
     }

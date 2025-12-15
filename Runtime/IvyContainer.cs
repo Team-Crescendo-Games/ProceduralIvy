@@ -18,16 +18,41 @@ namespace TeamCrescendo.ProceduralIvy
         {
             branches = new List<BranchContainer>();
         }
+        
+        public static IvyContainer Create(Vector3 firstVertexVector)
+        {
+            IvyContainer container = CreateInstance<IvyContainer>();
+            container.firstVertexVector = firstVertexVector;
+            return container;
+        }
+        
+        public static IvyContainer Create(IvyContainer ivyContainer, IvyParameters ivyParameters, GameObject ivyGO,
+             MeshData[] leavesMeshesByChosenLeaf, Vector3 firstVertexVector)
+         {
+             IvyContainer container = CreateInstance<IvyContainer>();
+             
+             container.branches = new List<BranchContainer>(ivyContainer.branches.Count);
+
+             for (var i = 0; i < ivyContainer.branches.Count; i++)
+             {
+                 var rtBranch = CreateInstance<BranchContainer>();
+                 rtBranch.Init(ivyContainer.branches[i], ivyParameters, container, ivyGO, leavesMeshesByChosenLeaf);
+                 container.branches.Add(rtBranch);
+             }
+
+             container.firstVertexVector = firstVertexVector;
+             return container;
+         }
 
         public void Clear()
         {
             foreach (var branch in branches)
-                DeleteBranchAsset(branch);
+                DeleteBranch(branch);
 
             branches.Clear();
         }
         
-        private void DeleteBranchAsset(BranchContainer branch)
+        private void DeleteBranch(BranchContainer branch)
         {
 #if UNITY_EDITOR
             Undo.DestroyObjectImmediate(branch);
@@ -49,7 +74,7 @@ namespace TeamCrescendo.ProceduralIvy
                     .originPointOfThisBranch.index);
             
             branches.Remove(branchToDelete);
-            DeleteBranchAsset(branchToDelete);
+            DeleteBranch(branchToDelete);
             RefreshBranchIndexing();
         }
 
@@ -96,7 +121,7 @@ namespace TeamCrescendo.ProceduralIvy
             var res = 0f;
 
             var u = (point.x - a.x) * (b.x - a.x) + (point.y - a.y) * (b.y - a.y);
-            u = u / ((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y));
+            u /= ((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y));
 
             if (u < 0)
             {
@@ -120,10 +145,17 @@ namespace TeamCrescendo.ProceduralIvy
             return GetNearestSegmentSSBelowDistance(pointSS, float.MaxValue);
         }
 
-        public void AddBranch(BranchContainer newBranchContainer)
+        public void AddBranchEditor(BranchContainer newBranchContainer)
         {
             newBranchContainer.name = "BranchContainer";
             AssetDatabase.AddObjectToAsset(newBranchContainer, this);
+            branches.Add(newBranchContainer);
+            RefreshBranchIndexing();
+        }
+        
+        // runtime variant of AddBranch
+        public void AddBranchRuntime(BranchContainer newBranchContainer)
+        {
             branches.Add(newBranchContainer);
             RefreshBranchIndexing();
         }

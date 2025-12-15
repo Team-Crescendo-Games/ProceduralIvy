@@ -30,7 +30,7 @@ namespace TeamCrescendo.ProceduralIvy
         {
             var totalIvyLength = 0f;
             for (var i = 0; i < rtIvyContainer.branches.Count; i++)
-                totalIvyLength += rtIvyContainer.branches[i].totalLength;
+                totalIvyLength += rtIvyContainer.branches[i].totalLenght;
 
             currentLifetime = totalIvyLength / growthParameters.growthSpeed;
             currentLifetime *= 2;
@@ -38,7 +38,7 @@ namespace TeamCrescendo.ProceduralIvy
 
         protected override float GetNormalizedLifeTime()
         {
-            var res = rtBuildingIvyContainer.branches[0].totalLength / rtIvyContainer.branches[0].totalLength;
+            var res = rtBuildingIvyContainer.branches[0].totalLenght / rtIvyContainer.branches[0].totalLenght;
             res = Mathf.Clamp(res, 0.1f, 1f);
 
             return res;

@@ -2,12 +2,11 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Assertions;
-using UnityEngine.Serialization;
 
 namespace TeamCrescendo.ProceduralIvy
 {
     [Serializable]
-    public class RTMeshData
+    public class MeshData
     {
         public Vector3[] vertices;
         public Vector3[] normals;
@@ -19,7 +18,7 @@ namespace TeamCrescendo.ProceduralIvy
         private int vertCount;
         private int vertexIndex;
 
-        public RTMeshData(int numVertices, int numSubmeshes, List<int> numTrianglesPerSubmesh)
+        public MeshData(int numVertices, int numSubmeshes, List<int> numTrianglesPerSubmesh)
         {
             if (numVertices <= 0 || numSubmeshes <= 0 || numTrianglesPerSubmesh.Count != numSubmeshes)
                 throw new ArgumentException(
@@ -38,7 +37,7 @@ namespace TeamCrescendo.ProceduralIvy
             vertexIndex = 0;
         }
 
-        public RTMeshData(Mesh mesh)
+        public MeshData(Mesh mesh)
         {
             Assert.IsNotNull(mesh);
             

@@ -209,7 +209,7 @@ namespace TeamCrescendo.ProceduralIvy
                             // Since we only access this specific branch in this thread, it is safe.
                             // However, we cannot reuse the existing List object if the main thread is reading it.
                             // Usually strictly safe to create new here.
-                            branchPoint.verticesLoop = new List<RTVertexData>();
+                            branchPoint.verticesLoop = new List<VertexData>();
 
                             float radius = CalculateRadius(par, branchPoint.length);
                             branchPoint.radius = radius;
@@ -248,7 +248,7 @@ namespace TeamCrescendo.ProceduralIvy
                                     var vertexForRuntime = direction * radius + (branchPoint.point - rootPosition);
 
                                     // Writing to the list is safe (thread local context)
-                                    branchPoint.verticesLoop.Add(new RTVertexData(vertexForRuntime, normals[absIndex], uvs[absIndex], colors[absIndex]));
+                                    branchPoint.verticesLoop.Add(new VertexData(vertexForRuntime, normals[absIndex], uvs[absIndex], colors[absIndex]));
 
                                     currentVertBase++;
                                     localVertCount++;
@@ -269,7 +269,7 @@ namespace TeamCrescendo.ProceduralIvy
                                     0.5f * uvScale.x + uvOffset.x);
 
                                 var centerVertexPosition = worldToLocalMatrix.MultiplyPoint3x4(branchPoint.point);
-                                branchPoint.verticesLoop.Add(new RTVertexData(centerVertexPosition, normals[absIndex], uvs[absIndex], colors[absIndex]));
+                                branchPoint.verticesLoop.Add(new VertexData(centerVertexPosition, normals[absIndex], uvs[absIndex], colors[absIndex]));
 
                                 currentVertBase++;
                                 localVertCount++;
@@ -317,7 +317,7 @@ namespace TeamCrescendo.ProceduralIvy
                         var cache = prefabCache[currentLeaf.chosenLeave];
 
                         // Re-init runtime list
-                        currentLeaf.vertices = new List<RTVertexData>();
+                        currentLeaf.vertices = new List<VertexData>();
 
                         Quaternion localRot = IvyUtils.CalculateLeafOrientation(par,
                             currentLeaf.lpForward, currentLeaf.lpUpward, 
@@ -348,7 +348,7 @@ namespace TeamCrescendo.ProceduralIvy
                                 ? cache.colors32[v]
                                 : Color.white;
 
-                            currentLeaf.vertices.Add(new RTVertexData(verts[absIndex], normals[absIndex],
+                            currentLeaf.vertices.Add(new VertexData(verts[absIndex], normals[absIndex],
                                 uvs[absIndex], colors[absIndex]));
                         }
 

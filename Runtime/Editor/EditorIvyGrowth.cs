@@ -41,7 +41,7 @@ namespace TeamCrescendo.ProceduralIvy
             CalculateNewHeight(infoPool, newBranchContainer);
             newBranchContainer.branchSense = ChooseBranchSense();
 
-            infoPool.ivyContainer.AddBranch(newBranchContainer);
+            infoPool.ivyContainer.AddBranchEditor(newBranchContainer);
 
             Debug.Log($"Initialized new Editor Growth context: {newBranchContainer.branchNumber}. {infoPool}");
         }
@@ -96,7 +96,7 @@ namespace TeamCrescendo.ProceduralIvy
             newBranchContainer.branchSense = ChooseBranchSense();
             newBranchContainer.originPointOfThisBranch = originBranchPoint;
 
-            infoPool.ivyContainer.AddBranch(newBranchContainer);
+            infoPool.ivyContainer.AddBranchEditor(newBranchContainer);
 
             originBranchPoint.InitBranchInThisPoint(newBranchContainer.branchNumber);
         }

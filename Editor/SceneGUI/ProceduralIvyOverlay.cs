@@ -53,12 +53,21 @@ namespace TeamCrescendo.ProceduralIvy
 
             var settingsRow = new VisualElement { style = { flexDirection = FlexDirection.Row, marginBottom = 5 } };
             
+            var allowAutoSelect = new Toggle("Auto Select")
+            {
+                value = controller.AutoSelectIvy,
+                style = { marginRight = 10 }
+            };
+            allowAutoSelect.RegisterValueChangedCallback(evt => controller.AutoSelectIvy = evt.newValue);
+            settingsRow.Add(allowAutoSelect);
+            
             var radiusField = new FloatField("Radius")
             {
                 value = controller.BrushSize,
                 style = { flexGrow = 1, marginRight = 10 }
             };
             radiusField.RegisterValueChangedCallback(evt => controller.BrushSize = evt.newValue);
+            
             settingsRow.Add(radiusField);
 
             var curveContainer = new IMGUIContainer(() =>
@@ -70,7 +79,7 @@ namespace TeamCrescendo.ProceduralIvy
             };
             settingsRow.Add(new Label("Falloff:"));
             settingsRow.Add(curveContainer);
-
+            
             root.Add(settingsRow);
 
             var toolbar = new VisualElement
@@ -196,7 +205,7 @@ namespace TeamCrescendo.ProceduralIvy
                         btn.style.backgroundColor = new Color(0.25f, 0.25f, 0.25f, 1f);
                     }
                 }
-            }).Every(100);
+            }).Every(50);
 
             return root;
         }

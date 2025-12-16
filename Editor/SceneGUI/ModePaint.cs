@@ -13,9 +13,58 @@ namespace TeamCrescendo.ProceduralIvy
 
         private const float SnapSensitivity = 45f;
         private float brushDistance = 5f;
-
-        public void UpdateMode(Event currentEvent, Rect forbiddenRect)
+        
+        private void TryAutoSelectIvy(Vector2 mousePosition, float sensitivity)
         {
+            // 1. Find all Ivy components in the scene (This can be slow if you have hundreds, consider caching)
+            // Replace 'ProceduralIvy' with the actual name of your MonoBehaviour if different
+            var allIvies = Object.FindObjectsByType<IvyInfo>(FindObjectsInactive.Exclude, FindObjectsSortMode.None); 
+    
+            IvyInfo bestCandidate = null;
+            float closestDist = sensitivity;
+
+            foreach (var ivy in allIvies)
+            {
+                // Skip the one we are already editing
+                if (ivy.ivyData == IvyData) continue;
+                if (ivy.ivyData == null || ivy.ivyData.ivyContainer == null) continue;
+
+                foreach (var branch in ivy.ivyData.ivyContainer.branches)
+                {
+                    for (int i = 0; i < branch.branchPoints.Count - 1; i++)
+                    {
+                        var p1 = branch.branchPoints[i];
+                        var p2 = branch.branchPoints[i + 1];
+
+                        // Check distance to segment in Screen Space
+                        float dist = HandleUtility.DistancePointLine(mousePosition, 
+                            p1.GetScreenspacePosition(), 
+                            p2.GetScreenspacePosition());
+
+                        if (dist < closestDist)
+                        {
+                            closestDist = dist;
+                            bestCandidate = ivy;
+                        }
+                    }
+                }
+            }
+
+            if (bestCandidate != null)
+            {
+                // this forces editor window to refresh (could be slow in scenes with large ivies)
+                Selection.activeGameObject = bestCandidate.gameObject;
+                SceneView.RepaintAll();
+            }
+        }
+
+        public void UpdateMode(Event currentEvent, Rect forbiddenRect, bool allowAutoSelect)
+        {
+            if (allowAutoSelect && !painting && !currentEvent.alt && currentEvent.type == EventType.MouseMove)
+            {
+                TryAutoSelectIvy(currentEvent.mousePosition, 45f);
+            }
+            
             if (!painting)
             {
                 SelectBranchPointSS(currentEvent.mousePosition, SnapSensitivity);
@@ -104,6 +153,10 @@ namespace TeamCrescendo.ProceduralIvy
                 // Draw Snap Target (Where the branch will actually start)
                 Handles.color = Color.cyan;
                 Handles.DrawWireCube(mousePointWS, Vector3.one * 0.04f);
+                
+                Vector3[] orphanPath = GetPathFromBranch(cursorSelectedBranch);
+                for(int k=0; k < orphanPath.Length -1; k++)
+                    Handles.DrawDottedLine(orphanPath[k], orphanPath[k+1], 4f);
             }
             else // new root mode
             {

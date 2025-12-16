@@ -135,14 +135,6 @@ namespace TeamCrescendo.ProceduralIvy
             }
         }
 
-        private Vector3[] GetPathFromBranch(BranchContainer branch)
-        {
-            Vector3[] path = new Vector3[branch.branchPoints.Count];
-            for (int i = 0; i < branch.branchPoints.Count; i++)
-                path[i] = branch.branchPoints[i].point;
-            return path;
-        }
-
         private void DrawBrushPreview(Event currentEvent, float brushSize, bool isDeletable)
         {
             Vector3 brushCenter;

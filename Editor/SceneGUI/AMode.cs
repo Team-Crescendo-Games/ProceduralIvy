@@ -105,5 +105,13 @@ namespace TeamCrescendo.ProceduralIvy
             
             ProceduralIvyEditorWindow.Instance.RebuildMesh(true);
         }
+        
+        protected Vector3[] GetPathFromBranch(BranchContainer branch)
+        {
+            Vector3[] path = new Vector3[branch.branchPoints.Count];
+            for (int i = 0; i < branch.branchPoints.Count; i++)
+                path[i] = branch.branchPoints[i].point;
+            return path;
+        }
     }
 }

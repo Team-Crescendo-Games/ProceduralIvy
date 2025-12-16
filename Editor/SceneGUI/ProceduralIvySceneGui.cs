@@ -21,11 +21,12 @@ namespace TeamCrescendo.ProceduralIvy
             AddLeaf
         }
 
-        public float BrushSize { get; set; } = 100f;
-        public AnimationCurve BrushCurve { get; set; } = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
-        public ToolMode CurrentToolMode => toolMode;
+        public float BrushSize = 100f;
+        public AnimationCurve BrushCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
+        public bool AutoSelectIvy = true;
 
         private ToolMode toolMode = ToolMode.None;
+        public ToolMode CurrentToolMode => toolMode;
         private AMode currentMode;
         
         private readonly ModePaint modePaint = new();
@@ -108,7 +109,7 @@ namespace TeamCrescendo.ProceduralIvy
             switch (toolMode)
             {
                 case ToolMode.Paint:
-                    modePaint.UpdateMode(current, dummyRect);
+                    modePaint.UpdateMode(current, dummyRect, AutoSelectIvy);
                     break;
                 case ToolMode.Move:
                     modeMove.UpdateMode(current, dummyRect, BrushSize, BrushCurve);

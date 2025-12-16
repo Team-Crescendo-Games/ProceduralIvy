@@ -39,7 +39,7 @@
                     <ui:Button name="delete-btn" text="Delete Ivy Gameobject" class="half-width-btn" style="background-color: rgb(109, 46, 46);" />
                     <ui:VisualElement class="row" style="margin-top: 10px; margin-bottom: 10px;">
                         <ui:Button name="optimize-btn" text="Optimize" style="width: 308px;" />
-                        <uie:FloatField label="Angle" binding-path="ivyParameters.optAngleBias" style="flex-grow: 1; margin-left: 10px;" />
+                        <uie:FloatField label="Angle" binding-path="ivyParameters.optimizationAngle" style="flex-grow: 1; margin-left: 10px;" />
                     </ui:VisualElement>
                     <ui:VisualElement class="row">
                         <ui:Toggle label="Branches" binding-path="ivyParameters.generateBranches" style="flex-grow: 1;" />

@@ -83,7 +83,9 @@ namespace TeamCrescendo.ProceduralIvy
             this.leafScale = leafScale;
         }
         
+#if UNITY_EDITOR
         public Vector2 GetScreenspacePosition() => HandleUtility.WorldToGUIPoint(point);
+#endif
         
         public void CreateVertices(IvyParameters ivyParameters, MeshData leafMeshData, Transform rootTransform)
         {

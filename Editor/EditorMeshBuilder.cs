@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 using Debug = UnityEngine.Debug;
@@ -182,7 +181,6 @@ namespace TeamCrescendo.ProceduralIvy
             Vector2 uvScale = par.uvScale;
             Vector2 uvOffset = par.uvOffset;
             float stepSize = par.stepSize;
-            Vector3 rootPosition = root.position;
             Vector3 rootUp = root.up;
 
             if (generateBranches)
@@ -210,13 +208,7 @@ namespace TeamCrescendo.ProceduralIvy
 
                             if (p != pointCount - 1)
                             {
-                                var vectors = CalculateVectors(ivyData, rootUp, p, b);
-                                // Note: CalculateVectors reads other branches if b>0?? 
-                                // Original code: checks p-1, p+1 within SAME branch. Safe.
-                                // Branch 0 special case accesses 'firstVertexVector'. Safe (readonly).
-
-                                branchPoint.firstVector = vectors[0];
-                                branchPoint.axis = vectors[1];
+                                CalculateFirstVectorAndAxis(ivyData, rootUp, p, b, out branchPoint.firstVector, out branchPoint.axis);
 
                                 float tipInfluence = GetTipInfluence(par, branchPoint.length, branch.totalLength);
 
@@ -224,8 +216,8 @@ namespace TeamCrescendo.ProceduralIvy
                                 {
                                     int absIndex = currentVertBase;
 
-                                    var quat = Quaternion.AngleAxis(angleStep * v, vectors[1]);
-                                    var direction = quat * vectors[0];
+                                    var quat = Quaternion.AngleAxis(angleStep * v, branchPoint.axis);
+                                    var direction = quat * branchPoint.firstVector;
 
                                     Vector3 worldPos = direction * radius * tipInfluence + branchPoint.point;
                                     verts[absIndex] = worldToLocalMatrix.MultiplyPoint3x4(worldPos);
@@ -260,7 +252,6 @@ namespace TeamCrescendo.ProceduralIvy
                                 currentVertBase++;
                                 localVertCount++;
 
-                                // Triangulate (Pure math, writes to shared array at disjoint indices -> Safe)
                                 TriangulateBranchThreadSafe(par, branch, currentTriBase, currentVertBase, localVertCount);
                             }
                         }
@@ -481,9 +472,8 @@ namespace TeamCrescendo.ProceduralIvy
             }
         }
 
-        private static Vector3[] CalculateVectors(IvyData ivyData, Vector3 rootUp, int p, int b)
+        private static void CalculateFirstVectorAndAxis(IvyData ivyData, Vector3 rootUp, int p, int b, out Vector3 firstVector, out Vector3 axis)
         {
-            Vector3 firstVector, axis;
             var branch = ivyData.ivyContainer.branches[b];
             if (b == 0 && p == 0)
             {
@@ -503,8 +493,6 @@ namespace TeamCrescendo.ProceduralIvy
                     firstVector = Quaternion.AngleAxis(90f, axis) *
                                   Vector3.ProjectOnPlane(branch.branchPoints[p].grabVector, axis).normalized;
             }
-
-            return new[] { firstVector, axis };
         }
 
         private static float GetTipInfluence(IvyParameters infoPool, float length, float totalLength)

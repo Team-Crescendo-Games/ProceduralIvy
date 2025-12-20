@@ -23,4 +23,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed many null reference exceptions with ivy containers.
 - Changed how the preset system works by removing the need for GUI parameter serializer classes and maintaining preset versions.
 
-
+## [1.1.1] - 2025-12-20
+### Bug Fixes
+- Fixed a bug where the project does not build.

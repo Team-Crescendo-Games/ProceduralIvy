@@ -69,8 +69,10 @@ namespace TeamCrescendo.ProceduralIvy
              axis = branchPoint.axis;
          }
 
+#if UNITY_EDITOR
         public Vector2 GetScreenspacePosition() => HandleUtility.WorldToGUIPoint(point);
-
+#endif
+        
         public BranchPoint GetNextPoint() =>
             index < branchContainer.branchPoints.Count - 1 ? branchContainer.branchPoints[index + 1] : null;
 

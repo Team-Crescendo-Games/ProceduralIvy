@@ -20,7 +20,10 @@ Procedural Ivy is a Unity package that allows you to generate realistic ivy and 
   - Shave branches
   - Smooth curves
 - **Preset System** - Save and load ivy configurations
-- **Real-time Preview** - See your ivy grow in real-time
+  - Parameters that differ from the selected preset are highlighted in blue
+  - Right-click a parameter and choose "Reset to Preset" to restore it
+- **Real-time Preview** - See your ivy grow in real-time; parameter edits rebuild the mesh immediately
+- **Surface Cursor** - Paint and seed placement show a point cloud that follows nearby geometry, sized by the overlay's Radius field
 
 ### Runtime Features
 - **Procedural Growth** - Generate ivy dynamically at runtime
@@ -33,7 +36,6 @@ Procedural Ivy is a Unity package that allows you to generate realistic ivy and 
   - Leaf placement and probability
   - Radius variation
   - UV mapping
-- **Object Pooling** - Efficient runtime ivy generation with pooling support
 
 ### Technical Features
 - Unity 6000.0+ compatible
@@ -61,18 +63,17 @@ Procedural Ivy is a Unity package that allows you to generate realistic ivy and 
 
 ### Editor Usage
 
-1. Open the Procedural Ivy window: `Window > Procedural Ivy`
-2. Click "Create New Ivy" to start
-3. Adjust parameters in the window
+1. Open the Procedural Ivy window: `Tools > Team Crescendo > Procedural Ivy 2`
+2. Click "Place Seed Mode" and click a surface, or pick the Paint tool in the scene view's "Procedural Ivy Tool" overlay and click a surface
+3. Adjust parameters in the window; the mesh rebuilds as you edit, and changed values are highlighted in blue
 4. Use the editing tools to refine your ivy
-5. Save as a preset for reuse
+5. Click "Save to Preset" (or "Save as New Preset") to keep your changes; edits only affect the selected ivy until saved
 
 ### Runtime Usage
 
 1. Add an `IvyController` component to a GameObject
 2. Configure `IvyParameters` and `RuntimeGrowthParameters`
 3. Call `StartGrowth()` to begin procedural generation
-4. Use `IvyCaster` for spawning multiple ivy instances with pooling
 
 ```csharp
 // Example: Start ivy growth

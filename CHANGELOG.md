@@ -26,3 +26,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.1] - 2025-12-20
 ### Bug Fixes
 - Fixed a bug where the project does not build.
+
+## [1.1.2] - 2026-11-01
+### Added
+- Parameters that differ from the selected preset are highlighted in blue in the Procedural Ivy window.
+- Right-click any parameter field and choose "Reset to Preset" to restore that value from the selected preset (undoable).
+- Paint tool and Place Seed Mode show a surface-conforming point cloud cursor with a precise crosshair, instead of a fixed-size sphere. Its size follows the overlay's Radius field.
+### Changed
+- Editing a parameter in the Procedural Ivy window or the Inspector rebuilds the ivy mesh immediately (throttled by Mesh Rebuild Throttle). Undo/redo also rebuilds.
+- All ivy parameters are clamped to valid ranges (e.g. Sides 1-32, Leaves Probabilities 0-1, Max >= Min for paired values) in the window, the Inspector, and preset assets.
+- Leaves Probabilities always has one entry per leaf prefab; its size follows Leaves Prefabs.
+- Removed the unused `leafCenter` field from leaf points and cleaned up unused imports.
+- Removed Asset Store `AssetOrigin` metadata from `.meta` files.
+### Bug Fixes
+- Fixed the "Half Section" toggle not being bound to its parameter.
+- Fixed the paint cursor staying at the last surface point after the mouse left all surfaces.
+- Fixed growth throwing an index error when there were more leaf prefabs than leaf probabilities.
+- Fixed a division by zero when Sides or Leaf Interval was set to 0.

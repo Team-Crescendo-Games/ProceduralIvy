@@ -1,12 +1,5 @@
 fileFormatVersion: 2
 guid: 82485aa8f3fb941478b44d4f4ee3f058
-AssetOrigin:
-  serializedVersion: 1
-  productId: 181402
-  packageName: Real Ivy 2 Procedural Ivy Generator
-  packageVersion: 2.0.8
-  assetPath: Assets/3Dynamite/Real Ivy/SampleResources/Models/Leaves_Atlas.FBX
-  uploadId: 452850
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable:

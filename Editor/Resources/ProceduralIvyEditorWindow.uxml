@@ -1,5 +1,5 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
-    <Style src="project://database/Assets/ProceduralIvy/ProceduralIvy/Editor/Resources/ProceduralIvyWindow.uss?fileID=7433441132597879392&amp;guid=83bd14d2ea2c900428b3c9b584730dc4&amp;type=3#ProceduralIvyWindow" />
+    <Style src="ProceduralIvyWindow.uss" />
     <ui:VisualElement class="root-container">
         <ui:Label name="header-label" text="Editing object: None" class="header-box" style="margin-bottom: 5px; -unity-font-style: bold; height: 35px;" />
         <ui:Button text="Refresh Editor" name="refresh-btn" style="height: 25px; margin-bottom: 10px; margin-top: 5px;" />

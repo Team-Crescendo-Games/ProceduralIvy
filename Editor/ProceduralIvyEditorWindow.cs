@@ -140,11 +140,6 @@ namespace TeamCrescendo.ProceduralIvy
     
             visualTree.CloneTree(rootVisualElement);
 
-            // load stylesheet
-            var styleSheet = LoadAssetByName<StyleSheet>("ProceduralIvyWindow");
-            if (styleSheet != null && !rootVisualElement.styleSheets.Contains(styleSheet))
-                rootVisualElement.styleSheets.Add(styleSheet);
-            
             if (PresetDropdown != null) PresetDropdown.objectType = typeof(IvyPreset);
             if (SelectedPresetObjectField != null) SelectedPresetObjectField.objectType = typeof(IvyPreset);
 
@@ -1265,6 +1260,7 @@ namespace TeamCrescendo.ProceduralIvy
         }
 
         // Trackers live on a throwaway element so reselecting an ivy or preset replaces the old ones instead of stacking more.
+        // Unity allows an element to track only one SerializedObject, so each tracked object gets its own child.
         private void TrackParameterChanges()
         {
             parameterChangeTracker?.RemoveFromHierarchy();
@@ -1276,7 +1272,15 @@ namespace TeamCrescendo.ProceduralIvy
 
             parameterChangeTracker = new VisualElement { style = { display = DisplayStyle.None } };
             rootVisualElement.Add(parameterChangeTracker);
-            parameterChangeTracker.TrackPropertyValue(serializedIvyData.FindProperty(ParametersPath), _ =>
+
+            void Track(SerializedObject serializedObject, Action onChanged)
+            {
+                var tracker = new VisualElement();
+                parameterChangeTracker.Add(tracker);
+                tracker.TrackPropertyValue(serializedObject.FindProperty(ParametersPath), _ => onChanged());
+            }
+
+            Track(serializedIvyData, () =>
             {
                 CurrentIvyInfo.ivyData.ivyParameters.Validate();
                 serializedIvyData.Update();
@@ -1285,7 +1289,7 @@ namespace TeamCrescendo.ProceduralIvy
             });
 
             if (serializedPreset != null)
-                parameterChangeTracker.TrackPropertyValue(serializedPreset.FindProperty(ParametersPath), _ => RefreshModifiedParameters());
+                Track(serializedPreset, RefreshModifiedParameters);
         }
 
         private void RefreshModifiedParameters()

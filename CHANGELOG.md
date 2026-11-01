@@ -43,3 +43,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed the paint cursor staying at the last surface point after the mouse left all surfaces.
 - Fixed growth throwing an index error when there were more leaf prefabs than leaf probabilities.
 - Fixed a division by zero when Sides or Leaf Interval was set to 0.
+
+## [1.1.3] - 2026-11-01
+### Changed
+- The editor window UXML now references its stylesheet by a path relative to the UXML file, so the package works when imported at any location. The duplicate stylesheet lookup by name in the editor window was removed.
+### Bug Fixes
+- Fixed a `NotSupportedException` ("An element can track properties on only one serializedObject at a time") when selecting an ivy while a preset is selected. Preset changes (e.g. Save to Preset) now correctly refresh the modified-parameter highlights.

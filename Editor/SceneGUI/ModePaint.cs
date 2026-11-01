@@ -58,7 +58,7 @@ namespace TeamCrescendo.ProceduralIvy
             }
         }
 
-        public void UpdateMode(Event currentEvent, Rect forbiddenRect, bool allowAutoSelect)
+        public void UpdateMode(Event currentEvent, Rect forbiddenRect, float brushSize, bool allowAutoSelect)
         {
             if (allowAutoSelect && !painting && !currentEvent.alt && currentEvent.type == EventType.MouseMove)
             {
@@ -71,24 +71,27 @@ namespace TeamCrescendo.ProceduralIvy
                 
                 if (toolPaintingAllowed)
                 {
+                    bool surfaceHit = false;
+
                     // Calculate World Position Logic
                     if (cursorSelectedBranch != null)
                     {
                         // SNAP MODE: Lock to the calculated point on the branch
-                        mousePointWS = cursorSelectedPoint != null 
-                            ? cursorSelectedPoint.point 
+                        mousePointWS = cursorSelectedPoint != null
+                            ? cursorSelectedPoint.point
                             : GetMousePointOverBranch(currentEvent, SnapSensitivity);
                     }
                     else
                     {
                         // SURFACE MODE: Raycast against world to find new root position
-                        if (RayCastSceneView(2000f)) 
+                        surfaceHit = RayCastSceneView(2000f);
+                        if (surfaceHit)
                         {
                             mousePointWS = mousePoint;
                         }
                     }
 
-                    DrawPaintPreview(currentEvent);
+                    DrawPaintPreview(currentEvent, surfaceHit, brushSize);
                 }
 
                 SceneView.RepaintAll();
@@ -117,7 +120,7 @@ namespace TeamCrescendo.ProceduralIvy
                 StopPainting();
         }
 
-        private void DrawPaintPreview(Event currentEvent)
+        private void DrawPaintPreview(Event currentEvent, bool surfaceHit, float brushSize)
         {
             Handles.BeginGUI();
             
@@ -160,20 +163,12 @@ namespace TeamCrescendo.ProceduralIvy
             }
             else // new root mode
             {
-                // Only show this if we are hitting a surface and NOT near a branch
-                
-                if (mouseNormal != Vector3.zero) // Ensure we actually hit something in RayCastSceneView
+                if (surfaceHit)
                 {
                     GUI.Label(new Rect(labelPos.x, labelPos.y, 150, 20), "Start New Ivy", labelStyle);
                     Handles.EndGUI();
 
-                    Handles.color = EditorConstants.PaintBrushColor;
-
-                    // Draw a 3D sphere to show precise world position/depth
-                    Handles.SphereHandleCap(0, mousePointWS, Quaternion.LookRotation(mouseNormal), 0.1f, EventType.Repaint);
-    
-                    // Draw the normal stick so you can see surface orientation
-                    Handles.DrawLine(mousePointWS, mousePointWS + mouseNormal * 0.5f);
+                    SurfaceCursor.Draw(mousePointWS, mouseNormal, brushSize, EditorConstants.PaintBrushColor, SurfaceMask);
                 }
                 else
                 {

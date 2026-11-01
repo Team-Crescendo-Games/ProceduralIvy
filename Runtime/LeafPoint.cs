@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Serialization;
-using Random = UnityEngine.Random;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -13,7 +11,6 @@ namespace TeamCrescendo.ProceduralIvy
     public class LeafPoint
     {
         public Vector3 point;
-        public Vector3 leafCenter;
 
         public Vector3 lpForward;
         public Vector3 lpUpward;

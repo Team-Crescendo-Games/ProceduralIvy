@@ -18,6 +18,8 @@ namespace TeamCrescendo.ProceduralIvy
 
         protected bool toolPaintingAllowed;
 
+        protected LayerMask SurfaceMask => IvyData ? IvyData.ivyParameters.layerMask : ~0;
+
         public void Init(IvyData ivyData)
         {
             this.IvyData = ivyData;
@@ -86,8 +88,7 @@ namespace TeamCrescendo.ProceduralIvy
         {
             var mouseScreenPos = Event.current.mousePosition;
             var ray = HandleUtility.GUIPointToWorldRay(mouseScreenPos);
-            LayerMask mask = IvyData ? IvyData.ivyParameters.layerMask : ~0;
-            if (Physics.Raycast(ray, out RaycastHit hit, distance, mask))
+            if (Physics.Raycast(ray, out RaycastHit hit, distance, SurfaceMask))
             {
                 SceneView.lastActiveSceneView.Repaint();
                 mousePoint = hit.point;

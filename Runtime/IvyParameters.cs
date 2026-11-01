@@ -70,6 +70,43 @@ namespace TeamCrescendo.ProceduralIvy
             DeepCopy(preset);
         }
 
+        public void Validate()
+        {
+            stepSize = Mathf.Max(stepSize, 0.001f);
+            branchProbability = Mathf.Clamp01(branchProbability);
+            maxBranches = Mathf.Clamp(maxBranches, 1, 100);
+            minDistanceToSurface = Mathf.Max(minDistanceToSurface, 0f);
+            maxDistanceToSurface = Mathf.Max(maxDistanceToSurface, minDistanceToSurface);
+            DTSFrequency = Mathf.Max(DTSFrequency, 0f);
+            DTSRandomness = Mathf.Max(DTSRandomness, 0f);
+            directionFrequency = Mathf.Max(directionFrequency, 0f);
+            directionAmplitude = Mathf.Max(directionAmplitude, 0f);
+            directionRandomness = Mathf.Max(directionRandomness, 0f);
+            grabProbabilityOnFall = Mathf.Clamp01(grabProbabilityOnFall);
+            stiffness = Mathf.Clamp01(stiffness);
+            optimizationAngle = Mathf.Clamp(optimizationAngle, 0f, 180f);
+
+            sides = Mathf.Clamp(sides, 1, 32);
+            minBranchRadius = Mathf.Max(minBranchRadius, 0f);
+            maxBranchRadius = Mathf.Max(maxBranchRadius, minBranchRadius);
+            radiusVarFreq = Mathf.Max(radiusVarFreq, 0f);
+            tipInfluence = Mathf.Max(tipInfluence, 0f);
+
+            leaveEvery = Mathf.Max(leaveEvery, 1);
+            randomLeaveEvery = Mathf.Max(randomLeaveEvery, 0);
+            minLeafScale = Mathf.Max(minLeafScale, 0f);
+            maxLeafScale = Mathf.Max(maxLeafScale, minLeafScale);
+
+            // Growth indexes leavesProb by prefab index, so the arrays must stay the same length.
+            int previousLength = leavesProb.Length;
+            if (previousLength != leavesPrefabs.Length)
+            {
+                Array.Resize(ref leavesProb, leavesPrefabs.Length);
+                for (var i = previousLength; i < leavesProb.Length; i++) leavesProb[i] = 1f;
+            }
+            for (var i = 0; i < leavesProb.Length; i++) leavesProb[i] = Mathf.Clamp01(leavesProb[i]);
+        }
+
         public void DeepCopy(IvyPreset ivyPreset)
         {
             if (ivyPreset == null) return;

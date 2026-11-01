@@ -77,7 +77,7 @@
                 <ui:Label text="Topology" class="section-subtitle" style="margin-top: 5px; font-size: 15px;" />
                 <ui:VisualElement class="row">
                     <uie:IntegerField label="Sides" binding-path="ivyParameters.sides" style="flex-grow: 1; margin-right: 10px;" />
-                    <ui:Toggle label="Half Section" binding-path="ivyParameters.halfGeom" />
+                    <ui:Toggle label="Half Section" binding-path="ivyParameters.halfgeom" />
                 </ui:VisualElement>
                 <ui:VisualElement style="flex-grow: 1; background-color: rgba(0, 0, 0, 0.45); margin-top: 10px; margin-left: 5px; margin-right: 5px; margin-bottom: 0;">
                     <ui:Label text="Branch Viewer" style="-unity-font-style: bold; font-size: 15px; padding-left: 10px; padding-top: 5px; padding-right: 0;" />
@@ -86,7 +86,7 @@
             </ui:VisualElement>
             <ui:VisualElement name="contentLeaves" class="tab-content" style="margin-top: 10px; display: none;">
                 <ui:ListView binding-path="ivyParameters.leavesPrefabs" header-title="Leaves Prefabs" show-foldout-header="true" />
-                <ui:ListView header-title="Leaves Probabilities" binding-path="ivyParameters.leavesProb" show-foldout-header="true" />
+                <ui:ListView header-title="Leaves Probabilities" binding-path="ivyParameters.leavesProb" show-foldout-header="true" show-bound-collection-size="false" tooltip="One weight (0-1) per leaf prefab. Size follows Leaves Prefabs." />
                 <ui:Label text="Distribution" class="section-subtitle" style="font-size: 15px;" />
                 <ui:VisualElement class="row">
                     <uie:IntegerField label="Interval" binding-path="ivyParameters.leaveEvery" style="flex-grow: 1;" />

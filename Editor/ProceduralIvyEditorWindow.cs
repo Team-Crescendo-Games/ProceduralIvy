@@ -20,7 +20,13 @@ namespace TeamCrescendo.ProceduralIvy
     {
         public static ProceduralIvyEditorWindow Instance { get; private set; }
         
+        private const string ParametersPath = nameof(IvyData.ivyParameters);
+        private const string ModifiedParameterClass = "param-modified";
+
         private SerializedObject serializedIvyData;
+        private SerializedObject serializedPreset;
+        private VisualElement parameterChangeTracker;
+        private readonly List<(VisualElement field, string path)> parameterFields = new();
         private SerializedObject serializedEditorObject;
         
         private IvyInfo currentIvyInfo;
@@ -142,6 +148,7 @@ namespace TeamCrescendo.ProceduralIvy
             if (PresetDropdown != null) PresetDropdown.objectType = typeof(IvyPreset);
             if (SelectedPresetObjectField != null) SelectedPresetObjectField.objectType = typeof(IvyPreset);
 
+            SetupParameterFields();
             SetupTabs();
             RegisterTabCallbacks();
             RegisterCallbacks();
@@ -636,9 +643,7 @@ namespace TeamCrescendo.ProceduralIvy
 
                 if (Physics.Raycast(ray, out RaycastHit hit))
                 {
-                    Handles.color = new Color(0.3f, 1f, 0.3f, 0.8f);
-                    Handles.DrawSolidDisc(hit.point, hit.normal, 0.2f);
-                    Handles.DrawLine(hit.point, hit.point + hit.normal * 0.5f);
+                    SurfaceCursor.Draw(hit.point, hit.normal, SceneGuiController.BrushSize, EditorConstants.PaintBrushColor, Physics.DefaultRaycastLayers);
 
                     if (e.type == EventType.MouseDown && e.button == 0)
                     {
@@ -908,6 +913,7 @@ namespace TeamCrescendo.ProceduralIvy
             
             currentSelectedPreset = presetSelectedInDropdown;
             RebindEditorSerializedObject();
+            TrackParameterChanges();
         }
 
         private void OnSavePresetClicked()
@@ -1197,6 +1203,7 @@ namespace TeamCrescendo.ProceduralIvy
             Repaint();
 
             OnSelectionChanged();
+            RebuildMesh();
         }
 
         private void OnSelectionChanged()
@@ -1218,6 +1225,7 @@ namespace TeamCrescendo.ProceduralIvy
                 // Create the SO and store it in the class member
                 serializedIvyData = new SerializedObject(CurrentIvyInfo.ivyData);
                 rootVisualElement.Bind(serializedIvyData);
+                TrackParameterChanges();
                 
                 if (HeaderLabel != null) HeaderLabel.text = $"Editing object: {ivy.name}";
                 if (IvyDataObjectField != null) IvyDataObjectField.value = CurrentIvyInfo.ivyData;
@@ -1229,6 +1237,7 @@ namespace TeamCrescendo.ProceduralIvy
                 CurrentIvyInfo = null;
                 serializedIvyData = null;
                 rootVisualElement.Unbind();
+                TrackParameterChanges();
                 
                 if (HeaderLabel != null) HeaderLabel.text = "Editing object: None";
                 if (IvyDataObjectField != null) IvyDataObjectField.value = null;
@@ -1239,8 +1248,73 @@ namespace TeamCrescendo.ProceduralIvy
 
         #endregion
 
+        #region Preset Overrides
+
+        private void SetupParameterFields()
+        {
+            rootVisualElement.Query<VisualElement>()
+                .Where(e => e is IBindable bindable && bindable.bindingPath != null && bindable.bindingPath.StartsWith(ParametersPath + "."))
+                .ForEach(field =>
+                {
+                    string path = ((IBindable)field).bindingPath;
+                    parameterFields.Add((field, path));
+                    field.AddManipulator(new ContextualMenuManipulator(evt => evt.menu.AppendAction("Reset to Preset",
+                        _ => ResetParameterToPreset(path),
+                        _ => field.ClassListContains(ModifiedParameterClass) ? DropdownMenuAction.Status.Normal : DropdownMenuAction.Status.Disabled)));
+                });
+        }
+
+        // Trackers live on a throwaway element so reselecting an ivy or preset replaces the old ones instead of stacking more.
+        private void TrackParameterChanges()
+        {
+            parameterChangeTracker?.RemoveFromHierarchy();
+            parameterChangeTracker = null;
+            serializedPreset = currentSelectedPreset ? new SerializedObject(currentSelectedPreset) : null;
+            RefreshModifiedParameters();
+
+            if (serializedIvyData == null) return;
+
+            parameterChangeTracker = new VisualElement { style = { display = DisplayStyle.None } };
+            rootVisualElement.Add(parameterChangeTracker);
+            parameterChangeTracker.TrackPropertyValue(serializedIvyData.FindProperty(ParametersPath), _ =>
+            {
+                CurrentIvyInfo.ivyData.ivyParameters.Validate();
+                serializedIvyData.Update();
+                RebuildMesh();
+                RefreshModifiedParameters();
+            });
+
+            if (serializedPreset != null)
+                parameterChangeTracker.TrackPropertyValue(serializedPreset.FindProperty(ParametersPath), _ => RefreshModifiedParameters());
+        }
+
+        private void RefreshModifiedParameters()
+        {
+            bool canCompare = serializedIvyData != null && serializedPreset != null;
+            if (canCompare)
+            {
+                serializedIvyData.UpdateIfRequiredOrScript();
+                serializedPreset.UpdateIfRequiredOrScript();
+            }
+
+            foreach (var (field, path) in parameterFields)
+            {
+                bool modified = canCompare && !SerializedProperty.DataEquals(serializedIvyData.FindProperty(path), serializedPreset.FindProperty(path));
+                field.EnableInClassList(ModifiedParameterClass, modified);
+            }
+        }
+
+        private void ResetParameterToPreset(string path)
+        {
+            serializedPreset.UpdateIfRequiredOrScript();
+            serializedIvyData.CopyFromSerializedProperty(serializedPreset.FindProperty(path));
+            serializedIvyData.ApplyModifiedProperties();
+        }
+
+        #endregion
+
         #region Mesh Helpers
-        
+
         public void RebuildMesh(bool immediate=false)
         {
             if (immediate) RebuildImmediate();

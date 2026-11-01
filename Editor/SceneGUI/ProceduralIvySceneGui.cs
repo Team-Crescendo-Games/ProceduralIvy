@@ -109,7 +109,7 @@ namespace TeamCrescendo.ProceduralIvy
             switch (toolMode)
             {
                 case ToolMode.Paint:
-                    modePaint.UpdateMode(current, dummyRect, AutoSelectIvy);
+                    modePaint.UpdateMode(current, dummyRect, BrushSize, AutoSelectIvy);
                     break;
                 case ToolMode.Move:
                     modeMove.UpdateMode(current, dummyRect, BrushSize, BrushCurve);

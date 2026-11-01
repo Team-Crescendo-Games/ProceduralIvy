@@ -82,6 +82,22 @@
     font-size: 10px;
 }
 
+/* PRESET OVERRIDES */
+.param-modified {
+    border-left-width: 2px;
+    border-left-color: rgb(60, 150, 230);
+    padding-left: 2px;
+}
+.param-modified > .unity-base-field__label {
+    color: rgb(120, 185, 255);
+}
+.param-modified .unity-base-text-field__input,
+.param-modified .unity-object-field__input,
+.param-modified .unity-base-popup-field__input,
+.param-modified .unity-toggle__checkmark {
+    background-color: rgb(40, 70, 110);
+}
+
 /* BUTTONS */
 .half-width-btn {
     flex-grow: 1;

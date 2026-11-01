@@ -7,5 +7,7 @@ namespace TeamCrescendo.ProceduralIvy
     public class IvyPreset : ScriptableObject
     {
         public IvyParameters ivyParameters;
+
+        private void OnValidate() => ivyParameters.Validate();
     }
 }

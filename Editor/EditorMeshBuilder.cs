@@ -303,7 +303,6 @@ namespace TeamCrescendo.ProceduralIvy
                             currentLeaf.lpLength);
 
                         currentLeaf.leafScale = scale;
-                        currentLeaf.leafCenter = worldToLocalMatrix.MultiplyPoint3x4(currentLeaf.point);
 
                         Vector3 offset = left * par.leafOffset.x + currentLeaf.lpUpward * par.leafOffset.y 
                                                              + currentLeaf.lpForward * par.leafOffset.z;

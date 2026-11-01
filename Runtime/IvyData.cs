@@ -13,6 +13,8 @@ namespace TeamCrescendo.ProceduralIvy
         public Mesh mesh;
         
 #if UNITY_EDITOR
+        private void OnValidate() => ivyParameters.Validate();
+
         public struct IvyMemoryStats
         {
             public int branchCount;
